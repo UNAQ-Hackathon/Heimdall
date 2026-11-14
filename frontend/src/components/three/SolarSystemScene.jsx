@@ -520,13 +520,10 @@ function CameraController({
   controlsRef,
   panelCollapsed = false,
 }) {
-  const overviewTarget = useMemo(
-    () => (panelCollapsed ? new THREE.Vector3(0, 0, 0) : new THREE.Vector3(3, 0, 0)),
-    [panelCollapsed]
-  );
+  const overviewTarget = useMemo(() => new THREE.Vector3(0, 0, 0), []);
   const overviewPosition = useMemo(
-    () => (panelCollapsed ? new THREE.Vector3(0, 22, 38) : new THREE.Vector3(12, 22, 36)),
-    [panelCollapsed]
+    () => new THREE.Vector3(0, 18, 32),
+    []
   );
 
   const prevFocusRef = useRef(null);
@@ -767,7 +764,7 @@ function SceneContent({ paused, panelCollapsed = false, shipFile = 'Nave_Azul_Lo
       <OrbitControls
         ref={controlsRef}
         makeDefault
-        target={panelCollapsed ? [0, 0, 0] : [3, 0, 0]}
+        target={[0, 0, 0]}
         minDistance={0.5}
         maxDistance={150}
         maxPolarAngle={Math.PI / 2 + 0.18}
@@ -850,7 +847,7 @@ export default function SolarSystemScene({
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       <Canvas
-        camera={{ position: panelCollapsed ? [0, 22, 38] : [12, 22, 36], fov: 44, far: 400 }}
+        camera={{ position: [0, 18, 32], fov: 44, far: 400 }}
         gl={{ antialias: true, alpha: false }}
         style={{ width: '100%', height: '100%', background: '#040711' }}
       >

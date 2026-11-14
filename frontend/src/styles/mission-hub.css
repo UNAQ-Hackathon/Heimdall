@@ -1,36 +1,138 @@
-.mission-hub__explorer { min-width: 0; }
-.mission-hub__studies[aria-hidden="true"] { visibility: hidden; }
-.mission-disclosure, .mission-study { flex-shrink: 0; }
-.mission-disclosure { border: 1px solid #1b2a44; background: #0b1221; padding: 10px 12px; border-radius: 5px; }
-.mission-disclosure > summary, .mission-study > summary { cursor: pointer; font-size: 13px; font-weight: 600; color: #dce6f5; }
-.mission-disclosure[open] > summary { margin-bottom: 12px; }
-.mission-study > summary { padding: 12px 14px; display: flex; align-items: center; gap: 8px; list-style: none; }
-.mission-study > summary::-webkit-details-marker { display: none; }
-.mission-study > summary > div { flex: 1; min-width: 0; gap: 8px; flex-wrap: wrap; }
-.mission-study > summary::after { content: '+'; color: #94a3b8; }
-.mission-study[open] > summary::after { content: '−'; }
-.mission-study__body { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 10px; }
-.mission-study__link { border: 0; background: transparent; color: #60a5fa; cursor: pointer; font: inherit; padding: 4px; }
-.mission-hub summary:focus-visible, .mission-hub select:focus-visible, .mission-hub button:focus-visible { outline: 2px solid #60a5fa; outline-offset: -2px; }
-.mission-planet-layout { display: flex; height: 100%; min-height: 0; }
-.mission-planet-layout__scene { min-width: 0; flex: 1; }
-.mission-inspection { width: clamp(280px, 29vw, 360px); flex-shrink: 0; overflow-y: auto; padding: 86px 12px 60px; background: #080e1a; border-left: 1px solid #1b2a44; }
-.mission-inspection .planet-analysis { height: auto; max-height: none; overflow: visible; padding: 16px; }
-.mission-inspection .planet-analysis__planet { margin-top: 16px; }
-.mission-inspection__zone { display: flex; flex-direction: column; gap: 6px; color: #cbd5e1; font-size: 12px; padding: 0 4px 12px; }
-.mission-inspection__zone select { padding: 8px; color: #f1f5f9; border: 1px solid #1b2a44; }
-@media (max-width: 1200px) {
-  .mission-planet-layout { flex-direction: column; height: auto; min-height: 100%; }
-  .mission-planet-layout__scene { flex: none; height: 52vh; min-height: 340px; }
-  .mission-hub__explorer { overflow-y: auto; }
-  .mission-inspection { width: 100%; padding-top: 16px; overflow: visible; }
+.mission-hub {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-void);
 }
-@media (max-width: 700px) {
-  .mission-hub { flex-direction: column; overflow-y: auto !important; }
-  .mission-hub__studies { width: 100% !important; min-width: 0 !important; height: auto !important; max-height: 36vh; overflow: auto; }
-  .mission-hub__studies-content { width: 100% !important; height: auto !important; }
-  .mission-hub__explorer { flex: none !important; height: auto !important; overflow: visible; }
+
+.mission-sidebar {
+  width: 400px;
+  min-width: 400px;
+  height: 100%;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  z-index: 20;
+  overflow: hidden;
 }
-@media (prefers-reduced-motion: reduce) {
-  .mission-hub__studies, .mission-hub__studies-content { transition: none !important; }
+
+.mission-viewport {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #040711;
+}
+
+.mission-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.mission-planet-inspection {
+  position: relative;
+  z-index: 16;
+  width: min(760px, calc(100% - 40px));
+  max-height: min(44vh, 420px);
+  margin: 0 auto 16px;
+  overflow: auto;
+  border-radius: 12px;
+  border: 1px solid var(--border-strong);
+  background: rgba(10, 15, 29, 0.92);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+}
+
+.mission-planet-inspection__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.mission-planet-inspection__eyebrow {
+  margin: 0;
+  color: var(--accent-cyan);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mission-planet-inspection__title {
+  margin: 2px 0 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mission-planet-inspection__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mission-planet-inspection__action {
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(15, 23, 42, 0.8);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mission-planet-inspection__action:hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.mission-planet-inspection__grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+  gap: 14px;
+  padding: 14px;
+  align-items: start;
+}
+
+.mission-planet-inspection__viewer {
+  position: relative;
+  min-height: 240px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  background: #070b14;
+}
+
+.mission-planet-inspection__hint {
+  margin: 0;
+  padding: 7px 10px;
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: rgba(5, 8, 17, 0.88);
+}
+
+@media (max-width: 900px) {
+  .mission-sidebar {
+    width: 340px;
+    min-width: 340px;
+  }
+
+  .mission-planet-inspection__grid {
+    grid-template-columns: 1fr;
+  }
 }

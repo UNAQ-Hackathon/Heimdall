@@ -12,7 +12,6 @@ export default function CopilotChat({ inline = false }) {
     chatLoading,
     chatSessionId,
     chatSessionUrl,
-    chatSessionStatus,
     sendChatMessage,
   } = useApp();
   const [input, setInput] = useState('');
@@ -125,26 +124,7 @@ export default function CopilotChat({ inline = false }) {
               Devin ↗
             </a>
           )}
-          <span
-            style={{
-              fontSize: '10px',
-              fontFamily: 'var(--font-mono)',
-              fontWeight: 700,
-              color: chatLoading ? '#fbbf24' : '#34d399',
-              background: chatLoading ? 'rgba(251, 191, 36, 0.12)' : 'rgba(52, 211, 153, 0.12)',
-              padding: '2px 6px',
-              borderRadius: '4px',
-              border: chatLoading
-                ? '1px solid rgba(251, 191, 36, 0.25)'
-                : '1px solid rgba(52, 211, 153, 0.2)',
-            }}
-          >
-            {chatLoading
-              ? (chatSessionStatus ?? 'SYNCING').toUpperCase()
-              : chatSessionId
-                ? 'SWE-2 LIVE'
-                : 'ACTIVE'}
-          </span>
+          {chatLoading && <span role="status" style={{ fontSize: '11px', color: '#94a3b8' }}>Thinking…</span>}
           {!inline && (
             <button
               onClick={() => setChatOpen(false)}
