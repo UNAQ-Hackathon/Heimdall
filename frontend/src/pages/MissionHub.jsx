@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
+import MissionPlanetInspection from '../components/ui/MissionPlanetInspection.jsx';
 import { useNavigate } from 'react-router-dom';
-import SolarSystemScene from '../components/three/SolarSystemScene.jsx';
+import SolarSystemScene, { SHIP_CATALOG } from '../components/three/SolarSystemScene.jsx';
 import { SCENARIOS, useApp } from '../context/AppContext.jsx';
 import { rankInvestigations, PLANETS } from '../services/mockData.js';
 
@@ -42,7 +43,13 @@ export default function MissionHub() {
   const [paused, setPaused] = useState(false);
   const [weightsOpen, setWeightsOpen] = useState(false);
   const [panelCollapsed, setPanelCollapsed] = useState(false);
+  const [shipFile, setShipFile] = useState('Nave_Azul_LowPoly.glb');
   const navigate = useNavigate();
+  const targetRef = useRef(null);
+  const closeInspection = useCallback(() => {
+    setFocusPlanet(null);
+    targetRef.current?.focus({ preventScroll: true });
+  }, [setFocusPlanet]);
 
   const ranked = useMemo(() => {
     return rankInvestigations(scenarioKey, weights, category);
@@ -61,6 +68,7 @@ export default function MissionHub() {
 
   return (
     <div
+      className="mission-hub"
       style={{
         display: 'flex',
         width: '100%',
@@ -71,6 +79,7 @@ export default function MissionHub() {
     >
       {/* ── Left Minimalist Low-Poly Analytical Panel ── */}
       <div
+        className="mission-hub__studies"
         style={{
           width: panelCollapsed ? '0px' : '420px',
           minWidth: panelCollapsed ? '0px' : '400px',
@@ -82,7 +91,7 @@ export default function MissionHub() {
         }}
       >
         <div
-          className="lowpoly-surface"
+          className="lowpoly-surface mission-hub__studies-content"
           style={{
             width: '420px',
             height: '100%',
@@ -142,6 +151,8 @@ export default function MissionHub() {
             </div>
 
             {/* Faceted Environment Telemetry Pills */}
+            <details className="mission-disclosure">
+              <summary>Mission environment</summary>
             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '2px' }}>
               <span
                 className="tri-pill"
@@ -180,12 +191,15 @@ export default function MissionHub() {
                   padding: '3px 9px',
                 }}
               >
-                ▲ {scenario.oxygenPct}% O₂
+                {scenario.oxygenPct}% O₂
               </span>
             </div>
+            </details>
           </div>
 
           {/* ── Dropdown Filters Row ── */}
+          <details className="mission-disclosure">
+            <summary>Filters and ranking</summary>
           <div
             style={{
               display: 'grid',
@@ -315,22 +329,14 @@ export default function MissionHub() {
             </div>
           )}
 
+          </details>
+
           {/* ── Minimalist Faceted Ranked Investigations List ── */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {ranked.map((inv) => (
-              <article
-                key={inv.id}
-                className="tri-card"
-                onClick={() => navigate(`/study/${inv.id}`)}
-                style={{
-                  padding: '12px 14px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px',
-                  cursor: 'pointer',
-                }}
-              >
+              <details key={inv.id} className="tri-card mission-study">
                 {/* Header */}
+                <summary>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ color: '#4f8ef7', fontSize: '10px' }}>▲</span>
@@ -363,6 +369,8 @@ export default function MissionHub() {
                   </span>
                 </div>
 
+                </summary>
+                <div className="mission-study__body">
                 {/* Key Telemetry Metadata */}
                 <div
                   style={{
@@ -406,9 +414,10 @@ export default function MissionHub() {
                   }}
                 >
                   <span>{inv.runsArchived} flight runs</span>
-                  <span style={{ color: '#60a5fa', fontWeight: 600 }}>Inspect study ▸</span>
+                  <button type="button" className="mission-study__link" onClick={() => navigate(`/study/${inv.id}`)}>Inspect study</button>
                 </div>
-              </article>
+                </div>
+              </details>
             ))}
           </div>
         </div>
@@ -416,6 +425,7 @@ export default function MissionHub() {
 
       {/* ── Right 3D Solar System Area ── */}
       <div
+        className="mission-hub__explorer"
         style={{
           flex: 1,
           position: 'relative',
@@ -489,6 +499,8 @@ export default function MissionHub() {
               ORBIT TARGET:
             </span>
             <select
+              ref={targetRef}
+              aria-label="Planet to explore"
               value={focusPlanet ?? ''}
               onChange={(e) => setFocusPlanet(e.target.value || null)}
               style={{
@@ -522,6 +534,45 @@ export default function MissionHub() {
               >
                 {activePlanetObj.au}
               </span>
+            )}
+
+            {SHIP_CATALOG.length > 0 && (
+              <>
+                <span
+                  style={{
+                    fontSize: '10px',
+                    fontFamily: 'var(--font-mono)',
+                    color: '#64748b',
+                    borderLeft: '1px solid #1e293b',
+                    paddingLeft: '8px',
+                  }}
+                >
+                  CRAFT:
+                </span>
+                <select
+                  value={shipFile}
+                  onChange={(e) => setShipFile(e.target.value)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#93c5fd',
+                    fontSize: '11.5px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    outline: 'none',
+                  }}
+                >
+                  {SHIP_CATALOG.map((ship) => (
+                    <option
+                      key={ship.id}
+                      value={ship.id}
+                      style={{ background: '#0b1221' }}
+                    >
+                      {ship.label}
+                    </option>
+                  ))}
+                </select>
+              </>
             )}
           </div>
 
@@ -563,7 +614,11 @@ export default function MissionHub() {
         </div>
 
         {/* 3D Solar System Canvas */}
-        <SolarSystemScene paused={paused} panelCollapsed={panelCollapsed} />
+        <SolarSystemScene
+          paused={paused}
+          panelCollapsed={panelCollapsed}
+          shipFile={shipFile}
+        />
 
         {/* Subtle Faceted Bottom-Right Copilot Pill when Chat is Closed */}
         {!chatOpen && (
