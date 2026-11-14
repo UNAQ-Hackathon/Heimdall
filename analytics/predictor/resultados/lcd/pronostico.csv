@@ -1,0 +1,4 @@
+periodo,horizonte,pronostico,limite_inferior,limite_superior,valor_base_cambio,cambio_pronosticado,direccion_pronosticada
+2014-04-01,1,10.378106,,,13.227273,-2.849167,descendente
+2014-04-02,2,5.194773,,,13.227273,-8.032500,descendente
+2014-04-03,3,7.973939,,,13.227273,-5.253333,descendente
