@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.routers import flammability, health, trends
+from app.routers import firehazr, flammability, health, trends
 
 app = FastAPI(
     title="Heimdall Analytics",
@@ -18,5 +18,6 @@ app.add_middleware(
 )
 
 app.include_router(health.router, prefix="/api")
+app.include_router(firehazr.router, prefix="/api/analytics")
 app.include_router(trends.router, prefix="/api/analytics")
 app.include_router(flammability.router, prefix="/api/analytics")

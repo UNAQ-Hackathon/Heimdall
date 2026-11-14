@@ -1,0 +1,728 @@
+[
+  {
+    "psiId": "PSI-BASS",
+    "acronym": "BASS",
+    "title": "Burning and Suppression of Solids",
+    "objective": "Examine burning and extinction characteristics of diverse solid fuel geometries in microgravity under forced air flow inside the Microgravity Science Glovebox.",
+    "fuel": "Solid: PMMA rods, flat sheets, acrylic spheres, cotton-fiberglass (SIBAL) fabrics, and Nomex samples",
+    "fuelType": "solid",
+    "hardware": "MSG with SPICE flow duct",
+    "category": "suppression",
+    "gravityLevel": "microgravity",
+    "conditions": {
+      "oxygenPct": 21.0,
+      "oxygenMinPct": 15.0,
+      "oxygenMaxPct": 21.0,
+      "pressurePsi": 14.7,
+      "flowVelocity": 0.1,
+      "ambient": "ISS MSG cabin air with nitrogen dilution in SPICE flow duct"
+    },
+    "variables": [
+      "Opposed and concurrent forced flow velocity",
+      "Fuel sample geometry (flat, rod, sphere)",
+      "Flame spread rate",
+      "Extinction flow threshold and nitrogen suppression"
+    ],
+    "sensors": [
+      "Digital video camera",
+      "High-resolution still camera with radiometric lens",
+      "Thermocouple probe",
+      "Hot-wire anemometer"
+    ],
+    "series": [],
+    "earthApplications": [
+      "Spacecraft and terrestrial fire-resistant material screening standards",
+      "Ventilation-controlled fire suppression strategies in enclosed cabins"
+    ],
+    "sourceUrl": "https://psi.nasa.gov/",
+    "tags": ["solid-fuel", "suppression", "MSG", "SPICE-duct", "extinction"]
+  },
+  {
+    "psiId": "PSI-BASS-II",
+    "acronym": "BASS-II",
+    "title": "Burning and Suppression of Solids - II",
+    "objective": "Investigate solid-fuel flammability limits, flame spread rates, and radiative/low-flow quenching in microgravity as a function of oxygen concentration and forced ventilation velocity.",
+    "fuel": "Solid: Acrylic (PMMA) slabs and rods, cotton-fiberglass (SIBAL) fabrics, and Nomex textiles",
+    "fuelType": "solid",
+    "hardware": "MSG with SPICE flow duct",
+    "category": "suppression",
+    "gravityLevel": "microgravity",
+    "conditions": {
+      "oxygenPct": 21.0,
+      "oxygenMinPct": 13.5,
+      "oxygenMaxPct": 30.0,
+      "pressurePsi": 14.7,
+      "flowVelocity": 0.08,
+      "ambient": "ISS MSG with SPICE flow duct and controlled O2/N2 flow"
+    },
+    "variables": [
+      "Forced flow velocity (0.0 to 0.50 m/s)",
+      "Oxygen concentration",
+      "Sample thickness and width",
+      "Limiting oxygen index (LOI) in microgravity"
+    ],
+    "sensors": [
+      "High-resolution digital video camera",
+      "Broadband radiometer",
+      "Thermocouple rake",
+      "Omnidirectional hot-wire anemometer"
+    ],
+    "series": [],
+    "earthApplications": [
+      "Improvement of NASA-STD-6001 material flammability testing",
+      "Firefighter thermal protective textile char and heat-flux modeling"
+    ],
+    "sourceUrl": "https://psi.nasa.gov/",
+    "tags": ["solid-fuel", "suppression", "MSG", "SPICE-duct", "textiles", "PMMA"]
+  },
+  {
+    "psiId": "PSI-SAFFIRE-I",
+    "acronym": "Saffire-I",
+    "title": "Spacecraft Fire Experiment - I",
+    "objective": "Measure large-scale concurrent flame spread and cabin oxygen consumption over a 0.4 m x 1.0 m cotton-fiberglass sample inside an uncrewed Cygnus cargo spacecraft after ISS departure.",
+    "fuel": "Solid: SIBAL fabric sheet (75% cotton / 25% fiberglass), 0.4 m wide x 1.0 m long",
+    "fuelType": "solid",
+    "hardware": "Saffire flow duct inside Cygnus OA-6 spacecraft",
+    "category": "prevention",
+    "gravityLevel": "microgravity",
+    "conditions": {
+      "oxygenPct": 21.0,
+      "oxygenMinPct": 21.0,
+      "oxygenMaxPct": 21.0,
+      "pressurePsi": 14.7,
+      "flowVelocity": 0.2,
+      "ambient": "Cygnus OA-6 pressurized cargo cabin air"
+    },
+    "variables": [
+      "Concurrent flame spread velocity",
+      "Flame length and pyrolysis zone thickness",
+      "Cabin pressure rise and O2/CO2 concentration change"
+    ],
+    "sensors": [
+      "Surface and gas-phase thermocouple arrays",
+      "Radiometers",
+      "Two high-definition video cameras",
+      "Oxygen and carbon dioxide gas sensors",
+      "Cabin pressure transducer"
+    ],
+    "series": [],
+    "earthApplications": [
+      "Large-scale enclosure fire modeling for mines, tunnels, and submarines"
+    ],
+    "sourceUrl": "https://psi.nasa.gov/",
+    "tags": ["solid-fuel", "large-scale", "Cygnus", "prevention", "concurrent-spread"]
+  },
+  {
+    "psiId": "PSI-SAFFIRE-II",
+    "acronym": "Saffire-II",
+    "title": "Spacecraft Fire Experiment - II",
+    "objective": "Determine microgravity flammability limits and flame spread across nine 5 cm x 30 cm spacecraft material samples (including PMMA of varying thickness, Nomex, silicone, and SIBAL) inside Cygnus OA-7.",
+    "fuel": "Solid: Nine 5 cm x 30 cm strips (cotton-fiberglass, Nomex, silicone, and flat/grooved PMMA slabs)",
+    "fuelType": "solid",
+    "hardware": "Saffire flow duct inside Cygnus OA-7 spacecraft",
+    "category": "prevention",
+    "gravityLevel": "microgravity",
+    "conditions": {
+      "oxygenPct": 21.0,
+      "oxygenMinPct": 16.5,
+      "oxygenMaxPct": 21.0,
+      "pressurePsi": 14.7,
+      "flowVelocity": 0.2,
+      "ambient": "Cygnus OA-7 pressurized cargo cabin air"
+    },
+    "variables": [
+      "Material thickness and surface geometry",
+      "Maximum oxygen concentration flammability limit",
+      "Concurrent and opposed flame spread rate"
+    ],
+    "sensors": [
+      "Thermocouple arrays",
+      "Radiometers",
+      "Dual-wavelength imaging cameras",
+      "Oxygen, CO2, and pressure transducers"
+    ],
+    "series": [],
+    "earthApplications": [
+      "Calibration of terrestrial upward-flammability screening tests (NASA-STD-6001 Test 1)"
+    ],
+    "sourceUrl": "https://psi.nasa.gov/",
+    "tags": ["solid-fuel", "material-screening", "Cygnus", "prevention", "PMMA"]
+  },
+  {
+    "psiId": "PSI-SAFFIRE-III",
+    "acronym": "Saffire-III",
+    "title": "Spacecraft Fire Experiment - III",
+    "objective": "Characterize large-scale concurrent flame spread rate and steady burning limits over a 0.4 m x 1.0 m cotton-fiberglass panel at two forced ventilation flow speeds inside Cygnus OA-5.",
+    "fuel": "Solid: SIBAL composite fabric sheet (75% cotton / 25% fiberglass), 0.4 m wide x 1.0 m long",
+    "fuelType": "solid",
+    "hardware": "Saffire flow duct inside Cygnus OA-5 spacecraft",
+    "category": "prevention",
+    "gravityLevel": "microgravity",
+    "conditions": {
+      "oxygenPct": 21.0,
+      "oxygenMinPct": 21.0,
+      "oxygenMaxPct": 21.0,
+      "pressurePsi": 14.7,
+      "flowVelocity": 0.2,
+      "ambient": "Cygnus OA-5 cabin air (tested at 0.20 m/s and 0.30 m/s forced flow)"
+    },
+    "variables": [
+      "Axial forced flow velocity (0.20 and 0.30 m/s)",
+      "Concurrent flame spread velocity",
+      "Radiative heat feedback and cabin pressure transient"
+    ],
+    "sensors": [
+      "Thermocouple arrays (Type K)",
+      "Calibrated radiometers",
+      "High-definition video cameras",
+      "Oxygen and CO2 gas analyzers",
+      "Static pressure taps"
+    ],
+    "series": [],
+    "earthApplications": [
+      "HVAC-driven fire propagation models for aircraft cabins and sealed habitats"
+    ],
+    "sourceUrl": "https://psi.nasa.gov/",
+    "tags": ["solid-fuel", "large-scale", "Cygnus", "prevention", "forced-flow"]
+  },
+  {
+    "psiId": "PSI-SAME",
+    "acronym": "SAME",
+    "title": "Smoke Aerosol Measurement Experiment",
+    "objective": "Measure particle size distributions and morphology of smoke aerosols generated by overheated spacecraft materials in microgravity to improve spacecraft smoke detector design and calibration.",
+    "fuel": "Solid/liquid pyrolysis: Kapton wire insulation, Teflon, silicone rubber, cellulose paper, and lamp oil",
+    "fuelType": "solid",
+    "hardware": "MSG (Microgravity Science Glovebox)",
+    "category": "detection",
+    "gravityLevel": "microgravity",
+    "conditions": {
+      "oxygenPct": 21.0,
+      "oxygenMinPct": 21.0,
+      "oxygenMaxPct": 21.0,
+      "pressurePsi": 14.7,
+      "flowVelocity": 0.05,
+      "ambient": "ISS MSG cabin air in enclosed aging duct"
+    },
+    "variables": [
+      "Smoke particle diameter distribution moments (count, surface, mass)",
+      "Aerosol aging and agglomeration time",
+      "Pyrolysis heater temperature"
+    ],
+    "sensors": [
+      "Three-wavelength moment-method photometer",
+      "Space Shuttle ionization smoke detector",
+      "ISS laser photoelectric smoke detector",
+      "Thermal precipitator TEM electron microscopy samplers"
+    ],
+    "series": [],
+    "earthApplications": [
+      "Early-warning multi-wavelength laser smoke detectors for mines, tunnels, and semiconductor cleanrooms"
+    ],
+    "sourceUrl": "https://psi.nasa.gov/",
+    "tags": ["smoke-detection", "aerosol", "MSG", "detection", "Kapton", "Teflon"]
+  },
+  {
+    "psiId": "PSI-SAME-R",
+    "acronym": "SAME-R",
+    "title": "Smoke Aerosol Measurement Experiment - Reflight",
+    "objective": "Re-examine microgravity smoke particle size distributions from spacecraft materials over extended pyrolysis temperatures and aging durations to refine next-generation exploration smoke detectors.",
+    "fuel": "Solid pyrolysis: Kapton, Teflon, silicone elastomers, cotton/cellulose, and wire insulation",
+    "fuelType": "solid",
+    "hardware": "MSG (Microgravity Science Glovebox)",
+    "category": "detection",
+    "gravityLevel": "microgravity",
+    "conditions": {
+      "oxygenPct": 21.0,
+      "oxygenMinPct": 21.0,
+      "oxygenMaxPct": 21.0,
+      "pressurePsi": 14.7,
+      "flowVelocity": 0.05,
+      "ambient": "ISS MSG cabin air"
+    },
+    "variables": [
+      "Particle mean diameter and geometric standard deviation",
+      "Smoke detector alarm response lag",
+      "Aerosol aging residence time"
+    ],
+    "sensors": [
+      "Pegasor particle sensor",
+      "Three-wavelength smoke photometer",
+      "ISS photoelectric and Shuttle ionization reference detectors",
+      "Thermocouples"
+    ],
+    "series": [],
+    "earthApplications": [
+      "False-alarm-resistant smoke detection algorithms for commercial buildings and aircraft cargo bays"
+    ],
+    "sourceUrl": "https://psi.nasa.gov/",
+    "tags": ["smoke-detection", "aerosol", "MSG", "detection", "Pegasor"]
+  },
+  {
+    "psiId": "PSI-FLEX",
+    "acronym": "FLEX",
+    "title": "Flame Extinguishment Experiment",
+    "objective": "Study spherical liquid-droplet combustion and evaluate the effectiveness of gaseous fire suppressants by diluting the atmosphere with carbon dioxide (CO2) and helium (He) in microgravity.",
+    "fuel": "Liquid droplet: Methanol and n-heptane isolated droplets (~2 to 5 mm initial diameter)",
+    "fuelType": "droplet",
+    "hardware": "CIR/MDCA (Combustion Integrated Rack / Multi-user Droplet Combustion Apparatus)",
+    "category": "suppression",
+    "gravityLevel": "microgravity",
+    "conditions": {
+      "oxygenPct": 21.0,
+      "oxygenMinPct": 15.0,
+      "oxygenMaxPct": 30.0,
+      "pressurePsi": 14.7,
+      "flowVelocity": 0.0,
+      "ambient": "CIR chamber with O2/N2 diluted with CO2 and helium (He) suppressants"
+    },
+    "variables": [
+      "CO2 and helium inert diluent mole fraction",
+      "Droplet burning rate constant (K)",
+      "Radiative vs diffusive extinction droplet diameter",
+      "Flame-to-droplet standoff ratio"
+    ],
+    "sensors": [
+      "High-speed backlit digital camera",
+      "Low-light UV intensified camera (OH* chemiluminescence)",
+      "Narrowband and broadband radiometers",
+      "Chamber pressure and gas composition transducers"
+    ],
+    "series": [],
+    "earthApplications": [
+      "Clean-agent inert gas and CO2 fire suppression system optimization",
+      "Ultra-fine water mist fire suppression kinetics for data centers and marine vessels"
+    ],
+    "sourceUrl": "https://psi.nasa.gov/",
+    "tags": ["droplet", "CIR", "MDCA", "suppression", "CO2-dilution", "helium-dilution"]
+  },
+  {
+    "psiId": "PSI-FLEX-2",
+    "acronym": "FLEX-2",
+    "title": "Flame Extinguishment Experiment - 2",
+    "objective": "Investigate spherical droplet burning rates, soot shell dynamics, radiative extinction, and second-stage low-temperature cool-flame transitions of pure and bi-component alkane droplets in microgravity.",
+    "fuel": "Liquid droplet: n-heptane, n-octane, n-decane, methanol, and bi-component droplet mixtures (1.5 to 4.0 mm spherical droplets)",
+    "fuelType": "droplet",
+    "hardware": "CIR/MDCA (Combustion Integrated Rack / Multi-user Droplet Combustion Apparatus)",
+    "category": "prevention",
+    "gravityLevel": "microgravity",
+    "conditions": {
+      "oxygenPct": 30.0,
+      "oxygenMinPct": 15.0,
+      "oxygenMaxPct": 30.0,
+      "pressurePsi": 14.7,
+      "flowVelocity": 0.0,
+      "ambient": "CIR/MDCA sealed chamber (15% to 30% O2, 0.5 to 3.0 atm)"
+    },
+    "variables": [
+      "Droplet diameter squared (d2-law regression)",
+      "Hot-flame to cool-flame transition diameter",
+      "Soot shell standoff radius",
+      "Slow convective droplet translation velocity"
+    ],
+    "sensors": [
+      "High-speed backlit imaging camera",
+      "UV/visible intensified array cameras (OH* and CH* radicals)",
+      "Wide and narrowband radiometers",
+      "SiC fiber thermocouples"
+    ],
+    "series": [],
+    "earthApplications": [
+      "Clean, high-efficiency liquid fuel spray combustion in automotive and aviation engines",
+      "Chemical kinetic validation for low-temperature alkane oxidation"
+    ],
+    "sourceUrl": "https://psi.nasa.gov/",
+    "tags": ["droplet", "CIR", "MDCA", "cool-flames", "prevention", "heptane"]
+  },
+  {
+    "psiId": "PSI-CFI",
+    "acronym": "CFI",
+    "title": "Cool Flames Investigation",
+    "objective": "Observe quasi-steady low-temperature cool flames of heavy liquid alkane droplets in microgravity without hot-flame ignition to characterize low-temperature oxidation and extinction.",
+    "fuel": "Liquid droplet: Heavy alkane droplets (n-dodecane, n-decane, n-heptane) in MDCA",
+    "fuelType": "droplet",
+    "hardware": "CIR/MDCA (Combustion Integrated Rack / Multi-user Droplet Combustion Apparatus)",
+    "category": "prevention",
+    "gravityLevel": "microgravity",
+    "conditions": {
+      "oxygenPct": 21.0,
+      "oxygenMinPct": 15.0,
+      "oxygenMaxPct": 30.0,
+      "pressurePsi": 14.7,
+      "flowVelocity": 0.0,
+      "ambient": "CIR/MDCA chamber at controlled O2 and pressure"
+    },
+    "variables": [
+      "Cool-flame burning rate constant",
+      "Formaldehyde (HCHO*) emission intensity",
+      "Vapor cloud condensation and extinction diameter"
+    ],
+    "sensors": [
+      "Backlit droplet measurement camera",
+      "Intensified UV camera (HCHO* chemiluminescence)",
+      "Radiometers",
+      "Thermocouples"
+    ],
+    "series": [],
+    "earthApplications": [
+      "Homogeneous charge compression ignition (HCCI) and low-temperature engine design",
+      "Prevention of cool-flame auto-ignition hazards in fuel storage"
+    ],
+    "sourceUrl": "https://psi.nasa.gov/",
+    "tags": ["droplet", "CIR", "MDCA", "cool-flames", "prevention"]
+  },
+  {
+    "psiId": "PSI-ACME-CFI-G",
+    "acronym": "CFI-G",
+    "title": "ACME: Cool Flames Investigation with Gases",
+    "objective": "Investigate non-premixed spherical gaseous cool flames in microgravity, testing oxygen concentrations up to 85% O2 supplied from the porous spherical burner to map extreme high-O2 cool-flame and hot-flame boundaries.",
+    "fuel": "Gas: n-butane and methane/hydrocarbon gas mixtures injected from a porous spherical burner",
+    "fuelType": "gas",
+    "hardware": "CIR/ACME (Combustion Integrated Rack / Advanced Combustion via Microgravity Experiments)",
+    "category": "prevention",
+    "gravityLevel": "microgravity",
+    "conditions": {
+      "oxygenPct": 85.0,
+      "oxygenMinPct": 21.0,
+      "oxygenMaxPct": 85.0,
+      "pressurePsi": 14.7,
+      "flowVelocity": null,
+      "ambient": "CIR/ACME chamber (highest O2 in PSI: up to 85% O2 injected from burner)"
+    },
+    "variables": [
+      "Burner/chamber oxygen concentration (up to 85% O2)",
+      "Fuel dilution and mass flow rate",
+      "Cool-flame stability limits and radiative extinction"
+    ],
+    "sensors": [
+      "Intensified UV/visible camera",
+      "High-resolution color digital cameras",
+      "Photomultiplier tubes and radiometers",
+      "Fine-wire thermocouples"
+    ],
+    "series": [],
+    "earthApplications": [
+      "High-oxygen gas handling safety standards",
+      "Validation of gaseous hydrocarbon cool-flame kinetic mechanisms"
+    ],
+    "sourceUrl": "https://psi.nasa.gov/",
+    "tags": ["gas-flame", "CIR", "ACME", "high-oxygen", "cool-flames", "prevention"]
+  },
+  {
+    "psiId": "PSI-ACME-BRE",
+    "acronym": "BRE",
+    "title": "ACME: Burning Rate Emulator",
+    "objective": "Emulate solid and liquid material flammability in spacecraft habitats using a porous gas burner whose fuel flow is regulated by real-time thermal feedback, across exploration oxygen and pressure regimes.",
+    "fuel": "Gas: Ethylene and methane gas feeds calibrated to match the heat of gasification of PMMA, paper, and liquid alcohols",
+    "fuelType": "gas",
+    "hardware": "CIR/ACME (Combustion Integrated Rack / Advanced Combustion via Microgravity Experiments)",
+    "category": "prevention",
+    "gravityLevel": "microgravity",
+    "conditions": {
+      "oxygenPct": 30.0,
+      "oxygenMinPct": 21.0,
+      "oxygenMaxPct": 35.0,
+      "pressurePsi": 10.2,
+      "flowVelocity": null,
+      "ambient": "CIR/ACME chamber across exploration atmospheres (including ~30% O2 and ~10.2 psi)"
+    },
+    "variables": [
+      "Burner surface heat flux and temperature feedback",
+      "Simulated heat of gasification (B-number)",
+      "Quasi-steady flame standoff distance and extinction limit"
+    ],
+    "sensors": [
+      "Burner heat-flux gauge and embedded thermocouples",
+      "Color and intensified OH*/CH* cameras",
+      "Broadband radiometers"
+    ],
+    "series": [],
+    "earthApplications": [
+      "Non-destructive material flammability screening using gas burner emulation"
+    ],
+    "sourceUrl": "https://psi.nasa.gov/",
+    "tags": ["gas-flame", "CIR", "ACME", "lunar-regime", "prevention", "emulator"]
+  },
+  {
+    "psiId": "PSI-ACME-E-FIELD",
+    "acronym": "E-FIELD Flames",
+    "title": "ACME: Electric-Field Effects on Laminar Diffusion Flames",
+    "objective": "Apply high-voltage electric fields to laminar gas diffusion flames in microgravity so ion-driven wind acts as an adjustable body-force proxy for partial gravity (lunar and Martian buoyancy) while controlling soot and stability.",
+    "fuel": "Gas: Methane and ethylene coflow/jet diffusion flames on circular burner",
+    "fuelType": "gas",
+    "hardware": "CIR/ACME (Combustion Integrated Rack / Advanced Combustion via Microgravity Experiments)",
+    "category": "suppression",
+    "gravityLevel": "microgravity",
+    "conditions": {
+      "oxygenPct": 21.0,
+      "oxygenMinPct": 21.0,
+      "oxygenMaxPct": 21.0,
+      "pressurePsi": 14.7,
+      "flowVelocity": 0.15,
+      "ambient": "CIR/ACME chamber with high-voltage electrode mesh (partial-gravity convection proxy)"
+    },
+    "variables": [
+      "Applied electric field voltage and polarity",
+      "Ion current density (body-force proxy for partial gravity)",
+      "Flame shape, liftoff height, and soot emission",
+      "Electric-field-induced flame blowoff/suppression"
+    ],
+    "sensors": [
+      "High-resolution color camera",
+      "Intensified OH* chemiluminescence camera",
+      "Ion current electrometer",
+      "Radiometers"
+    ],
+    "series": [],
+    "earthApplications": [
+      "Low-emission electric-field-assisted industrial gas burners",
+      "Active electrostatic flame stabilization and suppression"
+    ],
+    "sourceUrl": "https://psi.nasa.gov/",
+    "tags": ["gas-flame", "CIR", "ACME", "partial-gravity-proxy", "suppression", "electric-field"]
+  },
+  {
+    "psiId": "PSI-ACME-CLD",
+    "acronym": "CLD Flame",
+    "title": "ACME: Coflow Laminar Diffusion Flame",
+    "objective": "Obtain benchmark measurements of flame structure, temperature, and soot volume fraction in microgravity axisymmetric coflow laminar gas diffusion flames up to the radiative extinction limit.",
+    "fuel": "Gas: Methane and ethylene diluted with nitrogen in a coaxial air coflow",
+    "fuelType": "gas",
+    "hardware": "CIR/ACME (Combustion Integrated Rack / Advanced Combustion via Microgravity Experiments)",
+    "category": "prevention",
+    "gravityLevel": "microgravity",
+    "conditions": {
+      "oxygenPct": 21.0,
+      "oxygenMinPct": 21.0,
+      "oxygenMaxPct": 21.0,
+      "pressurePsi": 14.7,
+      "flowVelocity": 0.15,
+      "ambient": "CIR/ACME chamber with coflow air nozzle"
+    },
+    "variables": [
+      "Fuel nitrogen dilution ratio",
+      "Coflow air velocity",
+      "2D soot volume fraction and temperature field",
+      "Radiative extinction threshold"
+    ],
+    "sensors": [
+      "Deconvolved 3-color pyrometry digital camera",
+      "Intensified chemiluminescence camera",
+      "Fine-wire thermocouple",
+      "Radiometers"
+    ],
+    "series": [],
+    "earthApplications": [
+      "High-fidelity CFD validation for clean combustion furnace and burner design"
+    ],
+    "sourceUrl": "https://psi.nasa.gov/",
+    "tags": ["gas-flame", "CIR", "ACME", "soot", "prevention", "coflow"]
+  },
+  {
+    "psiId": "PSI-ACME-FLAME-DESIGN",
+    "acronym": "Flame Design",
+    "title": "ACME: Flame Design",
+    "objective": "Control soot inception and radiative extinction in spherical non-premixed gas flames in microgravity by adjusting the stoichiometric mixture fraction (normal vs inverse spherical diffusion flames).",
+    "fuel": "Gas: Ethylene and oxygen/inert mixtures delivered through a porous spherical burner",
+    "fuelType": "gas",
+    "hardware": "CIR/ACME (Combustion Integrated Rack / Advanced Combustion via Microgravity Experiments)",
+    "category": "prevention",
+    "gravityLevel": "microgravity",
+    "conditions": {
+      "oxygenPct": 35.0,
+      "oxygenMinPct": 15.0,
+      "oxygenMaxPct": 50.0,
+      "pressurePsi": 10.2,
+      "flowVelocity": 0.0,
+      "ambient": "CIR/ACME chamber across elevated O2 (up to 50%) and reduced/elevated pressures"
+    },
+    "variables": [
+      "Stoichiometric mixture fraction (Z_st)",
+      "Oxygen mole fraction in chamber vs burner",
+      "Quasi-steady flame radius and radiative loss fraction",
+      "Soot-free design boundary"
+    ],
+    "sensors": [
+      "High-resolution color camera",
+      "Intensified CH*/OH* camera",
+      "Narrowband and broadband radiometers",
+      "Thermocouple rake"
+    ],
+    "series": [],
+    "earthApplications": [
+      "Soot-free, high-efficiency industrial oxy-fuel burners"
+    ],
+    "sourceUrl": "https://psi.nasa.gov/",
+    "tags": ["gas-flame", "CIR", "ACME", "spherical-flame", "soot-free", "prevention"]
+  },
+  {
+    "psiId": "PSI-ACME-S-FLAME",
+    "acronym": "s-Flame",
+    "title": "ACME: Structure and Response of Spherical Diffusion Flames",
+    "objective": "Analyze the transient growth, diffusive-thermal instability, cellular breakup, and radiative extinction of spherical gas diffusion flames in microgravity.",
+    "fuel": "Gas: Hydrogen, methane, and ethylene diluted with inert gases from a porous spherical burner",
+    "fuelType": "gas",
+    "hardware": "CIR/ACME (Combustion Integrated Rack / Advanced Combustion via Microgravity Experiments)",
+    "category": "prevention",
+    "gravityLevel": "microgravity",
+    "conditions": {
+      "oxygenPct": 21.0,
+      "oxygenMinPct": 15.0,
+      "oxygenMaxPct": 30.0,
+      "pressurePsi": 14.7,
+      "flowVelocity": 0.0,
+      "ambient": "CIR/ACME quiescent chamber with He, N2, Ar, or Xe inert diluents"
+    },
+    "variables": [
+      "Effective Lewis number (inert diluent diffusivity)",
+      "Fuel mass flow rate",
+      "Spherical flame radius and cellular instability onset"
+    ],
+    "sensors": [
+      "Color and UV intensified cameras",
+      "Thermocouple array",
+      "Broadband and narrowband radiometers"
+    ],
+    "series": [],
+    "earthApplications": [
+      "Hydrogen-blended clean fuel combustion stability models"
+    ],
+    "sourceUrl": "https://psi.nasa.gov/",
+    "tags": ["gas-flame", "CIR", "ACME", "spherical-flame", "hydrogen", "prevention"]
+  },
+  {
+    "psiId": "PSI-SPICE",
+    "acronym": "SPICE",
+    "title": "Smoke Point In Co-flow Experiment",
+    "objective": "Determine the laminar smoke point (critical flame length and fuel flow rate at soot breakout) of non-buoyant hydrocarbon jet diffusion flames in a co-flowing air duct in microgravity.",
+    "fuel": "Gas: Ethylene, propane, methane, propylene, and n-butane jet flames from round nozzles",
+    "fuelType": "gas",
+    "hardware": "MSG with SPICE flow duct",
+    "category": "detection",
+    "gravityLevel": "microgravity",
+    "conditions": {
+      "oxygenPct": 21.0,
+      "oxygenMinPct": 21.0,
+      "oxygenMaxPct": 21.0,
+      "pressurePsi": 14.7,
+      "flowVelocity": 0.1,
+      "ambient": "ISS MSG with SPICE coflow air duct"
+    },
+    "variables": [
+      "Coflow air velocity",
+      "Burner nozzle diameter",
+      "Smoke-point fuel flow rate and luminous flame length"
+    ],
+    "sensors": [
+      "Digital video camera",
+      "High-resolution still camera",
+      "Anemometer",
+      "Fuel mass flow meter"
+    ],
+    "series": [],
+    "earthApplications": [
+      "Jet fuel smoke-point propensity standards for lower-soot aviation gas turbines"
+    ],
+    "sourceUrl": "https://psi.nasa.gov/",
+    "tags": ["gas-flame", "MSG", "SPICE-duct", "smoke-point", "detection"]
+  },
+  {
+    "psiId": "PSI-SLICE",
+    "acronym": "SLICE",
+    "title": "Structure and Liftoff In Combustion Experiment",
+    "objective": "Investigate the flame base stabilization, liftoff height, and blowout limits of laminar coflow gas jet diffusion flames in microgravity inside the SPICE flow duct.",
+    "fuel": "Gas: Methane and ethylene diluted with nitrogen from circular nozzles (0.8 to 3.2 mm diameter)",
+    "fuelType": "gas",
+    "hardware": "MSG with SPICE flow duct",
+    "category": "prevention",
+    "gravityLevel": "microgravity",
+    "conditions": {
+      "oxygenPct": 21.0,
+      "oxygenMinPct": 21.0,
+      "oxygenMaxPct": 21.0,
+      "pressurePsi": 14.7,
+      "flowVelocity": 0.12,
+      "ambient": "ISS MSG with SPICE coflow air duct"
+    },
+    "variables": [
+      "Fuel jet exit velocity",
+      "Coflow air velocity",
+      "Flame liftoff height and blowout threshold"
+    ],
+    "sensors": [
+      "Digital color camera",
+      "CH* bandpass-filtered camera",
+      "Thermocouple probe",
+      "Hot-wire anemometer"
+    ],
+    "series": [],
+    "earthApplications": [
+      "Lifted-flame stabilization in low-NOx power-generation turbines and industrial burners"
+    ],
+    "sourceUrl": "https://psi.nasa.gov/",
+    "tags": ["gas-flame", "MSG", "SPICE-duct", "liftoff", "prevention"]
+  },
+  {
+    "psiId": "PSI-DAFT",
+    "acronym": "DAFT",
+    "title": "Dust and Aerosol Measurement Feasibility Test",
+    "objective": "Measure ambient cabin dust and aerosol particle concentrations aboard the ISS using the SAME Pegasor smoke instrument to establish background particulate levels for spacecraft smoke detector false-alarm immunity.",
+    "fuel": "Ambient cabin dust / aerosol (no combustion fuel; uses SAME Pegasor instrument)",
+    "fuelType": "aerosol",
+    "hardware": "SAME Pegasor aerosol instrument (ISS cabin)",
+    "category": "detection",
+    "gravityLevel": "microgravity",
+    "conditions": {
+      "oxygenPct": 21.0,
+      "oxygenMinPct": 21.0,
+      "oxygenMaxPct": 21.0,
+      "pressurePsi": 14.7,
+      "flowVelocity": null,
+      "ambient": "ISS open cabin air"
+    },
+    "variables": [
+      "Ambient dust particle concentration",
+      "Aerosol size distribution moments"
+    ],
+    "sensors": [
+      "SAME Pegasor particle sensor"
+    ],
+    "series": [],
+    "earthApplications": [
+      "Dust-immune fire alarm calibration and indoor air quality monitoring"
+    ],
+    "sourceUrl": "https://psi.nasa.gov/",
+    "tags": ["dust", "aerosol", "SAME-instrument", "detection", "ISS-cabin"]
+  },
+  {
+    "psiId": "PSI-DAFT-2",
+    "acronym": "DAFT-2",
+    "title": "Dust and Aerosol Measurement Feasibility Test - 2",
+    "objective": "Extend multi-module ISS cabin dust and aerosol background measurements with the SAME Pegasor instrument to inform lunar and Martian regolith-tolerant smoke detection systems.",
+    "fuel": "Ambient cabin dust / aerosol (no combustion fuel; uses SAME Pegasor instrument)",
+    "fuelType": "aerosol",
+    "hardware": "SAME Pegasor aerosol instrument (ISS cabin)",
+    "category": "detection",
+    "gravityLevel": "microgravity",
+    "conditions": {
+      "oxygenPct": 21.0,
+      "oxygenMinPct": 21.0,
+      "oxygenMaxPct": 21.0,
+      "pressurePsi": 14.7,
+      "flowVelocity": null,
+      "ambient": "ISS multi-module cabin air"
+    },
+    "variables": [
+      "Module-to-module dust concentration variance",
+      "Crew activity aerosol spikes"
+    ],
+    "sensors": [
+      "SAME Pegasor particle sensor"
+    ],
+    "series": [],
+    "earthApplications": [
+      "Particulate monitoring and false-alarm rejection in dusty mining and industrial enclosures"
+    ],
+    "sourceUrl": "https://psi.nasa.gov/",
+    "tags": ["dust", "aerosol", "SAME-instrument", "detection", "lunar-dust"]
+  }
+]

@@ -1,0 +1,53 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import app from '../src/app.js';
+
+test('GET /api/health and POST /api/ranking respond deterministically', async () => {
+  const server = app.listen(0);
+  const { port } = server.address();
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  try {
+    const healthRes = await fetch(`${baseUrl}/api/health`);
+    assert.equal(healthRes.status, 200);
+    const health = await healthRes.json();
+    assert.equal(health.status, 'ok');
+
+    const invRes = await fetch(`${baseUrl}/api/investigations`);
+    assert.equal(invRes.status, 200);
+    const invData = await invRes.json();
+    assert.equal(invData.total, 20);
+
+    const moonScenario = { gravity: 'lunar', oxygenPct: 30, pressurePsi: 10.2, flowVelocity: 0.1 };
+    const weights = { atmosphereMatch: 40, gravityMatch: 25, dataRichness: 20, documentation: 15 };
+
+    const r1 = await fetch(`${baseUrl}/api/ranking`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scenario: moonScenario, weights }),
+    }).then((r) => r.json());
+
+    const r2 = await fetch(`${baseUrl}/api/ranking`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scenario: moonScenario, weights }),
+    }).then((r) => r.json());
+
+    assert.equal(r1.count, 20);
+    assert.deepEqual(r1.results, r2.results);
+
+    const issScenario = { gravity: 'microgravity', oxygenPct: 21, pressurePsi: 14.7, flowVelocity: 0.1 };
+    const rIss = await fetch(`${baseUrl}/api/ranking`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scenario: issScenario, weights }),
+    }).then((r) => r.json());
+
+    assert.notDeepEqual(
+      r1.results.map((x) => x.investigation.psiId),
+      rIss.results.map((x) => x.investigation.psiId)
+    );
+  } finally {
+    server.close();
+  }
+});

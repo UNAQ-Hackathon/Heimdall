@@ -1,6 +1,0 @@
-periodo,horizonte,pronostico,limite_inferior,limite_superior,valor_base_cambio,cambio_pronosticado,direccion_pronosticada
-2026,1,1.176667,1.034533,1.344000,1.190000,-0.013333,descendente
-2027,2,1.230667,1.094267,1.470833,1.190000,0.040667,ascendente
-2028,3,1.259333,1.123333,1.524133,1.190000,0.069333,ascendente
-2029,4,1.273333,1.132833,1.532500,1.190000,0.083333,ascendente
-2030,5,1.279333,1.200133,1.604133,1.190000,0.089333,ascendente

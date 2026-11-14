@@ -8,41 +8,51 @@ export const PSI_FALLBACK_DOCS = [
     _id: 'saffire-iii',
     studyId: 'saffire-iii',
     acronym: 'Saffire-III',
-    title: 'Large-Scale Microgravity Flammability & Oxygen Limits',
+    title: 'Spacecraft Fire Experiment - III',
     objective:
-      'Axial forced convection flow duct combustion inside uncrewed Cygnus OA-5 Pressurized Cargo Module.',
+      'Characterize large-scale concurrent flame spread rate and steady burning limits over a 0.4 m x 1.0 m cotton-fiberglass panel at forced ventilation flow speeds inside Cygnus OA-5.',
     aiSummary:
-      'Fuel: PMMA Solid Sheet (0.4 x 1.0 m). Conditions: O2 21.0% -> 34.0%, Pressure 10.2 psi (70.0 kPa), Flow 0.05 to 0.20 m/s, 0g. Findings: Upward combustion transition occurs at 28.4% O2; flame front velocity increases non-linearly with concurrent ventilation (L_inf: 0.24 m/s).',
+      'Fuel: SIBAL composite fabric sheet (0.4 x 1.0 m). Hardware: Saffire flow duct in Cygnus OA-5. Conditions: O2 21.0%, Pressure 14.7 psi, Flow 0.20 to 0.30 m/s, microgravity.',
   },
   {
     _id: 'bass-ii',
     studyId: 'bass-ii',
     acronym: 'BASS-II',
-    title: 'Solid Fuel Extinction & Flame Quenching',
+    title: 'Burning and Suppression of Solids - II',
     objective:
-      'Validated extinction limits for Nomex and Kapton textiles in quiescent low-convection habitable cabins (ISS MSG Glovebox).',
+      'Investigate solid-fuel flammability limits, flame spread rates, and radiative/low-flow quenching in microgravity inside the MSG with the SPICE flow duct.',
     aiSummary:
-      'Fuel: Nomex / Kapton Fabrics & wire insulation. Conditions: O2 56.0% -> 21.0%, Pressure 14.7 psi (101.3 kPa), Quiescent / low forced flow, 0g. Findings: Radiative flame extinction limits with critical forced ventilation threshold at O2G min.',
+      'Fuel: Solid PMMA slabs/rods, SIBAL cotton-fiberglass, and Nomex fabrics. Hardware: MSG with SPICE flow duct. Conditions: O2 13.5% -> 30.0% (nominal 21%), Pressure 14.7 psi, Forced flow 0.0 to 0.50 m/s, microgravity.',
   },
   {
-    _id: 'acme',
-    studyId: 'acme',
-    acronym: 'ACME',
-    title: 'Gas Flame Diffusion & Soot Dynamics',
+    _id: 'cfi-g',
+    studyId: 'cfi-g',
+    acronym: 'CFI-G',
+    title: 'ACME: Cool Flames Investigation with Gases',
     objective:
-      'Soot-free spherical flame behavior models provide baseline bounds for oxygen-enriched lunar modules (CIRT Chamber).',
+      'Investigate non-premixed spherical gaseous cool flames in microgravity inside CIR/ACME, testing up to 85% O2 supplied from the porous spherical burner.',
     aiSummary:
-      'Fuel: Alkane / Heptane droplets (1.5 - 3.0 mm). Conditions: O2 15.0% -> 40.0%, Pressure 14.7 psi, 0g. Findings: Soot-free diffusion-dominated spherical flames and cool flame kinetics.',
+      'Fuel: Gas (n-butane and methane mixtures from porous spherical burner). Hardware: CIR/ACME (one of 6 ACME gas flame experiments). Conditions: O2 up to 85% from burner, Pressure 14.7 psi, microgravity.',
+  },
+  {
+    _id: 'e-field-flames',
+    studyId: 'e-field-flames',
+    acronym: 'E-FIELD Flames',
+    title: 'ACME: Electric-Field Effects on Laminar Diffusion Flames',
+    objective:
+      'Apply high-voltage electric fields to laminar gas diffusion flames in CIR/ACME so ion-driven wind acts as an adjustable body-force proxy for partial gravity (lunar/Martian convection).',
+    aiSummary:
+      'Fuel: Gas (methane and ethylene coflow/jet diffusion flames). Hardware: CIR/ACME. Conditions: O2 21.0%, Pressure 14.7 psi, Flow 0.15 m/s, microgravity with electric-field partial-gravity proxy.',
   },
   {
     _id: 'flex-2',
     studyId: 'flex-2',
     acronym: 'FLEX-2',
-    title: 'Multi-Laser Droplet Combustion Chamber (MDC)',
+    title: 'Flame Extinguishment Experiment - 2',
     objective:
-      'Droplet flame dynamics and extinction limits in reduced gravity environments.',
+      'Investigate spherical liquid droplet combustion dynamics, radiative extinction, and second-stage cool-flame transitions inside the Multi-user Droplet Combustion Apparatus (MDCA) in the CIR.',
     aiSummary:
-      'Fuel: Alkane / Heptane droplets (1.5 - 3.0 mm). Conditions: O2 18.0% -> 30.0%, Pressure 14.7 psi (1.0 - 3.0 atm), 0g. Findings: Critical second-stage low-temperature cool-flame behavior with extended residence times.',
+      'Fuel: Liquid droplets (n-heptane, n-octane, n-decane, methanol, 1.5 - 4.0 mm). Hardware: CIR/MDCA. Conditions: O2 15.0% -> 30.0%, Pressure 14.7 psi (0.5 - 3.0 atm), microgravity.',
   },
   {
     _id: 'same',
@@ -50,9 +60,9 @@ export const PSI_FALLBACK_DOCS = [
     acronym: 'SAME',
     title: 'Smoke Aerosol Measurement Experiment',
     objective:
-      'Characterization of smoke particle size distributions from spacecraft-relevant materials in microgravity (MSG Module).',
+      'Characterization of smoke particle size distributions from overheated spacecraft materials in microgravity (MSG).',
     aiSummary:
-      'Fuel: Wire insulation / Kapton. Conditions: O2 21.0%, Pressure 14.7 psi (101.3 kPa), Quiescent, 0g. Findings: Smoke particle distributions differ significantly from 1g baselines, with larger particle mean diameter informing ECLSS smoke detector calibration.',
+      'Fuel: Solid pyrolysis (Kapton wire insulation, Teflon, silicone rubber, cellulose). Hardware: MSG (instrument also used by DAFT/DAFT-2 to measure cabin dust). Conditions: O2 21.0%, Pressure 14.7 psi, Flow 0.05 m/s, microgravity.',
   },
 ];
 

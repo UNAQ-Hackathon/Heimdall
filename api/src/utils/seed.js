@@ -8,19 +8,42 @@ import Investigation from '../models/Investigation.js';
 const SEED_DIR = path.resolve(import.meta.dirname, '../../../data/processed');
 
 async function main() {
-  await connectDB();
   const files = (await readdir(SEED_DIR)).filter((f) => f.endsWith('.json'));
-  let inserted = 0;
+  const allDocs = [];
 
   for (const file of files) {
     const docs = JSON.parse(await readFile(path.join(SEED_DIR, file), 'utf8'));
     const list = Array.isArray(docs) ? docs : [docs];
-    const res = await Investigation.insertMany(list, { ordered: false }).catch((e) => e);
-    inserted += res.insertedCount ?? list.length;
+    for (const doc of list) {
+      const instance = new Investigation(doc);
+      await instance.validate();
+      allDocs.push(doc);
+    }
   }
 
-  console.log(`[seed] ${inserted} investigations loaded into ${env.mongoUri}`);
-  await disconnectDB();
+  let dbConnected = false;
+  try {
+    await connectDB();
+    dbConnected = true;
+  } catch (err) {
+    console.warn(`[seed] MongoDB connection unavailable (${err.message}); validated ${allDocs.length} docs against schema.`);
+  }
+
+  if (dbConnected) {
+    const ops = allDocs.map((doc) => ({
+      updateOne: {
+        filter: { psiId: doc.psiId },
+        update: { $set: doc },
+        upsert: true,
+      },
+    }));
+    const res = await Investigation.bulkWrite(ops, { ordered: false });
+    const total = (res.upsertedCount ?? 0) + (res.modifiedCount ?? 0) + (res.matchedCount ?? 0);
+    console.log(`[seed] ${allDocs.length} investigations loaded (${total} synced) into ${env.mongoUri}`);
+    await disconnectDB();
+  } else {
+    console.log(`[seed] ${allDocs.length} investigations validated and ready in data/processed/`);
+  }
 }
 
 main().catch((err) => {
