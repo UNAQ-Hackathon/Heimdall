@@ -1,16 +1,124 @@
-import { Suspense, useRef, useMemo, useCallback, useEffect } from 'react';
+import { Suspense, useRef, useMemo, useCallback, useEffect, useLayoutEffect } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Stars } from '@react-three/drei';
+import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
-import PlanetModel from './PlanetModel.jsx';
+import SolarSystemPlanet from './SolarSystemPlanet.jsx';
 import { PLANETS } from '../../services/mockData.js';
 import { useApp } from '../../context/AppContext.jsx';
 
-function OrbitRing({ radius, color = '#223354', opacity = 0.35 }) {
+const STAR_COUNT = 1600;
+const STAR_PALETTE = ['#e2e8f0', '#93c5fd', '#fcd34d', '#8f9db7', '#c7d2fe'];
+const ASTEROID_COUNT = 340;
+const ASTEROID_PALETTE = ['#64748b', '#94a3b8', '#78716c', '#475569'];
+
+const pseudoRandom = (seed) => {
+  const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
+  return x - Math.floor(x);
+};
+
+/**
+ * Low-poly octahedral (8-triangle) starfield matching the faceted planet models.
+ */
+function LowPolyStarfield() {
+  const meshRef = useRef(null);
+
+  useLayoutEffect(() => {
+    if (!meshRef.current) return;
+    const dummy = new THREE.Object3D();
+    const color = new THREE.Color();
+
+    for (let i = 0; i < STAR_COUNT; i += 1) {
+      const y = 1 - (2 * (i + 0.5)) / STAR_COUNT;
+      const radius = 95 + pseudoRandom(i) * 115;
+      const angle = i * Math.PI * (3 - Math.sqrt(5));
+      const horiz = Math.sqrt(Math.max(0, 1 - y * y));
+      const s = 0.09 + pseudoRandom(i + STAR_COUNT) * 0.16;
+
+      dummy.position.set(
+        Math.cos(angle) * horiz * radius,
+        y * radius,
+        Math.sin(angle) * horiz * radius
+      );
+      dummy.rotation.set(
+        pseudoRandom(i * 2) * Math.PI,
+        angle,
+        pseudoRandom(i * 3) * Math.PI
+      );
+      dummy.scale.set(s, s * 1.35, s * 0.85);
+      dummy.updateMatrix();
+      meshRef.current.setMatrixAt(i, dummy.matrix);
+      meshRef.current.setColorAt(i, color.set(STAR_PALETTE[i % STAR_PALETTE.length]));
+    }
+
+    meshRef.current.instanceMatrix.needsUpdate = true;
+    meshRef.current.instanceColor.needsUpdate = true;
+    meshRef.current.computeBoundingSphere();
+  }, []);
+
+  return (
+    <instancedMesh ref={meshRef} args={[undefined, undefined, STAR_COUNT]}>
+      <octahedronGeometry args={[1, 0]} />
+      <meshBasicMaterial toneMapped={false} />
+    </instancedMesh>
+  );
+}
+
+/**
+ * Low-poly tetrahedral (4-triangle) Main Asteroid Belt between Mars (1.52 AU) and Jupiter (5.20 AU).
+ */
+function LowPolyAsteroidBelt({ paused }) {
+  const beltGroupRef = useRef(null);
+  const meshRef = useRef(null);
+
+  useLayoutEffect(() => {
+    if (!meshRef.current) return;
+    const dummy = new THREE.Object3D();
+    const color = new THREE.Color();
+
+    for (let i = 0; i < ASTEROID_COUNT; i += 1) {
+      const angle = (i / ASTEROID_COUNT) * Math.PI * 2 + pseudoRandom(i) * 0.25;
+      const radius = 19.2 + pseudoRandom(i + 500) * 3.2;
+      const yOffset = (pseudoRandom(i + 900) - 0.5) * 0.9;
+      const s = 0.045 + pseudoRandom(i + 1300) * 0.075;
+
+      dummy.position.set(Math.cos(angle) * radius, yOffset, Math.sin(angle) * radius);
+      dummy.rotation.set(
+        pseudoRandom(i * 5) * Math.PI,
+        pseudoRandom(i * 7) * Math.PI,
+        pseudoRandom(i * 11) * Math.PI
+      );
+      dummy.scale.set(s * 1.2, s * 0.85, s);
+      dummy.updateMatrix();
+      meshRef.current.setMatrixAt(i, dummy.matrix);
+      meshRef.current.setColorAt(i, color.set(ASTEROID_PALETTE[i % ASTEROID_PALETTE.length]));
+    }
+
+    meshRef.current.instanceMatrix.needsUpdate = true;
+    meshRef.current.instanceColor.needsUpdate = true;
+    meshRef.current.computeBoundingSphere();
+  }, []);
+
+  useFrame((_, delta) => {
+    if (!paused && beltGroupRef.current) {
+      beltGroupRef.current.rotation.y += 0.015 * delta;
+    }
+  });
+
+  return (
+    <group ref={beltGroupRef}>
+      <instancedMesh ref={meshRef} args={[undefined, undefined, ASTEROID_COUNT]}>
+        <tetrahedronGeometry args={[1, 0]} />
+        <meshStandardMaterial flatShading roughness={0.85} metalness={0.1} />
+      </instancedMesh>
+    </group>
+  );
+}
+
+function OrbitRing({ radius, color = '#1e293b', opacity = 0.32 }) {
   if (radius <= 0) return null;
   return (
     <mesh rotation={[Math.PI / 2, 0, 0]}>
-      <ringGeometry args={[radius - 0.04, radius + 0.04, 96]} />
+      <ringGeometry args={[radius - 0.025, radius + 0.025, 160]} />
       <meshBasicMaterial
         color={color}
         side={THREE.DoubleSide}
@@ -22,14 +130,12 @@ function OrbitRing({ radius, color = '#223354', opacity = 0.35 }) {
 }
 
 function CameraController({ focusPlanet, planetObjectsRef, controlsRef, panelCollapsed = false }) {
-  // Center camera at (0, 0, 0) when panel is collapsed (100% width),
-  // or offset to (4, 0, 0) when panel is open to compensate for the left analytics drawer
   const overviewTarget = useMemo(
-    () => (panelCollapsed ? new THREE.Vector3(0, 0, 0) : new THREE.Vector3(4, 0, 0)),
+    () => (panelCollapsed ? new THREE.Vector3(0, 0, 0) : new THREE.Vector3(3, 0, 0)),
     [panelCollapsed]
   );
   const overviewPosition = useMemo(
-    () => (panelCollapsed ? new THREE.Vector3(0, 18, 30) : new THREE.Vector3(14, 18, 28)),
+    () => (panelCollapsed ? new THREE.Vector3(0, 22, 38) : new THREE.Vector3(12, 22, 36)),
     [panelCollapsed]
   );
 
@@ -38,9 +144,6 @@ function CameraController({ focusPlanet, planetObjectsRef, controlsRef, panelCol
   const isTransitioningRef = useRef(false);
   const targetCamPosRef = useRef(new THREE.Vector3());
 
-  // Listen for user interaction (mouse drag / touch) on OrbitControls.
-  // The moment the user moves the mouse to adjust the angle of view,
-  // we immediately hand over full control to OrbitControls!
   useEffect(() => {
     const controls = controlsRef.current;
     if (!controls) return;
@@ -55,7 +158,6 @@ function CameraController({ focusPlanet, planetObjectsRef, controlsRef, panelCol
     };
   }, [controlsRef]);
 
-  // When panelCollapsed changes while in overview mode, trigger smooth camera re-centering
   useEffect(() => {
     if (prevPanelCollapsedRef.current !== panelCollapsed) {
       prevPanelCollapsedRef.current = panelCollapsed;
@@ -65,7 +167,6 @@ function CameraController({ focusPlanet, planetObjectsRef, controlsRef, panelCol
     }
   }, [panelCollapsed, focusPlanet]);
 
-  // When focusPlanet changes, trigger smooth flight transition
   useEffect(() => {
     if (focusPlanet !== prevFocusRef.current) {
       prevFocusRef.current = focusPlanet;
@@ -78,7 +179,7 @@ function CameraController({ focusPlanet, planetObjectsRef, controlsRef, panelCol
 
         const planetData = PLANETS.find((p) => p.name === focusPlanet);
         const size = planetData?.size || 0.6;
-        const zoomDist = Math.max(1.8, size * 3.6);
+        const zoomDist = Math.max(0.85, size * 3.1);
 
         targetCamPosRef.current.set(
           worldPos.x + zoomDist * 0.72,
@@ -102,11 +203,9 @@ function CameraController({ focusPlanet, planetObjectsRef, controlsRef, panelCol
       obj.getWorldPosition(worldPos);
 
       if (isTransitioningRef.current) {
-        // Smoothly lerp towards the planet
         controls.target.lerp(worldPos, dampFactor);
         state.camera.position.lerp(targetCamPosRef.current, dampFactor);
 
-        // Once close enough, release position so user can freely orbit/change angle
         if (
           controls.target.distanceTo(worldPos) < 0.05 &&
           state.camera.position.distanceTo(targetCamPosRef.current) < 0.1
@@ -114,22 +213,17 @@ function CameraController({ focusPlanet, planetObjectsRef, controlsRef, panelCol
           isTransitioningRef.current = false;
         }
       } else {
-        // When not transitioning, keep the orbit pivot locked to the planet center,
-        // which allows the user to freely drag, rotate, tilt, and view from any angle!
         controls.target.copy(worldPos);
       }
-    } else {
-      // General overview: dynamically shifts between centered (0,0,0) and offset (4,0,0)
-      if (isTransitioningRef.current) {
-        controls.target.lerp(overviewTarget, dampFactor);
-        state.camera.position.lerp(overviewPosition, dampFactor);
+    } else if (isTransitioningRef.current) {
+      controls.target.lerp(overviewTarget, dampFactor);
+      state.camera.position.lerp(overviewPosition, dampFactor);
 
-        if (
-          controls.target.distanceTo(overviewTarget) < 0.05 &&
-          state.camera.position.distanceTo(overviewPosition) < 0.1
-        ) {
-          isTransitioningRef.current = false;
-        }
+      if (
+        controls.target.distanceTo(overviewTarget) < 0.05 &&
+        state.camera.position.distanceTo(overviewPosition) < 0.1
+      ) {
+        isTransitioningRef.current = false;
       }
     }
 
@@ -139,7 +233,6 @@ function CameraController({ focusPlanet, planetObjectsRef, controlsRef, panelCol
   return null;
 }
 
-// Earth and Moon compound system so Moon properly orbits Earth (not the Sun!)
 function EarthMoonSystem({
   earthData,
   moonData,
@@ -155,13 +248,19 @@ function EarthMoonSystem({
   const isMoonSelected = focusPlanet === 'Moon';
   const isAnySelected = isEarthSelected || isMoonSelected;
 
-  useFrame((state, delta) => {
-    // Earth orbits Sun (paused if Earth or Moon is focused or scene is paused)
+  useEffect(() => {
+    if (earthOrbitGroup.current) {
+      earthOrbitGroup.current.rotation.y = earthData.initialAngle ?? 0;
+    }
+    if (moonOrbitGroup.current) {
+      moonOrbitGroup.current.rotation.y = moonData.initialAngle ?? 0;
+    }
+  }, [earthData.initialAngle, moonData.initialAngle]);
+
+  useFrame((_, delta) => {
     if (!paused && !isAnySelected && earthOrbitGroup.current) {
       earthOrbitGroup.current.rotation.y += earthData.orbitSpeed * 15 * delta;
     }
-
-    // Moon orbits Earth (paused if Moon is focused for close inspection)
     if (!paused && !isMoonSelected && moonOrbitGroup.current) {
       moonOrbitGroup.current.rotation.y += moonData.orbitSpeed * 15 * delta;
     }
@@ -169,13 +268,10 @@ function EarthMoonSystem({
 
   return (
     <group ref={earthOrbitGroup}>
-      {/* Sun orbit ring for Earth */}
-      <OrbitRing radius={earthData.distance} />
+      <OrbitRing radius={earthData.distance} color="#1d4ed8" opacity={0.35} />
 
-      {/* Earth local position arm */}
       <group position={[earthData.distance, 0, 0]}>
-        {/* Earth Model */}
-        <PlanetModel
+        <SolarSystemPlanet
           name={earthData.name}
           model={earthData.model}
           size={earthData.size}
@@ -188,12 +284,10 @@ function EarthMoonSystem({
           registerPlanet={registerPlanet}
         />
 
-        {/* Moon local orbit ring around Earth */}
-        <OrbitRing radius={moonData.distance} color="#38bdf8" opacity={0.25} />
+        <OrbitRing radius={moonData.distance} color="#38bdf8" opacity={0.28} />
 
-        {/* Moon local orbit group */}
         <group ref={moonOrbitGroup}>
-          <PlanetModel
+          <SolarSystemPlanet
             name={moonData.name}
             model={moonData.model}
             size={moonData.size}
@@ -220,9 +314,12 @@ function SceneContent({ paused, panelCollapsed = false }) {
     planetObjectsRef.current[name] = mesh;
   }, []);
 
-  const handlePlanetClick = useCallback((name) => {
-    setFocusPlanet((prev) => (prev === name ? null : name));
-  }, [setFocusPlanet]);
+  const handlePlanetClick = useCallback(
+    (name) => {
+      setFocusPlanet((prev) => (prev === name ? null : name));
+    },
+    [setFocusPlanet]
+  );
 
   const earthData = useMemo(() => PLANETS.find((p) => p.name === 'Earth'), []);
   const moonData = useMemo(() => PLANETS.find((p) => p.name === 'Moon'), []);
@@ -234,22 +331,22 @@ function SceneContent({ paused, panelCollapsed = false }) {
   return (
     <>
       <color attach="background" args={['#040711']} />
-      <ambientLight intensity={0.4} />
-      <pointLight position={[0, 0, 0]} intensity={120} distance={200} decay={1.5} color="#fff8e7" />
+      <ambientLight intensity={0.45} />
+      <hemisphereLight args={['#dbeafe', '#0f172a', 0.45]} />
+      <directionalLight position={[18, 28, 22]} intensity={1.1} color="#fff7ed" />
+      <pointLight position={[0, 0, 0]} intensity={180} distance={260} decay={1.2} color="#fde68a" />
 
-      {/* OrbitControls configured with damping */}
       <OrbitControls
         ref={controlsRef}
         makeDefault
-        target={panelCollapsed ? [0, 0, 0] : [4, 0, 0]}
-        minDistance={1.2}
-        maxDistance={90}
-        maxPolarAngle={Math.PI / 2 + 0.15}
+        target={panelCollapsed ? [0, 0, 0] : [3, 0, 0]}
+        minDistance={0.5}
+        maxDistance={150}
+        maxPolarAngle={Math.PI / 2 + 0.18}
         enableDamping
         dampingFactor={0.05}
       />
 
-      {/* Camera transition controller with dynamic panel awareness */}
       <CameraController
         focusPlanet={focusPlanet}
         planetObjectsRef={planetObjectsRef}
@@ -257,10 +354,11 @@ function SceneContent({ paused, panelCollapsed = false }) {
         panelCollapsed={panelCollapsed}
       />
 
-      <Stars radius={120} depth={60} count={3000} factor={4} saturation={0} fade speed={1} />
+      {/* Faceted Low-Poly Octahedral Starfield + Asteroid Belt */}
+      <LowPolyStarfield />
+      <LowPolyAsteroidBelt paused={paused} />
 
       <Suspense fallback={null}>
-        {/* Render Earth and Moon compound system */}
         {earthData && moonData && (
           <EarthMoonSystem
             earthData={earthData}
@@ -272,7 +370,6 @@ function SceneContent({ paused, panelCollapsed = false }) {
           />
         )}
 
-        {/* Render other planets & Sun */}
         {otherPlanets.map((planet) => {
           const isSun = planet.name === 'Sol';
           const isSelected = focusPlanet === planet.name;
@@ -281,12 +378,13 @@ function SceneContent({ paused, panelCollapsed = false }) {
             <group key={planet.name}>
               {planet.distance > 0 && <OrbitRing radius={planet.distance} />}
 
-              <PlanetModel
+              <SolarSystemPlanet
                 name={planet.name}
                 model={planet.model}
                 size={planet.size}
                 distance={planet.distance}
                 orbitSpeed={planet.orbitSpeed}
+                initialAngle={planet.initialAngle ?? 0}
                 color={planet.color}
                 isSun={isSun}
                 isSelected={isSelected}
@@ -306,7 +404,7 @@ export default function SolarSystemScene({ paused = false, panelCollapsed = fals
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       <Canvas
-        camera={{ position: panelCollapsed ? [0, 18, 30] : [14, 18, 28], fov: 42 }}
+        camera={{ position: panelCollapsed ? [0, 22, 38] : [12, 22, 36], fov: 44, far: 400 }}
         gl={{ antialias: true, alpha: false }}
         style={{ width: '100%', height: '100%', background: '#040711' }}
       >

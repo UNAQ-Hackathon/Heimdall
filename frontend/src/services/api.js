@@ -18,11 +18,21 @@ export const api = {
   getInvestigation: (id) => request(`/investigations/${id}`),
   rank: (scenario, weights) =>
     request('/ranking', { method: 'POST', body: JSON.stringify({ scenario, weights }) }),
-  ask: (question, sessionId) =>
-    request('/chat', {
+  ask: (question, optionsOrSessionId = {}) => {
+    const opts =
+      typeof optionsOrSessionId === 'string'
+        ? { sessionId: optionsOrSessionId }
+        : optionsOrSessionId ?? {};
+    return request('/chat', {
       method: 'POST',
-      body: JSON.stringify({ question, ...(sessionId ? { sessionId } : {}) }),
-    }),
+      body: JSON.stringify({
+        question,
+        ...(opts.sessionId ? { sessionId: opts.sessionId } : {}),
+        ...(opts.audience ? { audience: opts.audience } : {}),
+        ...(opts.scenario ? { scenario: opts.scenario } : {}),
+      }),
+    });
+  },
   pollChatSession: (sessionId, baselineCount = 0) =>
     request(
       `/chat/sessions/${encodeURIComponent(sessionId)}?baselineCount=${encodeURIComponent(baselineCount)}`

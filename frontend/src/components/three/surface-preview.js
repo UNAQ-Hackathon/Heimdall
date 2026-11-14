@@ -14,7 +14,7 @@ const BODY_THEMES = {
   saturn: { kind: 'atmosphere', title: 'Golden cloudscape', sky: '#bcae86', ground: ['#d9c899', '#b6a071', '#ece0b9'], accent: '#a78b5f', description: 'A conceptual golden atmosphere with a decorative ring arc. No solid ground is depicted.' },
   uranus: { kind: 'atmosphere', title: 'Cyan cloud layers', sky: '#80b9bd', ground: ['#a6d4cf', '#73adb7', '#c0e1d6'], accent: '#5896a6', description: 'A stylized cyan atmospheric scene. Shapes and visibility are illustrative; there is no solid ground.' },
   neptune: { kind: 'atmosphere', title: 'Deep-blue cloud layers', sky: '#253e77', ground: ['#3868a8', '#588cbd', '#244d91'], accent: '#a0c8d6', description: 'An artistic deep-blue atmosphere with angular cloud forms. No solid ground is depicted.' },
-  sun: { kind: 'plasma', title: 'Solar plasma', sky: '#73372d', ground: ['#e48437', '#f2ae49', '#c85a2d'], accent: '#ffcf69', description: 'A conceptual plasma scene with luminous-looking layers and arches, not a solid surface or a physical simulation.' },
+  sun: { kind: 'plasma', title: 'Solar plasma', sky: '#120b16', ground: ['#bc3c15', '#f28b28', '#ffd266'], accent: '#ffcf69', description: 'A conceptual view above a curved emitting plasma layer, with bright granulation and rising prominence loops. Not solid ground or a physical simulation.' },
 };
 
 export function getPreviewTheme(zoneId, planetId = 'earth') {

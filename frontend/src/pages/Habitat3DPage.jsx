@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { PLANET_MODELS, getPlanetModel } from '../components/three/planet-catalog.js';
 import { EARTH_ZONES } from '../components/three/planet-analysis.js';
 import PlanetAnalysisPanel from '../components/ui/PlanetAnalysisPanel.jsx';
+import HeimdallLogo from '../components/ui/HeimdallLogo.jsx';
 
 const PlanetViewer = lazy(() => import('../components/three/PlanetViewer.jsx'));
 
@@ -48,7 +49,7 @@ export default function Habitat3DPage() {
     <section className="planet-preview">
       <div className="planet-preview__header">
         <div>
-          <p className="planet-preview__eyebrow">HEIMDALL / EXPLORER</p>
+          <p className="planet-preview__eyebrow"><HeimdallLogo /> / EXPLORER</p>
           <h1>Planetary explorer</h1>
           <p className="planet-preview__muted">Navigation prototype · Illustrative models, not physical scale.</p>
         </div>

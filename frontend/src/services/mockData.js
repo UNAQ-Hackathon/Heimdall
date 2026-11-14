@@ -392,16 +392,16 @@ export const FLAME_COMPARISON = {
 // ─── Solar System Planets (for 3D scene) ────────────────────────────
 
 export const PLANETS = [
-  { name: 'Sol',      model: '/models/planetas/Sol.glb',      color: '#fbbf24', size: 0.38, distance: 0,    orbitSpeed: 0 },
-  { name: 'Mercury',  model: '/models/planetas/Mercurio.glb', color: '#9ca3af', size: 0.85, distance: 4.8,  orbitSpeed: 0.008 },
-  { name: 'Venus',    model: '/models/planetas/Venus.glb',    color: '#f59e0b', size: 0.8,  distance: 7.2,  orbitSpeed: 0.006 },
-  { name: 'Earth',    model: '/models/planetas/Tierra.glb',   color: '#3b82f6', size: 0.85, distance: 9.8,  orbitSpeed: 0.005 },
-  { name: 'Moon',     model: '/models/planetas/Luna.glb',     color: '#d1d5db', size: 1.0,  distance: 1.4,  orbitSpeed: 0.025, parent: 'Earth' },
-  { name: 'Mars',     model: '/models/planetas/Marte.glb',    color: '#ef4444', size: 0.85, distance: 13.0, orbitSpeed: 0.004 },
-  { name: 'Jupiter',  model: '/models/planetas/Jupiter.glb',  color: '#d97706', size: 0.8,  distance: 17.5, orbitSpeed: 0.002 },
-  { name: 'Saturn',   model: '/models/planetas/Saturno.glb',  color: '#eab308', size: 0.65, distance: 22.5, orbitSpeed: 0.0015 },
-  { name: 'Uranus',   model: '/models/planetas/Urano.glb',    color: '#67e8f9', size: 0.8,  distance: 27.0, orbitSpeed: 0.001 },
-  { name: 'Neptune',  model: '/models/planetas/Neptuno.glb',  color: '#6366f1', size: 0.8,  distance: 31.5, orbitSpeed: 0.0008 },
+  { name: 'Sol',      model: '/models/planetas/Sol.glb',      color: '#fbbf24', size: 2.2,  distance: 0,    au: '0.00 AU', orbitSpeed: 0,      initialAngle: 0 },
+  { name: 'Mercury',  model: '/models/planetas/Mercurio.glb', color: '#9ca3af', size: 0.28, distance: 4.6,  au: '0.39 AU', orbitSpeed: 0.016,  initialAngle: 0.8 },
+  { name: 'Venus',    model: '/models/planetas/Venus.glb',    color: '#f59e0b', size: 0.65, distance: 7.4,  au: '0.72 AU', orbitSpeed: 0.010,  initialAngle: 2.4 },
+  { name: 'Earth',    model: '/models/planetas/Tierra.glb',   color: '#3b82f6', size: 0.70, distance: 10.6, au: '1.00 AU', orbitSpeed: 0.007,  initialAngle: 4.1 },
+  { name: 'Moon',     model: '/models/planetas/Luna.glb',     color: '#d1d5db', size: 0.19, distance: 1.35, au: '384,400 km', orbitSpeed: 0.045, initialAngle: 1.2, parent: 'Earth' },
+  { name: 'Mars',     model: '/models/planetas/Marte.glb',    color: '#ef4444', size: 0.38, distance: 15.2, au: '1.52 AU', orbitSpeed: 0.0045, initialAngle: 5.5 },
+  { name: 'Jupiter',  model: '/models/planetas/Jupiter.glb',  color: '#d97706', size: 1.55, distance: 26.5, au: '5.20 AU', orbitSpeed: 0.0018, initialAngle: 1.7 },
+  { name: 'Saturn',   model: '/models/planetas/Saturno.glb',  color: '#eab308', size: 1.85, distance: 38.5, au: '9.54 AU', orbitSpeed: 0.0010, initialAngle: 3.6 },
+  { name: 'Uranus',   model: '/models/planetas/Urano.glb',    color: '#67e8f9', size: 0.96, distance: 53.0, au: '19.19 AU', orbitSpeed: 0.0005, initialAngle: 0.4 },
+  { name: 'Neptune',  model: '/models/planetas/Neptuno.glb',  color: '#6366f1', size: 0.92, distance: 68.0, au: '30.07 AU', orbitSpeed: 0.0003, initialAngle: 4.9 },
 ];
 
 // ─── Ranking Engine (mock, mirrors api/ranking.service.js) ──────────

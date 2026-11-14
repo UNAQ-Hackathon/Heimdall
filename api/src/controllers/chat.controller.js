@@ -1,9 +1,14 @@
 import mongoose from 'mongoose';
 import Investigation from '../models/Investigation.js';
-import { answerQuestion, getDevinSessionStatus } from '../services/devin.service.js';
+import {
+  answerQuestion,
+  extractCitations,
+  getDevinSessionStatus,
+  PSI_FALLBACK_DOCS,
+} from '../services/devin.service.js';
 
 export async function ask(req, res) {
-  const { question, sessionId } = req.body;
+  const { question, sessionId, audience, scenario } = req.body;
 
   let contextDocs = [];
   if (mongoose.connection.readyState === 1) {
@@ -20,7 +25,11 @@ export async function ask(req, res) {
     }
   }
 
-  const result = await answerQuestion(question, contextDocs, { sessionId });
+  const result = await answerQuestion(question, contextDocs, {
+    sessionId,
+    audience,
+    scenario,
+  });
   res.json({ question, ...result });
 }
 
@@ -35,8 +44,10 @@ export async function pollSession(req, res) {
     sessionId: info.sessionId,
     sessionUrl: info.sessionUrl,
     sessionStatus: info.sessionStatus,
+    devinMode: info.devinMode,
     status: hasNewReply ? 'completed' : 'pending',
     answer: hasNewReply ? info.latestReply : null,
+    citations: hasNewReply ? extractCitations(PSI_FALLBACK_DOCS, info.latestReply) : [],
     devinMessageCount: info.devinMessageCount,
   });
 }
