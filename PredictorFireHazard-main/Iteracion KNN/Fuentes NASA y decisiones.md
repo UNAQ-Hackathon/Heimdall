@@ -1,0 +1,24 @@
+# Cómo se incorporaron las fuentes de NASA
+
+El predictor estima **duración registrada de combustión de gotas FLEX** en segundos. Solo aprende de mediciones de [FLEX / PSI-69](https://psi.nasa.gov/physci/repo/data/investigations/PSI-69), interpretadas con el [informe técnico NASA/TP-2015-216046](https://ntrs.nasa.gov/citations/20150023456). Los casos Apollo, el detector y las atmósferas planetarias ayudan a evaluar el alcance del modelo. No son observaciones del protocolo FLEX.
+
+| Fuente | Qué aporta | Decisión en el predictor o el análisis |
+|---|---|---|
+| NASA, *A Researcher’s Guide to Combustion Science*, pp. 8–13, 31–35, archivo `np-2015-10-034-jsc_combustion_in_reduced_gravity-iss-mini-book-011116-508.pdf` | La reducción de flotabilidad altera el transporte; FLEX ensaya gotas de heptano/metanol con diferentes atmosferas de O₂ y diluyentes. Pueden existir llamas frías después de que desaparece la llama visible. | Separar combustible y familias de mezcla; no intercambiar O₂ con CO₂ ni interpretar duración registrada como autoextinción total. No inferir un efecto de gravedad a partir de un conjunto que no varía ese factor. |
+| Guía NASA, pp. 21–26, 31–35 y 43 | La ventilación, la geometría y la aceleración influyen en el comportamiento. La detección requiere estudiar partículas y señales químicas por separado de la duración de una llama. | No usar el KNN para simular apagar ventilación, eficacia de agentes, umbrales, detección, o fuego en sólidos. Esas preguntas necesitan sus propios ensayos y salidas. |
+| [NASA SMA: Apollo 1](https://sma.nasa.gov/sma-disciplines/accllp/apollo-1) | Incendio durante una prueba en tierra en una cabina presurizada con oxígeno puro, con factores técnicos y de diseño del vehículo. | Presentarlo como un caso histórico de riesgo en cabina, fuera del experimento FLEX. No alimentar el 100 % de O₂ al modelo como escenario de referencia. |
+| [NASA SMA: Apollo 13](https://sma.nasa.gov/sma-disciplines/accllp/apollo-13#history) | Fallo de un tanque de oxígeno. La investigación describió, entre otros factores, calentamiento previo y degradación del aislamiento. | Distinguir el tanque/instalación y su fallo de una gota que arde en una cámara. No convertir el evento en tiempo de llama ni en una recomendación de manejo de oxígeno. |
+| [NASA Spinoff: Fire Detector](https://spinoff.nasa.gov/node/9407) (enlace repetido en la solicitud) | Ejemplo de detector por muestreo de partículas que procura distinguir productos de combustión de interferencias como polvo. | Tratar detección como tarea de clasificación futura, con series de sensores y etiquetas propias. FLEX no tiene señales de ese detector ni etiquetas de falsas alarmas. |
+
+## Cómo leer los factores
+
+- El oxígeno molecular O₂ es el oxidante de las pruebas FLEX. El CO₂ y el He son diluyentes distintos. N₂ también forma parte de la mezcla de fondo. El encabezado truncado «CO» del CSV corresponde a CO₂ en la tabla del informe técnico FLEX.
+- La presión parcial nominal se calcula como `pO₂ = fracción molar O₂ × presión total`. Es informativa como transformación, pero no sustituye a todas las demás condiciones: la presión total y la identidad de los diluyentes siguen importando.
+- Las fracciones suman aproximadamente uno. Si sube la proporción de un gas, cambia al menos otra; no interpretes una correlación individual como efecto de aumentar ese gas manteniendo todo lo demás fijo.
+- Diámetro inicial, presión, combustible y gases están disponibles antes de la prueba. Diámetro de extinción, tasa de combustión, motivo de fin y duración se conocen después; usarlos como entradas filtraría el resultado.
+- Los máximos y mínimos son extremos **observados entre ensayos**, no picos físicos de una llama a lo largo de su combustión. El orden por fecha permite ver cómo se organizó la campaña; no mide una tendencia temporal causal. Una nueva sesión puede usar otras condiciones.
+- Comparar metanol con heptano o CO₂ con He exige mirar cobertura, presión, O₂, diámetro y método de terminación. El experimento disponible no permite garantizar comparaciones controladas para todos esos cruces.
+
+## Qué faltaría para comparar hábitats o estudiar detección
+
+Para pronosticar en otro aparato o en gravedad parcial serían necesarios experimentos nuevos con gravedad efectiva, geometría, velocidad de ventilación, combustible, temperatura, presión y fracciones medidas en el mismo protocolo. Para estudiar detección se necesitan series sincronizadas de partículas/gases o imágenes, cortes sin incendio, etiquetas independientes por ensayo y medidas de sensibilidad, falsas alarmas y demora. Para distinguir extinción real de fin de intervención también hacen falta estados finales y reglas de censura. Los datos de los planetas se presentan como contexto comparativo; no se mezclan con el entrenamiento ni se usan como entradas del KNN.

@@ -1,0 +1,68 @@
+{
+  "n_filas_crudas": 274,
+  "n_filas": 258,
+  "n_excluidas": 16,
+  "n_grupos": 79,
+  "mae_s": 3.2619207378063466,
+  "rmse_s": 4.485543604708045,
+  "mae_baseline_s": 6.098992248062015,
+  "rmse_baseline_s": 7.917909637224701,
+  "modelo_final": "knn_3",
+  "seleccion_final_mae_s": {
+    "mediana": 5.9141085271317815,
+    "regresion_1": 4.410818553604103,
+    "regresion_10": 4.371790433970578,
+    "knn_3": 3.314695643415479,
+    "knn_5": 3.3818911712760467,
+    "knn_9": 3.6290570322224194,
+    "knn_15": 3.9239578606635326
+  },
+  "fuente": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-69",
+  "publicacion_unidades": "https://ntrs.nasa.gov/citations/20150023456",
+  "sha256_entrada": "37c88ce8ae9391b7544ff630a45ce87543d04d317cdbfbed104fe7d5c27e1b96",
+  "objetivo": "Duración de combustión registrada (s)",
+  "variable_objetivo": "Burn time; s",
+  "validacion": "5 cortes agrupados por fecha con selección interna en 4 cortes. No se separan identificadores ni condiciones iniciales idénticas.",
+  "referencia": "Mediana de la duración en las corridas de entrenamiento de cada corte.",
+  "validacion_temporal": {
+    "inicio_prueba": "2011-09-21",
+    "n_entrenamiento": 210,
+    "n_prueba": 48,
+    "n_grupos_prueba": 16,
+    "modelo": "knn_3",
+    "mae_s": 6.080184023114465,
+    "mae_baseline_s": 4.414583333333334,
+    "seleccion_mae_s": {
+      "mediana": 6.3078095238095235,
+      "regresion_1": 4.921779429974773,
+      "regresion_10": 4.905379186512817,
+      "knn_3": 3.7384525559587405,
+      "knn_5": 3.748084270984676,
+      "knn_9": 4.0066063900639595,
+      "knn_15": 4.285760937414767
+    },
+    "protocolo": "Último 20 % de grupos por fecha; selección interna y ajuste solo en los grupos anteriores."
+  },
+  "combustibles": {
+    "Methanol": 152,
+    "Heptane": 106
+  },
+  "metricas_por_combustible": {
+    "Methanol": {
+      "n": 152,
+      "mae_s": 3.2902030504475914,
+      "mae_baseline_s": 6.739276315789473
+    },
+    "Heptane": {
+      "n": 106,
+      "mae_s": 3.2213649687358816,
+      "mae_baseline_s": 5.180849056603774
+    }
+  },
+  "fin_ensayo": {
+    "Disruption": 54,
+    "Extinction": 178,
+    "Completion": 26
+  },
+  "limite": "Solo FLEX, dos combustibles y condiciones ensayadas. Duración hasta el fin registrado, no solo autoextinción."
+}

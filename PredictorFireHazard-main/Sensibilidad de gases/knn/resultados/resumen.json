@@ -1,0 +1,130 @@
+{
+  "n_filas": 258,
+  "n_excluidas": 16,
+  "n_grupos": 79,
+  "n_configuraciones": 324,
+  "sha256_entrada": "37c88ce8ae9391b7544ff630a45ce87543d04d317cdbfbed104fe7d5c27e1b96",
+  "fuente": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-69",
+  "objetivo": "Burn time; s",
+  "modelo_final": {
+    "k": 5,
+    "pesos": "inversa",
+    "distancia": "euclidiana",
+    "espacio": "fracciones",
+    "vecindario": "combustible"
+  },
+  "cobertura": {
+    "agrupado": {
+      "todos": {
+        "n_total": 258,
+        "n": 258,
+        "n_grupos": 79,
+        "cobertura": 1.0,
+        "mae_nuevo_s": 3.570665937110073,
+        "sesgo_nuevo_s": 0.9657486709297285,
+        "mae_previo_s": 3.422654781503491,
+        "sesgo_previo_s": 1.1800778922659656,
+        "mae_mediana_s": 6.098992248062015,
+        "sesgo_mediana_s": -1.4134108527131781,
+        "mae_mediana_mezcla_s": 5.793372093023256,
+        "sesgo_mediana_mezcla_s": -0.901201550387597
+      },
+      "rango_individual": {
+        "n_total": 258,
+        "n": 189,
+        "n_grupos": 63,
+        "cobertura": 0.7325581395348837,
+        "mae_nuevo_s": 3.2462550203319136,
+        "sesgo_nuevo_s": 0.3527742569747093,
+        "mae_previo_s": 3.1607001714584197,
+        "sesgo_previo_s": 0.7189647589010763,
+        "mae_mediana_s": 6.045978835978836,
+        "sesgo_mediana_s": -2.623862433862434,
+        "mae_mediana_mezcla_s": 5.347830687830688,
+        "sesgo_mediana_mezcla_s": -2.0294179894179893
+      },
+      "respaldados": {
+        "n_total": 258,
+        "n": 162,
+        "n_grupos": 56,
+        "cobertura": 0.627906976744186,
+        "mae_nuevo_s": 2.915375606681053,
+        "sesgo_nuevo_s": 0.5286336368239188,
+        "mae_previo_s": 2.9604527594401646,
+        "sesgo_previo_s": 0.6457508639143746,
+        "mae_mediana_s": 6.106604938271605,
+        "sesgo_mediana_s": -2.768703703703704,
+        "mae_mediana_mezcla_s": 4.9840740740740745,
+        "sesgo_mediana_mezcla_s": -2.2566666666666664
+      },
+      "motivos": {
+        "fuera_de_rango_o_mezcla_sin_datos": 69,
+        "sin_vecino_cercano_de_la_misma_mezcla": 27,
+        "respaldado": 162
+      }
+    },
+    "cronologico": {
+      "todos": {
+        "n_total": 48,
+        "n": 48,
+        "n_grupos": 16,
+        "cobertura": 1.0,
+        "mae_nuevo_s": 5.640449849974266,
+        "sesgo_nuevo_s": 5.323720680555385,
+        "mae_previo_s": 5.632833047765062,
+        "sesgo_previo_s": 5.3182774033940525,
+        "mae_mediana_s": 4.414583333333334,
+        "sesgo_mediana_s": 3.335416666666667,
+        "mae_mediana_mezcla_s": 5.162499999999999,
+        "sesgo_mediana_mezcla_s": 3.65
+      },
+      "rango_individual": {
+        "n_total": 48,
+        "n": 3,
+        "n_grupos": 2,
+        "cobertura": 0.0625,
+        "mae_nuevo_s": 3.372874368628409,
+        "sesgo_nuevo_s": 1.1585132894251053,
+        "mae_previo_s": 3.6828198293570757,
+        "sesgo_previo_s": 1.5032074450953463,
+        "mae_mediana_s": 2.7000000000000006,
+        "sesgo_mediana_s": -1.7666666666666657,
+        "mae_mediana_mezcla_s": 4.066666666666666,
+        "sesgo_mediana_mezcla_s": -4.066666666666666
+      },
+      "respaldados": {
+        "n_total": 48,
+        "n": 3,
+        "n_grupos": 2,
+        "cobertura": 0.0625,
+        "mae_nuevo_s": 3.372874368628409,
+        "sesgo_nuevo_s": 1.1585132894251053,
+        "mae_previo_s": 3.6828198293570757,
+        "sesgo_previo_s": 1.5032074450953463,
+        "mae_mediana_s": 2.7000000000000006,
+        "sesgo_mediana_s": -1.7666666666666657,
+        "mae_mediana_mezcla_s": 4.066666666666666,
+        "sesgo_mediana_mezcla_s": -4.066666666666666
+      },
+      "motivos": {
+        "fuera_de_rango_o_mezcla_sin_datos": 45,
+        "respaldado": 3
+      }
+    }
+  },
+  "corte_cronologico": {
+    "fecha_inicio": "2011-09-21",
+    "n_entrenamiento": 210,
+    "n_purgadas": 0,
+    "mezclas_entrenamiento": {
+      "O₂/N₂": 91,
+      "CO₂": 118,
+      "He": 1
+    },
+    "mezclas_prueba": {
+      "He": 45,
+      "O₂/N₂": 3
+    }
+  },
+  "metodo": "KNN FLEX de duración registrada. Selección anidada por grupos, sobre los ensayos respaldados por un filtro fijo de distancia al mismo combustible y mezcla. Sin Ar/Xe; no predice peligro ni límite de inflamabilidad."
+}
