@@ -1,24 +1,29 @@
 import { Routes, Route } from 'react-router-dom';
 
 import AppLayout from './components/layout/AppLayout.jsx';
-import DashboardPage from './pages/DashboardPage.jsx';
-import InvestigationPage from './pages/InvestigationPage.jsx';
+import MissionHub from './pages/MissionHub.jsx';
+import StudyDetailPage from './pages/StudyDetailPage.jsx';
+import Flame3DPage from './pages/Flame3DPage.jsx';
 import ComparePage from './pages/ComparePage.jsx';
-import FlammabilityPage from './pages/FlammabilityPage.jsx';
-import ChatPage from './pages/ChatPage.jsx';
-import Habitat3DPage from './pages/Habitat3DPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 
 export default function App() {
   return (
     <Routes>
       <Route element={<AppLayout />}>
-        <Route index element={<DashboardPage />} />
-        <Route path="investigations/:id" element={<InvestigationPage />} />
+        {/* Main split-screen view */}
+        <Route index element={<MissionHub />} />
+
+        {/* Study Detail view */}
+        <Route path="study/:id" element={<StudyDetailPage />} />
+
+        {/* 3D Flame comparative morphology */}
+        <Route path="flame-3d" element={<Flame3DPage />} />
+
+        {/* Matrix comparison & Earth applications */}
         <Route path="compare" element={<ComparePage />} />
-        <Route path="flammability" element={<FlammabilityPage />} />
-        <Route path="chat" element={<ChatPage />} />
-        <Route path="habitat" element={<Habitat3DPage />} />
+
+        {/* Fallbacks */}
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

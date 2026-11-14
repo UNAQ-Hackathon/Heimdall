@@ -103,6 +103,8 @@ Students, educators, researchers, and aerospace engineers — with explanations 
 /frontend   /api   /analytics   /data   /assets3d   /docs
 ```
 
+> 📖 **Frontend Architecture & UI Specification:** See [`docs/UI_ARCHITECTURE.md`](docs/UI_ARCHITECTURE.md) for full component breakdown, mathematical lerp formulas, 3D interaction models, and styling tokens.
+
 ---
 
 ## Limitations
