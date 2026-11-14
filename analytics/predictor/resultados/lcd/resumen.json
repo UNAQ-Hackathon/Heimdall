@@ -1,0 +1,227 @@
+{
+  "serie": "CHICAGO OHARE INTERNATIONAL AIRPORT IL US (WBAN:94846)",
+  "unidad": "°C",
+  "frecuencia": "D",
+  "inicio": "2014-03-01",
+  "fin": "2014-03-31",
+  "observaciones": 31,
+  "tendencia": {
+    "pendiente": 0.40272711999022465,
+    "escala": "día",
+    "cobertura": 1.0,
+    "diagnostico": "exploratoria",
+    "p_hac": null,
+    "ic95_hac": null,
+    "rezagos_hac": null,
+    "motivo": "Serie horaria o diaria analizada de forma exploratoria."
+  },
+  "modelo_elegido": "knn",
+  "configuracion_knn": {
+    "vecinos": 5,
+    "pesos": "uniform",
+    "mse_validacion": 24.86508399305556
+  },
+  "objetivo_mse_knn": 0.9,
+  "cumple_objetivo_mse_knn": false,
+  "horizonte_solicitado": 3,
+  "horizontes_evaluados_knn": [
+    1,
+    2,
+    3
+  ],
+  "base_direccion": "valor en el origen",
+  "inicio_validacion": "2014-03-19",
+  "inicio_evaluacion": "2014-03-25",
+  "periodos_sin_pronostico": [],
+  "seleccion": {
+    "knn": {
+      "mae_medio": 4.331893518518519,
+      "mse_medio": 24.86508399305556,
+      "acierto_direccion_medio": 0.4666666666666666,
+      "por_horizonte": {
+        "1": {
+          "n": 6,
+          "mae": 3.498888888888889,
+          "mse": 17.6195625,
+          "rmse": 4.197566259155417,
+          "n_direccion": 6,
+          "acierto_direccion": 0.5
+        },
+        "2": {
+          "n": 5,
+          "mae": 4.2620000000000005,
+          "mse": 20.660199722222224,
+          "rmse": 4.545349240951923,
+          "n_direccion": 5,
+          "acierto_direccion": 0.4
+        },
+        "3": {
+          "n": 4,
+          "mae": 5.234791666666666,
+          "mse": 36.315489756944444,
+          "rmse": 6.026233463527981,
+          "n_direccion": 4,
+          "acierto_direccion": 0.5
+        }
+      }
+    },
+    "regresion": {
+      "mae_medio": 5.381358274679633,
+      "mse_medio": 46.289359964845495,
+      "acierto_direccion_medio": 0.37222222222222223,
+      "por_horizonte": {
+        "1": {
+          "n": 6,
+          "mae": 4.236696320161793,
+          "mse": 31.666532013287917,
+          "rmse": 5.6273023744319906,
+          "n_direccion": 6,
+          "acierto_direccion": 0.6666666666666666
+        },
+        "2": {
+          "n": 5,
+          "mae": 5.436480645930099,
+          "mse": 46.76478771325585,
+          "rmse": 6.838478464779709,
+          "n_direccion": 5,
+          "acierto_direccion": 0.2
+        },
+        "3": {
+          "n": 4,
+          "mae": 6.470897857947007,
+          "mse": 60.43676016799273,
+          "rmse": 7.774108319800589,
+          "n_direccion": 4,
+          "acierto_direccion": 0.25
+        }
+      }
+    },
+    "referencia": {
+      "mae_medio": 3.9773611111111102,
+      "mse_medio": 25.747751543209876,
+      "acierto_direccion_medio": 0.0,
+      "por_horizonte": {
+        "1": {
+          "n": 6,
+          "mae": 3.010416666666666,
+          "mse": 13.264429976851853,
+          "rmse": 3.6420365150354894,
+          "n_direccion": 6,
+          "acierto_direccion": 0.0
+        },
+        "2": {
+          "n": 5,
+          "mae": 4.0424999999999995,
+          "mse": 29.702392361111112,
+          "rmse": 5.449990124863633,
+          "n_direccion": 5,
+          "acierto_direccion": 0.0
+        },
+        "3": {
+          "n": 4,
+          "mae": 4.879166666666666,
+          "mse": 34.276432291666666,
+          "rmse": 5.854607782906269,
+          "n_direccion": 4,
+          "acierto_direccion": 0.0
+        }
+      }
+    }
+  },
+  "evaluacion": {
+    "knn": {
+      "mae_medio": 3.3601637806637803,
+      "mse_medio": 18.45619477198026,
+      "acierto_direccion_medio": 0.9523809523809524,
+      "por_horizonte": {
+        "1": {
+          "n": 7,
+          "mae": 2.184491341991342,
+          "mse": 8.310552262068738,
+          "rmse": 2.8828028482830277,
+          "n_direccion": 7,
+          "acierto_direccion": 0.8571428571428571
+        },
+        "2": {
+          "n": 6,
+          "mae": 3.8145454545454545,
+          "mse": 23.257148546066727,
+          "rmse": 4.82256659322261,
+          "n_direccion": 6,
+          "acierto_direccion": 1.0
+        },
+        "3": {
+          "n": 5,
+          "mae": 4.0814545454545454,
+          "mse": 23.80088350780532,
+          "rmse": 4.878614916941623,
+          "n_direccion": 5,
+          "acierto_direccion": 1.0
+        }
+      }
+    },
+    "regresion": {
+      "mae_medio": 3.30295926144467,
+      "mse_medio": 20.224409069813362,
+      "acierto_direccion_medio": 0.8571428571428571,
+      "por_horizonte": {
+        "1": {
+          "n": 7,
+          "mae": 4.0318033863223945,
+          "mse": 25.252912117732983,
+          "rmse": 5.025227568750791,
+          "n_direccion": 7,
+          "acierto_direccion": 0.5714285714285714
+        },
+        "2": {
+          "n": 6,
+          "mae": 3.3926499017876464,
+          "mse": 20.668987916533855,
+          "rmse": 4.546315861940727,
+          "n_direccion": 6,
+          "acierto_direccion": 1.0
+        },
+        "3": {
+          "n": 5,
+          "mae": 2.48442449622397,
+          "mse": 14.751327175173245,
+          "rmse": 3.840745653538287,
+          "n_direccion": 5,
+          "acierto_direccion": 1.0
+        }
+      }
+    },
+    "referencia": {
+      "mae_medio": 4.987350288600289,
+      "mse_medio": 36.522850461915326,
+      "acierto_direccion_medio": 0.0,
+      "por_horizonte": {
+        "1": {
+          "n": 7,
+          "mae": 3.799134199134199,
+          "mse": 20.131043757378986,
+          "rmse": 4.486763171527888,
+          "n_direccion": 7,
+          "acierto_direccion": 0.0
+        },
+        "2": {
+          "n": 6,
+          "mae": 5.569128787878788,
+          "mse": 45.751877176117226,
+          "rmse": 6.764013392662467,
+          "n_direccion": 6,
+          "acierto_direccion": 0.0
+        },
+        "3": {
+          "n": 5,
+          "mae": 5.593787878787878,
+          "mse": 43.68563045224977,
+          "rmse": 6.609510606107669,
+          "n_direccion": 5,
+          "acierto_direccion": 0.0
+        }
+      }
+    }
+  },
+  "cobertura_banda_90_en_evaluacion": {}
+}

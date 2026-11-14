@@ -1,0 +1,8 @@
+﻿horizonte,k_local,peso_local,k_compartido,peso_compartido,ultimo_destino_calibracion,k_v2,peso_v2
+1,3,distance,15,distance,2010,45,distance
+2,3,uniform,25,uniform,2010,45,distance
+3,3,uniform,25,uniform,2010,45,uniform
+4,3,uniform,9,distance,2010,45,distance
+5,3,distance,9,distance,2010,45,uniform
+6,3,distance,15,distance,2010,45,uniform
+7,3,distance,9,uniform,2010,45,uniform
