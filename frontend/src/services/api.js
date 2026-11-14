@@ -18,8 +18,15 @@ export const api = {
   getInvestigation: (id) => request(`/investigations/${id}`),
   rank: (scenario, weights) =>
     request('/ranking', { method: 'POST', body: JSON.stringify({ scenario, weights }) }),
-  ask: (question) =>
-    request('/chat', { method: 'POST', body: JSON.stringify({ question }) }),
+  ask: (question, sessionId) =>
+    request('/chat', {
+      method: 'POST',
+      body: JSON.stringify({ question, ...(sessionId ? { sessionId } : {}) }),
+    }),
+  pollChatSession: (sessionId, baselineCount = 0) =>
+    request(
+      `/chat/sessions/${encodeURIComponent(sessionId)}?baselineCount=${encodeURIComponent(baselineCount)}`
+    ),
   trends: (series) =>
     request('/analytics/trends', { method: 'POST', body: JSON.stringify({ series }) }),
   flammabilityMap: (points, grid) =>

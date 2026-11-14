@@ -9,7 +9,7 @@ const env = {
   devin: {
     apiKey: process.env.DEVIN_API_KEY ?? '',
     apiBase: process.env.DEVIN_API_BASE ?? 'https://api.devin.ai',
-    model: process.env.DEVIN_MODEL ?? 'swe-2',
+    model: process.env.DEVIN_MODEL ?? 'swe-2-medium',
   },
 
   analytics: {
