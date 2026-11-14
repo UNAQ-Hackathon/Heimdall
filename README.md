@@ -19,6 +19,7 @@
 [![MongoDB](https://img.shields.io/badge/MongoDB_Atlas-47A248?style=flat-square&logo=mongodb&logoColor=white)](https://www.mongodb.com/atlas)
 [![Devin SWE](https://img.shields.io/badge/Devin_SWE-5A29E4?style=flat-square)](https://devin.ai)
 [![NASA PSI](https://img.shields.io/badge/NASA_PSI-0B3D91?style=flat-square)](https://psi.nasa.gov/)
+[![Blender](https://img.shields.io/badge/Blender-F5792A?style=flat-square&logo=blender&logoColor=white)](https://www.blender.org/)
 
 <p align="center">
   An interactive, AI-driven dashboard that summarizes, ranks, and interprets decades of NASA
