@@ -7,132 +7,70 @@
   background: var(--bg-void);
 }
 
-.mission-sidebar {
-  width: 400px;
-  min-width: 400px;
-  height: 100%;
-  background: var(--bg-panel);
-  border-right: 1px solid var(--border-subtle);
+.mission-planet-layout {
   display: flex;
   flex-direction: column;
-  z-index: 20;
-  overflow: hidden;
-}
-
-.mission-viewport {
-  flex: 1;
-  min-width: 0;
-  height: 100%;
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  background: #040711;
-}
-
-.mission-stage {
-  position: relative;
-  flex: 1;
-  min-height: 0;
   width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
 }
 
-.mission-planet-inspection {
+.mission-planet-layout__scene {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
   position: relative;
-  z-index: 16;
-  width: min(760px, calc(100% - 40px));
-  max-height: min(44vh, 420px);
-  margin: 0 auto 16px;
-  overflow: auto;
+}
+
+.score-bar-container {
+  display: flex;
+  width: 100%;
+  height: 5px;
+  border-radius: 9999px;
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.9);
+  gap: 2px;
+}
+
+.score-bar-segment {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.25s ease;
+}
+
+.mission-inspection {
+  position: absolute;
+  top: 66px;
+  right: 20px;
+  z-index: 25;
+  width: 348px;
+  max-height: calc(100% - 132px);
+  padding: 16px;
+  overflow-y: auto;
   border-radius: 12px;
   border: 1px solid var(--border-strong);
   background: rgba(10, 15, 29, 0.92);
   backdrop-filter: blur(16px);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
 }
 
-.mission-planet-inspection__bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.mission-planet-inspection__eyebrow {
-  margin: 0;
-  color: var(--accent-cyan);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.mission-planet-inspection__title {
-  margin: 2px 0 0;
-  color: var(--text-primary);
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.mission-planet-inspection__actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.mission-planet-inspection__action {
-  padding: 5px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--border-subtle);
-  background: rgba(15, 23, 42, 0.8);
-  color: var(--text-secondary);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.mission-planet-inspection__action:hover {
-  border-color: var(--border-strong);
-  color: var(--text-primary);
-}
-
-.mission-planet-inspection__grid {
-  display: grid;
-  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
-  gap: 14px;
-  padding: 14px;
-  align-items: start;
-}
-
-.mission-planet-inspection__viewer {
-  position: relative;
-  min-height: 240px;
-  border-radius: 8px;
+.planet-surface__canvas {
+  width: 100%;
+  aspect-ratio: 1;
   overflow: hidden;
-  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
   background: #070b14;
 }
 
-.mission-planet-inspection__hint {
-  margin: 0;
-  padding: 7px 10px;
-  border-top: 1px solid var(--border-subtle);
-  color: var(--text-secondary);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  background: rgba(5, 8, 17, 0.88);
-}
-
 @media (max-width: 900px) {
-  .mission-sidebar {
-    width: 340px;
-    min-width: 340px;
-  }
-
-  .mission-planet-inspection__grid {
-    grid-template-columns: 1fr;
+  .mission-inspection {
+    left: 16px;
+    right: 16px;
+    width: auto;
+    top: auto;
+    bottom: 64px;
+    max-height: 55vh;
   }
 }

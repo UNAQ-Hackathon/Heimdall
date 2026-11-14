@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import FlameVisualization from '../components/three/FlameVisualization.jsx';
+import FireHazRPage from './FireHazRPage.jsx';
 import { FLAME_COMPARISON } from '../services/mockData.js';
-import { useApp } from '../context/AppContext.jsx';
+
 
 export default function Flame3DPage() {
-  const { audience } = useApp();
   const [oxygen, setOxygen] = useState(30.0);
   const [airflow, setAirflow] = useState(0.05);
   const [gravityIndex, setGravityIndex] = useState(0);
@@ -528,7 +528,7 @@ export default function Flame3DPage() {
           </div>
         </div>
 
-        {/* Neural Path Status Footer */}
+        {/* Status Footer */}
         <div
           style={{
             display: 'flex',
@@ -540,11 +540,14 @@ export default function Flame3DPage() {
             paddingTop: '8px',
           }}
         >
-          <span>● NEURAL PATH: VALIDATED FOR MICROGRAVITY FIRE SPREAD</span>
-          <span>COMPUTATION LATENCY: 4.2ms</span>
-          <span>FRAME: #0429 // EXPERIMENT: BRE-2</span>
+          <span>● QUALITATIVE ILLUSTRATION — NOT A PHYSICS SIMULATION</span>
+          <span>BOUNDED REGIME: MICRO-G (0g) ↔ 1G</span>
+          <span>PARTIAL-G PROXY: E-FIELD FLAMES (ACME) · MAX O₂: CFI-G (85%)</span>
         </div>
       </div>
+
+      {/* ── Full What-If Scenario Test Panel ── */}
+      <FireHazRPage />
     </div>
   );
 }

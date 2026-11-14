@@ -98,33 +98,25 @@ export default function CopilotChat({ inline = false }) {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <HeimdallLogo size={28} />
+          <HeimdallLogo size={24} />
           <span style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.5px' }}>
-            AI Copilot
+            Heimdall AI Copilot
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          {chatSessionUrl && (
-            <a
-              href={chatSessionUrl}
-              target="_blank"
-              rel="noreferrer"
-              title={`Devin session: ${chatSessionId}`}
-              style={{
-                fontSize: '9px',
-                fontFamily: 'var(--font-mono)',
-                color: '#60a5fa',
-                textDecoration: 'none',
-                padding: '2px 5px',
-                borderRadius: '4px',
-                border: '1px solid rgba(96, 165, 250, 0.25)',
-                background: 'rgba(79, 142, 247, 0.1)',
-              }}
-            >
-              Devin ↗
-            </a>
-          )}
-          {chatLoading && <span role="status" style={{ fontSize: '11px', color: '#94a3b8' }}>Thinking…</span>}
+          <span
+            style={{
+              fontSize: '9px',
+              fontFamily: 'var(--font-mono)',
+              color: '#34d399',
+              padding: '2px 6px',
+              borderRadius: '4px',
+              border: '1px solid rgba(52, 211, 153, 0.28)',
+              background: 'rgba(16, 185, 129, 0.1)',
+            }}
+          >
+            {chatLoading ? 'ANALYZING…' : 'HEIMDALL ACTIVE'}
+          </span>
           {!inline && (
             <button
               onClick={() => setChatOpen(false)}

@@ -6,8 +6,8 @@ import nasaLogo from '../../../../docs/assets/nasa-logo.png';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Mission Hub' },
+  { to: '/flame', label: 'Fire Hazard Lab' },
   { to: '/study/saffire-iii', label: 'Study Detail' },
-  { to: '/flame', label: 'Flame 3D' },
   { to: '/compare', label: 'Compare & Earth' },
 ];
 
@@ -176,7 +176,7 @@ export default function AppLayout() {
                 background: chatOpen ? '#38bdf8' : '#fc3d21',
               }}
             />
-            AI Copilot
+            Heimdall AI
           </button>
         </div>
       </header>

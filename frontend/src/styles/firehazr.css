@@ -1,0 +1,38 @@
+.firehazr-page { max-width: 1240px; margin: 0 auto; padding: 28px 24px 48px; color: #dce6f5; }
+.firehazr-page h1 { font-size: 26px; margin: 0 0 8px; }
+.firehazr-page h2 { font-size: 17px; margin: 0 0 16px; }
+.firehazr-page h3 { font-size: 16px; }
+.firehazr-page p { line-height: 1.6; margin: 10px 0; }
+.firehazr-page header > p, .firehazr-help { color: #94a3b8; font-size: 13px; }
+.firehazr-notice { border-left: 3px solid #60a5fa; padding: 12px 16px; background: #0b1425; font-size: 13px; }
+.firehazr-layout { display: grid; grid-template-columns: minmax(260px, 0.85fr) minmax(0, 1.15fr); gap: 20px; margin: 22px 0; }
+.firehazr-layout > form, .firehazr-result { min-width: 0; border: 1px solid #263449; border-radius: 8px; padding: 20px; background: #0c1422; }
+.firehazr-page fieldset { padding: 0; margin: 0; border: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.firehazr-page label { display: flex; flex-direction: column; gap: 7px; font-size: 12px; color: #cbd5e1; }
+.firehazr-page input, .firehazr-page select { box-sizing: border-box; width: 100%; min-width: 0; border: 1px solid #334155; border-radius: 5px; padding: 9px; background: #080f1c; color: #f1f5f9; font: inherit; }
+.firehazr-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.firehazr-page button { padding: 9px 12px; border: 1px solid #334155; border-radius: 5px; background: #17273c; color: #e2e8f0; font: inherit; cursor: pointer; }
+.firehazr-page button[type="submit"] { background: #214777; border-color: #3b82f6; }
+.firehazr-page button:disabled { opacity: 0.6; cursor: wait; }
+.firehazr-page :is(button, input, select, summary):focus-visible { outline: 2px solid #93c5fd; outline-offset: 3px; }
+.firehazr-page details { border: 1px solid #263449; border-radius: 5px; padding: 12px; margin-top: 12px; font-size: 13px; }
+.firehazr-page summary { cursor: pointer; color: #e2e8f0; }
+.firehazr-page details[open] > summary { margin-bottom: 12px; }
+.firehazr-page [role="alert"] { color: #fca5a5; }
+.firehazr-value { font-size: 40px; color: #93c5fd; font-variant-numeric: tabular-nums; }
+.firehazr-value span { font-size: 18px; }
+.firehazr-table { max-width: 100%; overflow-x: auto; }
+.firehazr-page table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.firehazr-page th, .firehazr-page td { border-bottom: 1px solid #263449; padding: 8px; text-align: left; }
+.firehazr-page a { color: #93c5fd; }
+.firehazr-hash { overflow-wrap: anywhere; font-family: monospace; font-size: 11px; }
+.firehazr-page--compact { padding: 0; }
+.firehazr-page--compact h1 { font-size: 20px; }
+.firehazr-page--compact .firehazr-layout { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 800px) {
+  .firehazr-layout { grid-template-columns: minmax(0, 1fr); }
+  .firehazr-page { padding: 20px 14px 40px; }
+}
+@media (max-width: 380px) {
+  .firehazr-page fieldset { grid-template-columns: minmax(0, 1fr); }
+}

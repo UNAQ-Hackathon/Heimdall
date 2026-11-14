@@ -2,19 +2,31 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import FlammabilityChart from '../components/charts/FlammabilityChart.jsx';
 import TimeSeriesChart from '../components/charts/TimeSeriesChart.jsx';
-import { INVESTIGATIONS, api } from '../services/mockData.js';
-import { useApp } from '../context/AppContext.jsx';
+import { INVESTIGATIONS } from '../services/mockData.js';
+import { api } from '../services/api.js';
 
 export default function StudyDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { audience } = useApp();
-  const [study, setStudy] = useState(null);
+  const [study, setStudy] = useState(
+    () =>
+      INVESTIGATIONS.find(
+        (item) =>
+          item.id === id ||
+          String(item.psiId ?? '').toLowerCase() === String(id ?? '').toLowerCase() ||
+          String(item.acronym ?? '').toLowerCase() === String(id ?? '').toLowerCase()
+      ) || INVESTIGATIONS[0]
+  );
   const [overlay1g, setOverlay1g] = useState(false);
 
   useEffect(() => {
-    const found = INVESTIGATIONS.find((item) => item.id === id) || INVESTIGATIONS[0];
-    setStudy(found);
+    let cancelled = false;
+    api.getInvestigation(id).then((doc) => {
+      if (!cancelled && doc) setStudy(doc);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   if (!study) {
@@ -34,7 +46,7 @@ export default function StudyDetailPage() {
       }}
     >
       {/* ── Top Header Area ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
         <div>
           <div
             style={{
@@ -45,18 +57,18 @@ export default function StudyDetailPage() {
               marginBottom: '6px',
             }}
           >
-            DATASET ARCHIVE // {study.archiveCode || 'EXP-SAFFIRE-03'} · {study.vehicle || 'Cygnus OA-5 Mission'} · MET:{' '}
-            {study.missionDuration || '+142:08:14'}
+            NASA PSI ARCHIVE // {study.psiId ?? study.archiveCode} · HARDWARE: {study.hardware ?? 'ISS Facility'} · CATEGORY:{' '}
+            {(study.category ?? 'prevention').toUpperCase()}
           </div>
           <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#f8fafc', margin: '0 0 6px 0' }}>
-            {study.name}: {study.subtitle}
+            {study.acronym ?? study.name}: {study.title ?? study.subtitle}
           </h1>
           <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0, maxWidth: '800px' }}>
-            {study.description}
+            {study.objective ?? study.description}
           </p>
 
           {/* Tags */}
-          <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+          <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
             <span
               style={{
                 fontSize: '10px',
@@ -68,7 +80,7 @@ export default function StudyDetailPage() {
                 borderRadius: '4px',
               }}
             >
-              PMMA Solid Sample (0.4m × 1.0m)
+              Fuel: {study.fuel ?? 'null'}
             </span>
             <span
               style={{
@@ -81,7 +93,7 @@ export default function StudyDetailPage() {
                 borderRadius: '4px',
               }}
             >
-              Microgravity (10⁻⁴ g)
+              Gravity: {study.gravityLevel}
             </span>
             <span
               style={{
@@ -94,34 +106,72 @@ export default function StudyDetailPage() {
                 borderRadius: '4px',
               }}
             >
-              Forced Convection Duct
+              Hardware: {study.hardware ?? 'null'}
             </span>
+            <a
+              href={study.sourceUrl ?? 'https://psi.nasa.gov/'}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                fontSize: '10px',
+                fontFamily: 'var(--font-mono)',
+                background: 'rgba(56, 189, 248, 0.12)',
+                border: '1px solid rgba(56, 189, 248, 0.35)',
+                color: '#38bdf8',
+                padding: '3px 8px',
+                borderRadius: '4px',
+                textDecoration: 'none',
+              }}
+            >
+              Source: {study.sourceUrl ?? 'https://psi.nasa.gov/'} ↗
+            </a>
           </div>
         </div>
 
-        {/* Verified badge */}
-        <div
-          style={{
-            fontSize: '11px',
-            fontFamily: 'var(--font-mono)',
-            fontWeight: 700,
-            color: '#34d399',
-            background: 'rgba(52, 211, 153, 0.1)',
-            border: '1px solid rgba(52, 211, 153, 0.25)',
-            padding: '6px 12px',
-            borderRadius: '6px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-          }}
-        >
-          <span>●</span> {study.verifiedLabel || 'VERIFIED FLIGHT DATA (NASA GLENN RC)'}
+        {/* Study switcher & Verified badge */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
+          <div
+            style={{
+              fontSize: '11px',
+              fontFamily: 'var(--font-mono)',
+              fontWeight: 700,
+              color: '#34d399',
+              background: 'rgba(52, 211, 153, 0.1)',
+              border: '1px solid rgba(52, 211, 153, 0.25)',
+              padding: '6px 12px',
+              borderRadius: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <span>●</span> {study.verifiedLabel || 'NASA PSI ARCHIVE RECORD'}
+          </div>
+          <select
+            aria-label="Select PSI Investigation"
+            className="tri-select"
+            value={study.id}
+            onChange={(e) => navigate(`/study/${e.target.value}`)}
+            style={{
+              border: '1px solid #1e293b',
+              color: '#e2e8f0',
+              fontSize: '11.5px',
+              padding: '5px 10px',
+              borderRadius: '4px',
+            }}
+          >
+            {INVESTIGATIONS.map((inv) => (
+              <option key={inv.id} value={inv.id}>
+                {inv.acronym} — {inv.title}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
-      {/* ── Upper Grid: AI Synthesis + Flammability Boundary ── */}
+      {/* ── Upper Grid: Extracted PSI Metadata + Flammability Boundary ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-        {/* Left: AI Synthesis */}
+        {/* Left: PSI Record Envelope */}
         <div
           style={{
             background: '#0d1321',
@@ -135,20 +185,20 @@ export default function StudyDetailPage() {
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '12px', fontWeight: 700, color: '#f8fafc', letterSpacing: '0.5px' }}>
-              ✦ AI SYNTHESIS // EXTRACTED METRIC ENVELOPE
+              ✦ PSI RECORD METADATA // VERIFIED EXPERIMENTAL ENVELOPE
             </span>
             <span
               style={{
                 fontSize: '10px',
                 fontFamily: 'var(--font-mono)',
-                color: '#a78bfa',
-                background: 'rgba(167, 139, 250, 0.1)',
+                color: '#38bdf8',
+                background: 'rgba(56, 189, 248, 0.1)',
                 padding: '2px 8px',
                 borderRadius: '4px',
-                border: '1px solid rgba(167, 139, 250, 0.2)',
+                border: '1px solid rgba(56, 189, 248, 0.2)',
               }}
             >
-              Confidence: {study.confidence || 96}%
+              {study.psiId}
             </span>
           </div>
 
@@ -159,37 +209,57 @@ export default function StudyDetailPage() {
                 01 // MISSION OBJECTIVE
               </div>
               <div style={{ fontSize: '11px', color: '#cbd5e1', lineHeight: 1.4 }}>
-                {study.synthesis?.missionObjective || 'Investigate flame spread limits on practical-thickness PMMA slabs.'}
+                {study.synthesis?.missionObjective}
               </div>
             </div>
 
             <div style={{ background: '#111827', padding: '10px 12px', borderRadius: '6px', border: '1px solid #1c2640' }}>
               <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748b', marginBottom: '4px' }}>
-                02 // FUEL & GEOMETRY
+                02 // FUEL & HARDWARE
               </div>
               <div style={{ fontSize: '11px', color: '#cbd5e1', lineHeight: 1.4 }}>
-                {study.synthesis?.fuelAndGeometry || 'PMMA, 50mm thick, 0.4 × 1.0 m sheet along axial flow tunnel.'}
+                {study.synthesis?.fuelAndGeometry} ({study.hardware ?? 'null'})
               </div>
             </div>
 
             <div style={{ background: '#111827', padding: '10px 12px', borderRadius: '6px', border: '1px solid #1c2640' }}>
               <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748b', marginBottom: '4px' }}>
-                03 // TEST CONDITIONS
+                03 // MEASURED CONDITIONS
               </div>
-              <div style={{ fontSize: '11px', color: '#cbd5e1', lineHeight: 1.4 }}>
-                {study.synthesis?.testConditions || 'O₂: 21% → 34% | Total P: 78 kPa (10.2 psi) | Forced Flow: 0.05 to 0.20 m/s.'}
+              <div style={{ fontSize: '11px', color: '#cbd5e1', lineHeight: 1.4, fontFamily: 'var(--font-mono)' }}>
+                O₂: {study.conditions?.oxygenPct ?? 'null'}% | P: {study.conditions?.pressurePsi ?? 'null'} psi | Flow:{' '}
+                {study.conditions?.flowVelocity ?? 'null'} m/s
               </div>
             </div>
 
             <div style={{ background: '#111827', padding: '10px 12px', borderRadius: '6px', border: '1px solid #1c2640' }}>
               <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748b', marginBottom: '4px' }}>
-                04 // TELEMETRY ARRAY
+                04 // SENSORS & VARIABLES
               </div>
               <div style={{ fontSize: '11px', color: '#cbd5e1', lineHeight: 1.4 }}>
-                {study.synthesis?.telemetryArray || '6 calibrated radiometers, 24 thermocouple arrays (Type K), high-speed dual UV/IR.'}
+                Sensors: {study.sensors?.join(', ') || 'null'}
               </div>
             </div>
           </div>
+
+          {/* Earth Applications */}
+          {study.earthApplications?.length > 0 && (
+            <div
+              style={{
+                background: 'rgba(52, 211, 153, 0.08)',
+                border: '1px solid rgba(52, 211, 153, 0.25)',
+                borderRadius: '6px',
+                padding: '10px 14px',
+                fontSize: '11.5px',
+                color: '#d1fae5',
+              }}
+            >
+              <strong style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: '#34d399', display: 'block', marginBottom: '2px' }}>
+                EARTH SPIN-OFF APPLICATIONS:
+              </strong>
+              {study.earthApplications.join(' · ')}
+            </div>
+          )}
 
           {/* Heimdall Insight callout */}
           <div
@@ -233,7 +303,7 @@ export default function StudyDetailPage() {
                 REGIME FLAMMABILITY BOUNDARY (O₂ VS. FLOW VELOCITY)
               </div>
               <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
-                Microgravity Regime Map · PMMA Concurrent Spread Limit Analysis
+                Microgravity Regime Map · Bounded Envelope Analysis
               </div>
             </div>
             <span
@@ -246,7 +316,7 @@ export default function StudyDetailPage() {
                 borderRadius: '4px',
               }}
             >
-              ● ACTIVE REGIME: CONCURRENT DUCT
+              ● BOUNDED INTERPOLATION
             </span>
           </div>
 
@@ -271,34 +341,19 @@ export default function StudyDetailPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <div style={{ fontSize: '12px', fontWeight: 700, color: '#f8fafc' }}>
-                RADIANT FLUX & PYROLYSIS TEMPERATURE VS TIME
+                ILLUSTRATIVE TELEMETRY PROFILE (TEMPERATURE & RADIANT FLUX)
               </div>
               <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
-                Run ID: SF3-TC-RUN04 · Sample Rate: 10 Hz · Synchronized PIM Audio/Video
+                Variables tracked: {study.variables?.join(', ') || 'None'}
               </div>
             </div>
             <div style={{ display: 'flex', gap: '10px', fontSize: '10px', fontFamily: 'var(--font-mono)' }}>
-              <span style={{ color: '#38bdf8' }}>— TC Array [0-12] (°C)</span>
+              <span style={{ color: '#38bdf8' }}>— Temperature (°C)</span>
               <span style={{ color: '#fb7185' }}>-- Radiant Flux (kW/m²)</span>
             </div>
           </div>
 
           <TimeSeriesChart />
-
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: '10px',
-              fontFamily: 'var(--font-mono)',
-              color: '#64748b',
-              borderTop: '1px solid #1c2640',
-              paddingTop: '8px',
-            }}
-          >
-            <span>• Dual-spectrum radiometer R2 aligned at 0.5m downstream</span>
-            <span>Sampling Interval: 100ms ± 0.2ms</span>
-          </div>
         </div>
 
         {/* Right: Extrapolation Warning & Simulation CTAs */}
@@ -318,34 +373,15 @@ export default function StudyDetailPage() {
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
               <span style={{ color: '#f59e0b', fontSize: '16px' }}>⚠</span>
               <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#f59e0b' }}>
-                SCIENTIFIC NOTICE // REDUCED-GRAVITY EXTRAPOLATION BOUNDARY
+                SCIENTIFIC NOTICE // PARTIAL-GRAVITY BOUNDARIES (0G ↔ 1G)
               </span>
             </div>
             <p style={{ fontSize: '12px', color: '#cbd5e1', lineHeight: 1.5, margin: 0 }}>
-              Extrapolating 0g Cygnus flight data to Lunar (0.166g) introduces buoyant convection vectors absent in Saffire-III.
-              Saffire results represent the upper flammability limit; real lunar flame spread is bounded between 0g (Saffire)
-              and 1g (terrestrial standard NASA-STD-6001).
+              PSI contains no direct partial-gravity (0.165g Moon or 0.38g Mars) data. Results for lunar and Martian habitats are presented strictly as a bounded range between microgravity and 1g baselines. E-FIELD Flames (ACME) serves as a partial-gravity body-force proxy, and CFI-G (ACME) provides the highest-O₂ tests (up to 85% O₂ from the burner).
             </p>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <button
-              onClick={() => alert('Exporting HDF5 / CSV archive...')}
-              style={{
-                fontSize: '11px',
-                fontFamily: 'var(--font-mono)',
-                background: '#111827',
-                border: '1px solid #1c2640',
-                color: '#e2e8f0',
-                padding: '8px 14px',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                textAlign: 'left',
-              }}
-            >
-              📥 Download Raw Telemetry (HDF5 / CSV)
-            </button>
-
             <button
               onClick={() => navigate('/flame-3d')}
               style={{
@@ -364,7 +400,7 @@ export default function StudyDetailPage() {
                 alignItems: 'center',
               }}
             >
-              <span>⚡ Send Boundary to 3D Flame Simulation</span>
+              <span>⚡ Open Interactive What-If & 3D Flame Testbench</span>
               <span>→</span>
             </button>
 
@@ -381,29 +417,10 @@ export default function StudyDetailPage() {
                 cursor: 'pointer',
               }}
             >
-              {overlay1g ? '✓ OVERLAYING TERRESTRIAL 1G BASELINE' : '● OVERLAY TERRESTRIAL 1G BASELINE'}
+              {overlay1g ? '✓ COMPARING WITH 1G BASELINE BOUND' : '● COMPARE WITH 1G BASELINE BOUND'}
             </button>
           </div>
         </div>
-      </div>
-
-      {/* ── Page Footer ── */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          fontSize: '10px',
-          fontFamily: 'var(--font-mono)',
-          color: '#64748b',
-          borderTop: '1px solid #1c2640',
-          paddingTop: '14px',
-        }}
-      >
-        <span>
-          FLIGHT LOG: {study.flightLog || 'NASA-CR-2017-SAFFIRE3'} &nbsp; CALIBRATION PROTOCOL:{' '}
-          {study.calibrationProtocol || 'GRC-MICRO-FLAME-04'}
-        </span>
-        <span style={{ color: '#34d399' }}>● Heimdall Neural Model v4.12 · Bayesian Boundary Convergence: 99.4%</span>
       </div>
     </div>
   );

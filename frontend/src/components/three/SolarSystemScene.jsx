@@ -49,11 +49,14 @@ function getShipUrl(shipFile = 'Nave_Azul_LowPoly.glb') {
 }
 
 const SCENARIO_DEFAULT_BODY = {
+  earth: 'Earth',
   iss: 'Earth',
+  moon: 'Moon',
+  mars: 'Mars',
+  suit: 'Earth',
   lunarBase: 'Moon',
   rover: 'Moon',
   spacesuit: 'Earth',
-  mars: 'Mars',
 };
 
 const STAR_COUNT = 1600;
@@ -287,7 +290,7 @@ function SpacecraftNavigator({
     currentTarget: targetBodyName,
     inTransit: false,
     progress: 1,
-    duration: 2.4,
+    duration: 7.5,
     startPos: new THREE.Vector3(10.2, 0.8, 0),
     lastPos: new THREE.Vector3(10.2, 0.8, 0),
     orbitAngle: 0,
@@ -301,6 +304,15 @@ function SpacecraftNavigator({
       if (shipGroupRef.current) {
         st.startPos.copy(shipGroupRef.current.position);
       }
+      // Snappy, distance-aware travel duration (2.6s for Moon hop, ~4s for inner planets, max 6.5s)
+      const destObj = planetObjectsRef.current?.[targetBodyName];
+      let tripDist = 10;
+      if (destObj) {
+        const destWorld = new THREE.Vector3();
+        destObj.getWorldPosition(destWorld);
+        tripDist = st.startPos.distanceTo(destWorld);
+      }
+      st.duration = Math.min(6.5, Math.max(2.6, 2.2 + tripDist * 0.16));
       st.currentTarget = targetBodyName;
       st.inTransit = true;
       st.progress = 0;
@@ -311,7 +323,7 @@ function SpacecraftNavigator({
         shipTransitRef.current.startPos.copy(st.startPos);
       }
     }
-  }, [targetBodyName, shipTransitRef]);
+  }, [targetBodyName, planetObjectsRef, shipTransitRef]);
 
   useFrame((_, delta) => {
     const st = flightState.current;
@@ -326,17 +338,19 @@ function SpacecraftNavigator({
 
     const planetMeta = PLANETS.find((p) => p.name === st.currentTarget);
     const bodySize = planetMeta?.size ?? 0.6;
-    const localOrbitRadius = Math.max(0.42, bodySize * 1.45 + 0.25);
-    const localHoverHeight = Math.max(0.2, bodySize * 0.45);
+    // Note: normalizeModel scales models to radius = 1 (diameter = 2), so planet surface radius = bodySize.
+    // Keep orbital radius well outside bodySize + ship wingspan so wings never touch or clip any planet!
+    const localOrbitRadius = bodySize * 1.48 + 0.32;
+    const localHoverHeight = bodySize * 0.28 + 0.08;
 
     if (!paused) {
-      st.orbitAngle += delta * 1.25;
+      st.orbitAngle += delta * 0.95;
     }
 
     // Destination orbital slot around the target planet
     const destPos = new THREE.Vector3(
       planetWorldPos.x + Math.cos(st.orbitAngle) * localOrbitRadius,
-      planetWorldPos.y + localHoverHeight + Math.sin(st.orbitAngle * 2) * 0.05,
+      planetWorldPos.y + localHoverHeight + Math.sin(st.orbitAngle * 2) * 0.02,
       planetWorldPos.z + Math.sin(st.orbitAngle) * localOrbitRadius
     );
 
@@ -354,23 +368,43 @@ function SpacecraftNavigator({
     if (st.inTransit) {
       st.progress = Math.min(1, st.progress + delta / st.duration);
       const t = st.progress;
-      // Smooth cubic ease-in-out
-      const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      // Smooth ease-in-out
+      const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 
       const dist = st.startPos.distanceTo(destPos);
-      const arcLift = Math.min(5.5, Math.max(1.1, dist * 0.22));
+      // In-plane Hohmann-style orbital transfer curve in the XZ ecliptic plane (not a vertical parabola!)
+      const chord = new THREE.Vector3().subVectors(destPos, st.startPos);
+      const mid = new THREE.Vector3().addVectors(st.startPos, destPos).multiplyScalar(0.5);
+      const perp = new THREE.Vector3(-chord.z, 0, chord.x);
+      if (perp.lengthSq() > 1e-6) {
+        perp.normalize();
+      } else {
+        perp.set(1, 0, 0);
+      }
+      // Bend outward away from the Sun [0,0,0] so the ship sweeps around orbits naturally
+      if (mid.dot(perp) < 0) {
+        perp.negate();
+      }
+      const lateralSweep = Math.min(5.0, Math.max(0.55, dist * 0.28));
+      const controlPt = mid
+        .clone()
+        .addScaledVector(perp, lateralSweep);
+      controlPt.y = Math.max(st.startPos.y, destPos.y) + 0.18;
 
-      const currentPos = new THREE.Vector3().lerpVectors(st.startPos, destPos, ease);
-      currentPos.y += Math.sin(Math.PI * ease) * arcLift;
+      const evalTransferCurve = (u) => {
+        const inv = 1 - u;
+        return new THREE.Vector3(
+          inv * inv * st.startPos.x + 2 * inv * u * controlPt.x + u * u * destPos.x,
+          inv * inv * st.startPos.y + 2 * inv * u * controlPt.y + u * u * destPos.y,
+          inv * inv * st.startPos.z + 2 * inv * u * controlPt.z + u * u * destPos.z
+        );
+      };
 
-      // Look slightly ahead along the parametric curve so nose (-Z) points strictly forward!
-      const nextT = Math.min(1, ease + 0.03);
-      const aheadPos = new THREE.Vector3().lerpVectors(st.startPos, destPos, nextT);
-      aheadPos.y += Math.sin(Math.PI * nextT) * arcLift;
+      const currentPos = evalTransferCurve(ease);
+      const nextT = Math.min(1, ease + 0.025);
+      const aheadPos = evalTransferCurve(nextT);
 
       if (aheadPos.distanceToSquared(currentPos) > 1e-6) {
-        // Note: In Three.js Matrix4.lookAt(eye, target, up), -Z points from eye to target.
-        // Since the GLB nose is at -Z, lookAt(currentPos, aheadPos, up) points the nose forward!
         const m = new THREE.Matrix4().lookAt(
           currentPos,
           aheadPos,
@@ -390,13 +424,11 @@ function SpacecraftNavigator({
         shipTransitRef.current.destPos.copy(planetWorldPos);
       }
 
-      // Build visible 3D transfer arc curve between departure and destination
+      // Build visible 3D orbital transfer curve in the ecliptic plane
       const pts = [];
-      const steps = 28;
+      const steps = 32;
       for (let i = 0; i <= steps; i += 1) {
-        const u = i / steps;
-        const p = new THREE.Vector3().lerpVectors(st.startPos, destPos, u);
-        p.y += Math.sin(Math.PI * u) * arcLift;
+        const p = evalTransferCurve(i / steps);
         pts.push([p.x, p.y, p.z]);
       }
       setTrajectoryCurve(pts);
@@ -444,11 +476,11 @@ function SpacecraftNavigator({
       }
     }
 
-    // Keep low-poly triangular beacon hovering over the active planet
+    // Keep low-poly triangular beacon hovering well above the active planet's north pole
     if (beaconRef.current) {
       beaconRef.current.position.set(
         planetWorldPos.x,
-        planetWorldPos.y + bodySize * 1.35 + 0.32 + Math.sin(st.orbitAngle * 2) * 0.05,
+        planetWorldPos.y + bodySize * 1.38 + 0.24 + Math.sin(st.orbitAngle * 2) * 0.03,
         planetWorldPos.z
       );
       beaconRef.current.rotation.y += delta * 1.8;
@@ -462,34 +494,34 @@ function SpacecraftNavigator({
         <Line
           points={trajectoryCurve}
           color="#38bdf8"
-          lineWidth={1.8}
+          lineWidth={2.2}
           dashed
-          dashSize={0.4}
-          gapSize={0.2}
+          dashSize={0.28}
+          gapSize={0.14}
           transparent
-          opacity={0.75}
+          opacity={0.88}
         />
       )}
 
-      {/* Spacecraft 3D Mesh (nose is at -Z, tail is at +Z) */}
-      <group ref={shipGroupRef} scale={0.36}>
+      {/* Spacecraft 3D Mesh at realistic miniature scale relative to planets (nose is at -Z, tail is at +Z) */}
+      <group ref={shipGroupRef} scale={0.075}>
         <primitive object={shipModel} dispose={null} />
         {/* Low-poly triangular thruster plume at the tail (+Z) during interplanetary transit */}
         <mesh
           ref={thrusterRef}
-          position={[0, 0, 1.05]}
+          position={[0, 0, 1.1]}
           rotation={[Math.PI / 2, 0, 0]}
           visible={false}
         >
-          <coneGeometry args={[0.26, 0.9, 4]} />
-          <meshBasicMaterial color="#38bdf8" transparent opacity={0.85} />
+          <coneGeometry args={[0.36, 1.6, 4]} />
+          <meshBasicMaterial color="#38bdf8" transparent opacity={0.92} />
         </mesh>
-        <pointLight color="#38bdf8" intensity={3.5} distance={3.5} />
+        <pointLight color="#38bdf8" intensity={3.5} distance={2.5} />
       </group>
 
       {/* Low-Poly Triangular Marker Beacon above the active planet */}
       <group ref={beaconRef}>
-        <mesh rotation={[Math.PI, 0, 0]} scale={[0.13, 0.21, 0.13]}>
+        <mesh rotation={[Math.PI, 0, 0]} scale={[0.065, 0.11, 0.065]}>
           <coneGeometry args={[1, 1.4, 3]} />
           <meshBasicMaterial color="#fc3d21" />
         </mesh>
@@ -585,16 +617,25 @@ function CameraController({
 
     const transit = shipTransitRef?.current;
 
-    // While the spacecraft is flying between planets, smoothly follow the ship across space!
+    // While the spacecraft is flying between planets, smoothly track the ship and transfer arc!
     if (transit?.inTransit) {
       const shipPos = transit.shipPos;
-      const followFollowRate = Math.min(1, 1 - Math.exp(-6.5 * delta));
-      controls.target.lerp(shipPos, followFollowRate);
+      const startPos = transit.startPos;
+      const destPos = transit.destPos;
+      const p = transit.progress ?? 0.5;
 
-      // Keep camera elevated behind/beside the ship so both the ship and trajectory arc are visible
-      const chaseOffset = new THREE.Vector3(3.2, 3.8, 5.2);
+      const followRate = Math.min(1, 1 - Math.exp(-8.0 * delta));
+      controls.target.lerp(shipPos, followRate);
+
+      // Frame the miniature spacecraft and its transfer trajectory smoothly
+      const chordDist = Math.max(2, startPos.distanceTo(destPos));
+      const wideFactor = Math.sin(Math.PI * p);
+      const distOut = 0.9 + wideFactor * Math.min(4.8, chordDist * 0.24);
+      const heightUp = 0.65 + wideFactor * Math.min(3.2, chordDist * 0.16);
+
+      const chaseOffset = new THREE.Vector3(distOut * 0.65, heightUp, distOut);
       const desiredCam = shipPos.clone().add(chaseOffset);
-      state.camera.position.lerp(desiredCam, Math.min(1, 1 - Math.exp(-4.0 * delta)));
+      state.camera.position.lerp(desiredCam, Math.min(1, 1 - Math.exp(-6.0 * delta)));
       isTransitioningRef.current = true;
       controls.update();
       return;
