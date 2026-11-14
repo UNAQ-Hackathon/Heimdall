@@ -614,11 +614,12 @@ export default function MissionHub() {
         </div>
 
         {/* 3D Solar System Canvas */}
-        <SolarSystemScene
-          paused={paused}
-          panelCollapsed={panelCollapsed}
-          shipFile={shipFile}
-        />
+        <div className="mission-planet-layout">
+          <div className="mission-planet-layout__scene">
+            <SolarSystemScene paused={paused} panelCollapsed={panelCollapsed} shipFile={shipFile} />
+          </div>
+          {activePlanetObj && <MissionPlanetInspection key={activePlanetObj.name} body={activePlanetObj} onClose={closeInspection} />}
+        </div>
 
         {/* Subtle Faceted Bottom-Right Copilot Pill when Chat is Closed */}
         {!chatOpen && (
