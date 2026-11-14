@@ -1,50 +1,41 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext.jsx';
-import { CHAT_HISTORY, api } from '../../services/mockData.js';
+import HeimdallLogo from './HeimdallLogo.jsx';
 
 export default function CopilotChat({ inline = false }) {
-  const { chatOpen, setChatOpen, audience } = useApp();
-  const [messages, setMessages] = useState(CHAT_HISTORY);
+  const {
+    chatOpen,
+    setChatOpen,
+    audience,
+    chatMessages,
+    chatLoading,
+    chatSessionId,
+    chatSessionUrl,
+    chatSessionStatus,
+    sendChatMessage,
+  } = useApp();
   const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
+  const listRef = useRef(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (listRef.current) {
+      listRef.current.scrollTop = listRef.current.scrollHeight;
+    }
+  }, [chatMessages, chatLoading]);
 
   const handleSend = async (e) => {
     e?.preventDefault();
-    if (!input.trim() || loading) return;
-
-    const userText = input.trim();
+    if (!input.trim() || chatLoading) return;
+    const text = input.trim();
     setInput('');
-    setMessages((prev) => [...prev, { role: 'user', text: `"${userText}"` }]);
-    setLoading(true);
-
-    try {
-      const res = await api.ask(userText);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'ai',
-          text: res.answer,
-          citations: res.citations,
-        },
-      ]);
-    } catch {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'ai',
-          text: 'Unable to query NASA PSI archive right now. BASS-II and Saffire-III are recommended reference sets.',
-          citations: [{ label: 'Saffire-III', studyId: 'saffire-iii' }],
-        },
-      ]);
-    } finally {
-      setLoading(false);
-    }
+    await sendChatMessage(text);
   };
 
-  // If floating and not open, don't render
+  // Avoid rendering duplicate overlapping chat boxes when the floating modal is open
   if (!inline && !chatOpen) return null;
+  if (inline && chatOpen) return null;
 
   const containerStyle = inline
     ? {
@@ -80,39 +71,79 @@ export default function CopilotChat({ inline = false }) {
         overflow: 'hidden',
       };
 
+  const renderFormattedText = (text = '') => {
+    const parts = String(text).split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((part, i) =>
+      part.startsWith('**') && part.endsWith('**') ? (
+        <strong key={i} style={{ color: '#f8fafc' }}>
+          {part.slice(2, -2)}
+        </strong>
+      ) : (
+        <span key={i}>{part}</span>
+      )
+    );
+  };
+
   return (
-    <div style={containerStyle}>
+    <div className="tri-card" style={containerStyle}>
       {/* Header */}
       <div
+        className="lowpoly-surface"
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '10px 14px',
           borderBottom: '1px solid #1c2640',
-          background: '#0d1321',
+          backgroundColor: '#0d1321',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '14px', color: '#4f8ef7' }}>✦</span>
+          <HeimdallLogo size={28} />
           <span style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.5px' }}>
-            Heimdall AI Copilot
+            AI Copilot
           </span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {chatSessionUrl && (
+            <a
+              href={chatSessionUrl}
+              target="_blank"
+              rel="noreferrer"
+              title={`Devin session: ${chatSessionId}`}
+              style={{
+                fontSize: '9px',
+                fontFamily: 'var(--font-mono)',
+                color: '#60a5fa',
+                textDecoration: 'none',
+                padding: '2px 5px',
+                borderRadius: '4px',
+                border: '1px solid rgba(96, 165, 250, 0.25)',
+                background: 'rgba(79, 142, 247, 0.1)',
+              }}
+            >
+              Devin ↗
+            </a>
+          )}
           <span
             style={{
               fontSize: '10px',
               fontFamily: 'var(--font-mono)',
               fontWeight: 700,
-              color: '#34d399',
-              background: 'rgba(52, 211, 153, 0.12)',
+              color: chatLoading ? '#fbbf24' : '#34d399',
+              background: chatLoading ? 'rgba(251, 191, 36, 0.12)' : 'rgba(52, 211, 153, 0.12)',
               padding: '2px 6px',
               borderRadius: '4px',
-              border: '1px solid rgba(52, 211, 153, 0.2)',
+              border: chatLoading
+                ? '1px solid rgba(251, 191, 36, 0.25)'
+                : '1px solid rgba(52, 211, 153, 0.2)',
             }}
           >
-            ACTIVE
+            {chatLoading
+              ? (chatSessionStatus ?? 'SYNCING').toUpperCase()
+              : chatSessionId
+                ? 'SWE-2 LIVE'
+                : 'ACTIVE'}
           </span>
           {!inline && (
             <button
@@ -134,6 +165,7 @@ export default function CopilotChat({ inline = false }) {
 
       {/* Message List */}
       <div
+        ref={listRef}
         style={{
           flex: 1,
           overflowY: 'auto',
@@ -144,53 +176,72 @@ export default function CopilotChat({ inline = false }) {
           fontSize: '12px',
         }}
       >
-        {messages.map((msg, idx) => (
+        {chatMessages.map((msg, idx) => (
           <div
-            key={idx}
+            key={msg.id ?? idx}
             style={{
               background: msg.role === 'user' ? '#111827' : 'rgba(17, 24, 39, 0.65)',
-              border: msg.role === 'user' ? '1px solid #1c2640' : '1px solid rgba(79, 142, 247, 0.15)',
+              border:
+                msg.role === 'user'
+                  ? '1px solid #1c2640'
+                  : '1px solid rgba(79, 142, 247, 0.15)',
               borderRadius: '6px',
               padding: '8px 10px',
               lineHeight: 1.45,
+              opacity: msg.pending ? 0.78 : 1,
             }}
           >
             {msg.role === 'user' ? (
               <span style={{ color: '#93c5fd', fontStyle: 'italic' }}>{msg.text}</span>
             ) : (
               <div>
-                <p style={{ color: '#e2e8f0', margin: 0 }}>{msg.text}</p>
+                <p
+                  style={{
+                    color: '#e2e8f0',
+                    margin: 0,
+                    whiteSpace: 'pre-wrap',
+                    fontStyle: msg.pending ? 'italic' : 'normal',
+                  }}
+                >
+                  {renderFormattedText(msg.text)}
+                </p>
                 {msg.citations && msg.citations.length > 0 && (
-                  <div style={{ marginTop: '6px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                    {msg.citations.map((c, i) => (
-                      <button
-                        key={i}
-                        onClick={() => navigate(`/study/${c.studyId}`)}
-                        style={{
-                          fontSize: '10px',
-                          fontFamily: 'var(--font-mono)',
-                          background: 'rgba(79, 142, 247, 0.15)',
-                          border: '1px solid rgba(79, 142, 247, 0.3)',
-                          color: '#60a5fa',
-                          borderRadius: '4px',
-                          padding: '2px 6px',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Dataset ↗ {c.label}
-                      </button>
-                    ))}
+                  <div
+                    style={{
+                      marginTop: '6px',
+                      display: 'flex',
+                      gap: '6px',
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    {msg.citations.map((c, i) => {
+                      const studyId = c.studyId ?? c.id ?? 'saffire-iii';
+                      const label = c.label ?? c.acronym ?? c.title ?? 'Study';
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => navigate(`/study/${studyId}`)}
+                          style={{
+                            fontSize: '10px',
+                            fontFamily: 'var(--font-mono)',
+                            background: 'rgba(79, 142, 247, 0.15)',
+                            border: '1px solid rgba(79, 142, 247, 0.3)',
+                            color: '#60a5fa',
+                            borderRadius: '4px',
+                            padding: '2px 6px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Dataset ↗ {label}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
             )}
           </div>
         ))}
-        {loading && (
-          <div style={{ color: '#8892a8', fontSize: '11px', fontStyle: 'italic' }}>
-            Querying PSI flight telemetry vectors...
-          </div>
-        )}
       </div>
 
       {/* Input */}
@@ -208,7 +259,12 @@ export default function CopilotChat({ inline = false }) {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={audience === 'Engineer' ? 'Ask RAG: parameters, extinction limits...' : 'Ask about space fire safety...'}
+          disabled={chatLoading}
+          placeholder={
+            audience === 'Engineer'
+              ? 'Ask RAG: parameters, extinction limits...'
+              : 'Ask about space fire safety...'
+          }
           style={{
             flex: 1,
             background: '#111827',
@@ -222,7 +278,7 @@ export default function CopilotChat({ inline = false }) {
         />
         <button
           type="submit"
-          disabled={loading}
+          disabled={chatLoading || !input.trim()}
           style={{
             background: '#4f8ef7',
             border: 'none',
@@ -231,10 +287,11 @@ export default function CopilotChat({ inline = false }) {
             padding: '0 10px',
             fontSize: '11px',
             fontWeight: 600,
-            cursor: 'pointer',
+            cursor: chatLoading || !input.trim() ? 'not-allowed' : 'pointer',
+            opacity: chatLoading || !input.trim() ? 0.6 : 1,
           }}
         >
-          Send
+          {chatLoading ? '...' : 'Send'}
         </button>
       </form>
     </div>

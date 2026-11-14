@@ -1,10 +1,12 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import { Color, Object3D } from 'three';
+import { Color, Object3D, Vector3 } from 'three';
 
 import { createSurfacePreview } from './surface-preview.js';
 import LowPolySpace from './LowPolySpace.jsx';
+import EnvironmentLandscape from './EnvironmentLandscape.jsx';
+import { getEnvironmentPerspective } from './environment-perspective.js';
 
 function Terrain({ scene }) {
   const tiles = useRef(null);
@@ -69,68 +71,49 @@ function Terrain({ scene }) {
   );
 }
 
-function Cloudscape({ scene, planetId }) {
-  return (
-    <group>
-      {Array.from({ length: 63 }, (_, index) => {
-        const row = Math.floor(index / 9);
-        const x = (index % 9 - 4) * 6;
-        const z = 8 - row * 6;
-        return (
-          <mesh key={index} position={[x, -1.5 + Math.sin(index * 1.7) * 0.65, z]} scale={[5, 0.65 + row * 0.12, 3]}>
-            <icosahedronGeometry args={[1, 0]} />
-            <meshStandardMaterial color={scene.ground[row % scene.ground.length]} flatShading roughness={1} />
-          </mesh>
-        );
-      })}
-      {planetId === 'jupiter' && [0, 1, 2].map((index) => (
-        <mesh key={index} position={[-3, 0.25 + index * 0.1, -10]} rotation={[-Math.PI / 2, 0, 0]} scale={[1.5, 1, 1]}>
-          <torusGeometry args={[1.2 + index * 0.55, 0.3, 4, 12]} />
-          <meshBasicMaterial color={index % 2 ? scene.ground[0] : scene.accent} />
-        </mesh>
-      ))}
-      {planetId === 'saturn' && (
-        <mesh position={[0, 14, -28]} rotation={[0.2, 0, -0.35]} scale={[1.8, 1, 1]}>
-          <torusGeometry args={[15, 0.65, 3, 48, Math.PI]} />
-          <meshBasicMaterial color={scene.ground[2]} />
-        </mesh>
-      )}
-      {scene.kind === 'plasma' && [-7, 4].map((x) => (
-        <mesh key={x} position={[x, 0, -12]} rotation={[0.1, 0.3, 0]}>
-          <torusGeometry args={[3.5, 0.35, 4, 12, Math.PI]} />
-          <meshBasicMaterial color={scene.accent} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
 export default function PlanetSurfacePreview({ zoneId, planetId = 'earth' }) {
   const scene = useMemo(() => createSurfacePreview(zoneId, planetId), [zoneId, planetId]);
+  const view = getEnvironmentPerspective(planetId);
+  const offset = new Vector3(...view.position).sub(new Vector3(...view.target));
+  const polar = Math.acos(offset.y / offset.length());
+  const azimuth = Math.atan2(offset.x, offset.z);
+  const rocky = planetId !== 'earth' && scene.kind === 'surface';
 
   return (
     <Canvas
       frameloop="demand"
+      shadows={rocky}
       dpr={[1, 1.5]}
-      camera={{ position: [0, 3.2, 8], fov: 52, near: 0.1, far: 180 }}
+      camera={{ position: view.position, fov: view.fov, near: view.near, far: view.far }}
       fallback={<p>3D preview unavailable: WebGL is required.</p>}
     >
       <color attach="background" args={[scene.sky]} />
-      {(scene.haze || scene.clouds) && <fog attach="fog" args={[scene.sky, 18, 40]} />}
-      <ambientLight intensity={1.1} />
-      <directionalLight position={[-8, 12, 6]} intensity={2} />
+      {view.fog && <fog attach="fog" args={[scene.sky, ...view.fog]} />}
+      <ambientLight intensity={view.ambient} />
+      <directionalLight
+        position={view.light}
+        intensity={view.emissive ? 0 : rocky ? 3 : 2}
+        castShadow={rocky}
+        shadow-mapSize={[1024, 1024]}
+        shadow-camera-left={-60}
+        shadow-camera-right={60}
+        shadow-camera-top={60}
+        shadow-camera-bottom={-60}
+        shadow-camera-far={180}
+        shadow-normalBias={0.03}
+      />
       {scene.craters && <LowPolySpace />}
-      {scene.kind === 'surface' ? <Terrain scene={scene} /> : <Cloudscape scene={scene} planetId={planetId} />}
+      {planetId === 'earth' ? <Terrain scene={scene} /> : <EnvironmentLandscape scene={scene} planetId={planetId} />}
       <OrbitControls
         enablePan={false}
         enableZoom={false}
         enableDamping={false}
-        rotateSpeed={0.35}
-        target={[0, 2, -10]}
-        minPolarAngle={1.35}
-        maxPolarAngle={1.62}
-        minAzimuthAngle={-0.4}
-        maxAzimuthAngle={0.4}
+        rotateSpeed={0.3}
+        target={view.target}
+        minPolarAngle={polar - 0.09}
+        maxPolarAngle={polar + (scene.kind === 'surface' ? 0.035 : 0.14)}
+        minAzimuthAngle={azimuth - 0.3}
+        maxAzimuthAngle={azimuth + 0.3}
       />
     </Canvas>
   );

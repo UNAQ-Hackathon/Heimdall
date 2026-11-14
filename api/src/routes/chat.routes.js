@@ -9,6 +9,8 @@ router.post(
   validateBody({
     question: { required: true, type: 'string' },
     sessionId: { required: false, type: 'string' },
+    audience: { required: false, type: 'string' },
+    scenario: { required: false, type: 'object' },
   }),
   ask
 );

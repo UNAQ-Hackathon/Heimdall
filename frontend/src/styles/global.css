@@ -637,3 +637,41 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .planet-analysis, .planet-preview__stage { transition: none; }
 }
+
+/* ── Low-Poly Triangulated Aesthetic (NASA Faceted Theme) ── */
+:root {
+  --lowpoly-mesh: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='104' viewBox='0 0 120 104'%3E%3Cg fill='none' stroke='%233b82f6' stroke-opacity='0.075' stroke-width='1'%3E%3Cpolygon points='0,0 60,0 30,52' fill='%230b3d91' fill-opacity='0.055'/%3E%3Cpolygon points='60,0 120,0 90,52' fill='%231e3a8a' fill-opacity='0.035'/%3E%3Cpolygon points='30,52 90,52 60,0' fill='%2338bdf8' fill-opacity='0.03'/%3E%3Cpolygon points='0,104 60,104 30,52' fill='%230b3d91' fill-opacity='0.045'/%3E%3Cpolygon points='60,104 120,104 90,52' fill='%231d4ed8' fill-opacity='0.055'/%3E%3Cpolygon points='30,52 90,52 60,104' fill='%230f172a' fill-opacity='0.08'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+.lowpoly-surface {
+  background-image: var(--lowpoly-mesh), linear-gradient(155deg, rgba(11, 61, 145, 0.14) 0%, rgba(6, 10, 18, 0.96) 65%);
+  background-size: 120px 104px, 100% 100%;
+}
+
+.tri-card {
+  position: relative;
+  background-color: #0b1221;
+  background-image: var(--lowpoly-mesh), linear-gradient(135deg, rgba(15, 25, 45, 0.92) 0%, rgba(10, 16, 30, 0.96) 100%);
+  background-size: 120px 104px, 100% 100%;
+  border: 1px solid #1b2a44;
+  clip-path: polygon(0 0, calc(100% - 11px) 0, 100% 11px, 100% 100%, 11px 100%, 0 calc(100% - 11px));
+  transition: border-color 0.18s ease, transform 0.18s ease;
+}
+
+.tri-card:hover {
+  border-color: #3b82f6;
+}
+
+.tri-pill {
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+}
+
+.tri-select {
+  appearance: none;
+  background-color: #0b1324;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='8' viewBox='0 0 10 8'%3E%3Cpolygon points='0,0 10,0 5,7' fill='%234f8ef7'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px !important;
+  clip-path: polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 7px 100%, 0 calc(100% - 7px));
+}

@@ -1,174 +1,182 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useApp } from '../../context/AppContext.jsx';
 import CopilotChat from '../ui/CopilotChat.jsx';
+import HeimdallLogo from '../ui/HeimdallLogo.jsx';
+import nasaLogo from '../../../../docs/assets/nasa-logo.png';
 
 const links = [
-  { to: '/', label: 'MISSION HUB', end: true },
-  { to: '/study/saffire-iii', label: 'STUDY DETAIL' },
-  { to: '/flame-3d', label: 'FLAME 3D' },
-  { to: '/compare', label: 'COMPARE & EARTH' },
+  { to: '/', label: 'Mission Hub', end: true },
+  { to: '/study/saffire-iii', label: 'Study Detail' },
+  { to: '/flame-3d', label: 'Flame 3D' },
+  { to: '/compare', label: 'Compare & Earth' },
 ];
 
 export default function AppLayout() {
   const { audience, setAudience, chatOpen, setChatOpen } = useApp();
 
   return (
-    <div className="app-shell" style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      {/* ── Top Header Bar ── */}
+    <div
+      className="app-shell lowpoly-surface"
+      style={{
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        backgroundColor: '#060a12',
+      }}
+    >
+      {/* ── Top Minimalist NASA Faceted Header Bar ── */}
       <header
+        className="lowpoly-surface"
         style={{
-          height: '52px',
-          background: '#0a0f1e',
-          borderBottom: '1px solid #1c2640',
+          height: '54px',
+          backgroundColor: 'rgba(8, 12, 22, 0.96)',
+          borderBottom: '1px solid #18263e',
+          boxShadow: 'inset 0 2px 0 0 #0b3d91',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '0 24px',
+          padding: '0 20px',
           flexShrink: 0,
           zIndex: 100,
         }}
       >
-        {/* Left: Brand */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <NavLink to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '15px', fontWeight: 800, color: '#f8fafc', letterSpacing: '2px' }}>
-              HEIMDALL
-            </span>
-            <span
-              style={{
-                fontSize: '9px',
-                fontFamily: 'var(--font-mono)',
-                fontWeight: 700,
-                color: '#38bdf8',
-                background: 'rgba(56, 189, 248, 0.12)',
-                padding: '2px 6px',
-                borderRadius: '3px',
-                border: '1px solid rgba(56, 189, 248, 0.25)',
-              }}
-            >
-              ORBITAL AI
-            </span>
-            <span
-              style={{
-                fontSize: '9px',
-                fontFamily: 'var(--font-mono)',
-                color: '#64748b',
-                letterSpacing: '0.8px',
-                marginLeft: '4px',
-              }}
-            >
-              SPACECRAFT FIRE DYNAMICS
-            </span>
+        {/* Left: NASA Insignia + Heimdall Logo + Navigation */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+          <NavLink
+            to="/"
+            style={{
+              textDecoration: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+            }}
+          >
+            <img
+              src={nasaLogo}
+              alt="NASA"
+              style={{ width: '28px', height: '28px', objectFit: 'contain' }}
+            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <HeimdallLogo size={38} />
+              <span
+                style={{
+                  fontSize: '15px',
+                  fontWeight: 800,
+                  color: '#f8fafc',
+                  letterSpacing: '1.8px',
+                }}
+              >
+                HEIMDALL
+              </span>
+              <span
+                style={{
+                  fontSize: '10px',
+                  fontFamily: 'var(--font-mono)',
+                  color: '#94a3b8',
+                  letterSpacing: '0.6px',
+                  borderLeft: '2px solid #fc3d21',
+                  paddingLeft: '8px',
+                }}
+              >
+                NASA PSI · FIRE SAFETY
+              </span>
+            </div>
           </NavLink>
 
-          {/* Navigation Tabs */}
-          <nav style={{ display: 'flex', gap: '4px', marginLeft: '12px' }}>
+          {/* Navigation Links */}
+          <nav style={{ display: 'flex', gap: '6px' }}>
             {links.map(({ to, label, end }) => (
               <NavLink
                 key={to}
                 to={to}
                 end={end}
+                className="tri-pill"
                 style={({ isActive }) => ({
-                  fontSize: '11px',
-                  fontFamily: 'var(--font-mono)',
-                  fontWeight: 600,
-                  letterSpacing: '0.5px',
-                  padding: '6px 14px',
-                  borderRadius: '4px',
+                  fontSize: '12px',
+                  fontWeight: isActive ? 600 : 500,
+                  padding: '6px 13px',
                   textDecoration: 'none',
-                  color: isActive ? '#f8fafc' : '#8892a8',
-                  background: isActive ? '#151d2e' : 'transparent',
-                  border: isActive ? '1px solid #2a3654' : '1px solid transparent',
+                  color: isActive ? '#f8fafc' : '#94a3b8',
+                  background: isActive ? 'rgba(11, 61, 145, 0.42)' : 'transparent',
+                  border: isActive ? '1px solid rgba(79, 142, 247, 0.45)' : '1px solid transparent',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
                   transition: 'all 0.15s ease',
                 })}
               >
-                {label}
+                {({ isActive }) => (
+                  <>
+                    <span
+                      style={{
+                        fontSize: '8px',
+                        color: isActive ? '#fc3d21' : '#475569',
+                      }}
+                    >
+                      ▲
+                    </span>
+                    <span>{label}</span>
+                  </>
+                )}
               </NavLink>
             ))}
           </nav>
         </div>
 
-        {/* Right: Controls & Audience Selector */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {/* Audience Mode Switcher */}
-          <div
+        {/* Right: Minimalist Audience Dropdown & Copilot Trigger */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <label
             style={{
               display: 'flex',
-              background: '#111827',
-              border: '1px solid #1c2640',
-              borderRadius: '4px',
-              overflow: 'hidden',
-              padding: '2px',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '11px',
+              color: '#94a3b8',
             }}
           >
-            {['Student', 'Engineer'].map((aud) => {
-              const active = audience === aud;
-              return (
-                <button
-                  key={aud}
-                  onClick={() => setAudience(aud)}
-                  style={{
-                    fontSize: '10px',
-                    fontFamily: 'var(--font-mono)',
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    padding: '3px 10px',
-                    border: 'none',
-                    borderRadius: '3px',
-                    background: active ? '#4f8ef7' : 'transparent',
-                    color: active ? '#ffffff' : '#64748b',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  {aud}
-                </button>
-              );
-            })}
-          </div>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: '#64748b' }}>
+              MODE:
+            </span>
+            <select
+              className="tri-select"
+              value={audience}
+              onChange={(e) => setAudience(e.target.value)}
+              style={{
+                border: '1px solid #1e293b',
+                color: '#e2e8f0',
+                fontSize: '11.5px',
+                fontWeight: 500,
+                padding: '5px 10px',
+                cursor: 'pointer',
+                outline: 'none',
+              }}
+            >
+              <option value="Engineer">Engineer Mode</option>
+              <option value="Student">Student Mode</option>
+            </select>
+          </label>
 
-          {/* Ask Heimdall AI Trigger Button */}
           <button
+            className="tri-pill"
             onClick={() => setChatOpen(!chatOpen)}
             style={{
-              fontSize: '11px',
-              fontFamily: 'var(--font-mono)',
+              fontSize: '11.5px',
               fontWeight: 600,
-              background: chatOpen ? 'rgba(79, 142, 247, 0.2)' : '#111827',
-              border: chatOpen ? '1px solid #4f8ef7' : '1px solid #1c2640',
-              color: chatOpen ? '#93c5fd' : '#cbd5e1',
-              padding: '5px 12px',
-              borderRadius: '4px',
+              background: chatOpen ? '#0b3d91' : '#0b1324',
+              border: chatOpen ? '1px solid #4f8ef7' : '1px solid #1e293b',
+              color: '#f8fafc',
+              padding: '6px 13px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
+              transition: 'all 0.15s ease',
             }}
           >
-            <span style={{ color: '#4f8ef7' }}>✦</span>
-            <span>ASK HEIMDALL AI</span>
+            <span style={{ color: '#fc3d21', fontSize: '10px' }}>▲</span>
+            <span>AI Copilot</span>
           </button>
-
-          {/* User Profile Avatar */}
-          <div
-            style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '50%',
-              background: '#111827',
-              border: '1px solid #1c2640',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#8892a8',
-              fontSize: '12px',
-              cursor: 'pointer',
-            }}
-            title="NASA Investigator"
-          >
-            👤
-          </div>
         </div>
       </header>
 
@@ -177,32 +185,37 @@ export default function AppLayout() {
         <Outlet />
       </main>
 
-      {/* ── Global Floating Copilot Chat (when triggered via header) ── */}
+      {/* ── Global Floating Copilot Chat ── */}
       <CopilotChat />
 
-      {/* ── Bottom Telemetry Footer Bar ── */}
+      {/* ── Minimalist NASA Telemetry Footer Bar ── */}
       <footer
+        className="lowpoly-surface"
         style={{
-          height: '28px',
-          background: '#0a0f1e',
-          borderTop: '1px solid #1c2640',
+          height: '26px',
+          backgroundColor: '#080c16',
+          borderTop: '1px solid #162032',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '0 24px',
+          padding: '0 20px',
           fontSize: '10px',
           fontFamily: 'var(--font-mono)',
           color: '#64748b',
           flexShrink: 0,
         }}
       >
-        <span>NASA Space Apps Challenge // Project Heimdall AI</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#34d399' }} />
-            Telemetry Stream Nominal
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ color: '#fc3d21', fontSize: '8px' }}>▲</span>
+          <span style={{ color: '#94a3b8', fontWeight: 600 }}>NASA PSI ARCHIVE</span>
+          <span>·</span>
+          <span>Glenn Research Center // Microgravity Combustion Science</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#94a3b8' }}>
+            <span style={{ color: '#34d399', fontSize: '8px' }}>▲</span>
+            Keplerian Orbits · Telemetry Nominal
           </span>
-          <span>MET: 042:18:09:22</span>
         </div>
       </footer>
     </div>

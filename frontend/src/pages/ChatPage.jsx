@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../services/api.js';
+import HeimdallLogo from '../components/ui/HeimdallLogo.jsx';
 
 const QUICK_PROMPTS = [
   'Hola Heimdall, confirma que la conexión con Devin API está activa.',
@@ -156,8 +157,8 @@ export default function ChatPage() {
     <section className="chat-panel">
       <header className="chat-panel__header">
         <div>
-          <p className="planet-preview__eyebrow">HEIMDALL / DEVIN API TEST</p>
-          <h1>Ask Heimdall (Chat Panel)</h1>
+          <p className="planet-preview__eyebrow"><HeimdallLogo /> / DEVIN API TEST</p>
+          <h1>Chat Panel</h1>
         </div>
         <div className="chat-panel__meta">
           {sessionId && (
