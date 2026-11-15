@@ -1,36 +1,34 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { COMPARISON_MATRIX, CROSS_FINDINGS, EARTH_APPLICATIONS } from '../services/mockData.js';
+import { useApp } from '../context/AppContext.jsx';
+import { COMPARISON_MATRIX, CROSS_FINDINGS, EARTH_APPLICATIONS, INVESTIGATIONS } from '../services/mockData.js';
 import { api } from '../services/api.js';
-import AppArchitectureMindMap from '../components/ui/AppArchitectureMindMap.jsx';
+import {
+  buildPsiDatasetCsv,
+  getHardwareFamily,
+  summarizeInvestigationDifferences,
+} from '../services/psi-catalog.js';
+import '../styles/compare-earth.css';
 
-const panelStyle = {
-  background: '#0d1321',
-  border: '1px solid #1c2640',
-  borderRadius: '8px',
-  overflow: 'hidden',
+const COMPARATOR_PRESETS = [
+  { label: 'Solids (BASS-II · Saffire-III · SoFIE)', ids: ['BASS-II', 'Saffire-III', 'SoFIE'] },
+  { label: 'Suppression & High O₂ (FLEX · FLEX-2 · CFI-G)', ids: ['FLEX', 'FLEX-2', 'CFI-G'] },
+  { label: 'Partial-g & Moon Gap (E-FIELD · LUCI · FM2)', ids: ['E-FIELD Flames', 'LUCI', 'FM2'] },
+  { label: 'Smoke & Dust (SAME · SAME-R · DAFT)', ids: ['SAME', 'SAME-R', 'DAFT'] },
+];
+
+const VIEW_TABS = [
+  { id: 'all', label: 'All Sections' },
+  { id: 'comparator', label: 'Side-by-Side' },
+  { id: 'matrix', label: 'Conditions Matrix' },
+  { id: 'earth', label: 'Earth Spin-Offs' },
+];
+
+const EARTH_STUDY_LINKS = {
+  'water-mist': ['FLEX', 'FLEX-2'],
+  'smoke-detection': ['SAME', 'SAME-R', 'DAFT'],
+  'material-screening': ['BASS-II', 'Saffire-III', 'E-FIELD Flames'],
 };
-
-function normalizeKey(value) {
-  return String(value ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
-}
-
-function getComparisonRecord(row, investigations) {
-  const name = normalizeKey(row.name);
-  const id = normalizeKey(row.id);
-  return investigations.find((item) => {
-    const acronym = normalizeKey(item.acronym);
-    const psiId = normalizeKey(item.psiId);
-    return acronym === name || acronym === id || psiId.endsWith(id);
-  });
-}
-
-function formatOxygenRange(conditions = {}) {
-  const min = conditions.oxygenMinPct ?? conditions.oxygenPct ?? conditions.oxygenMaxPct;
-  const max = conditions.oxygenMaxPct ?? conditions.oxygenPct ?? conditions.oxygenMinPct;
-  if (min == null && max == null) return null;
-  return min !== max ? `${min}% → ${max}% O₂ (nominal ${conditions.oxygenPct ?? max}%)` : `${min}% O₂`;
-}
 
 const FINDING_SUMMARIES = [
   {
@@ -46,17 +44,17 @@ const FINDING_SUMMARIES = [
   {
     badge: 'Oxygen Regimes',
     accent: '#f59e0b',
-    summary: 'Moon habitats use ~30%+ O2 at reduced pressure (≤10.2 psi), raising material flammability.',
+    summary: 'Moon habitats use ≥30% O₂ at reduced pressure (≤10.2 psi), raising material flammability.',
     bullets: [
-      'Spacesuits run 100% O2 at 4.3 psi; ISS stays near 21% O2 / 14.7 psi.',
-      'Higher O2 reduces astronaut pre-breathing time before EVAs.',
-      'PSI high-O2 tests (up to 85% in CFI-G) map ignition margins.',
+      'Spacesuits run 100% O₂ at 4.3 psi; ISS stays near 21% O₂ / 14.7 psi.',
+      'Higher O₂ reduces astronaut pre-breathing time before EVAs.',
+      'PSI high-O₂ tests (up to 85% in CFI-G) map ignition margins.',
     ],
   },
   {
     badge: 'Hardware & Fuel',
     accent: '#34d399',
-    summary: 'Modular ISS racks let researchers compare solid, liquid, and gas flames on shared rigs.',
+    summary: 'Modular ISS racks compare solid, liquid, and gas flames on shared testbeds.',
     bullets: [
       'CIR / MDCA: FLEX, FLEX-2, and CFI liquid droplet tests.',
       'CIR / ACME: 6 gaseous flame studies using modular hardware.',
@@ -69,7 +67,7 @@ const EARTH_SUMMARY_MAP = {
   'water-mist': {
     badge: 'Fire Suppression',
     accent: '#38bdf8',
-    summary: 'Microgravity droplet kinetics power cleaner fine-water-mist extinguishers on Earth.',
+    summary: 'Microgravity droplet kinetics inform cleaner fine-water-mist and inert-gas extinguishers on Earth.',
     bullets: [
       'Replaces ozone-depleting halon systems.',
       'Fine mist absorbs heat quickly with minimal water damage.',
@@ -95,18 +93,83 @@ const EARTH_SUMMARY_MAP = {
   },
 };
 
+function normalizeKey(value) {
+  return String(value ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function getComparisonRecord(row, investigations) {
+  const name = normalizeKey(row.name);
+  const id = normalizeKey(row.id);
+  return investigations.find((item) => {
+    const acronym = normalizeKey(item.acronym);
+    const psiId = normalizeKey(item.psiId);
+    return acronym === name || acronym === id || psiId.endsWith(id);
+  });
+}
+
+function getOxygenBounds(conditions = {}) {
+  const min = conditions.oxygenMinPct ?? conditions.oxygenPct ?? conditions.oxygenMaxPct;
+  const max = conditions.oxygenMaxPct ?? conditions.oxygenPct ?? conditions.oxygenMinPct;
+  if (min == null && max == null) return null;
+  const lo = Math.max(0, Math.min(100, Number(min)));
+  const hi = Math.max(lo, Math.min(100, Number(max)));
+  return { lo, hi, nominal: conditions.oxygenPct ?? hi };
+}
+
+function formatOxygenRange(conditions = {}) {
+  const bounds = getOxygenBounds(conditions);
+  if (!bounds) return null;
+  return bounds.lo !== bounds.hi
+    ? `${bounds.lo}% → ${bounds.hi}% O₂ (nominal ${bounds.nominal}%)`
+    : `${bounds.lo}% O₂`;
+}
+
+function OxygenBar({ minPct, maxPct }) {
+  if (minPct == null || maxPct == null) return null;
+  const left = Math.max(0, Math.min(100, Number(minPct)));
+  const right = Math.max(left, Math.min(100, Number(maxPct)));
+  const width = Math.max(4, right - left);
+  return (
+    <div className="compare-o2-bar" title={`Measured O₂ range: ${left}% to ${right}% (white tick = 21% Earth air)`}>
+      <div className="compare-o2-track">
+        <div className="compare-o2-fill" style={{ left: `${left}%`, width: `${width}%` }} />
+        <div className="compare-o2-earth" />
+      </div>
+    </div>
+  );
+}
+
+function downloadBlob(content, filename, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 export default function ComparePage() {
+  const { audience } = useApp();
+  const isStudent = audience === 'Student';
+  const [activeView, setActiveView] = useState('all');
   const [highlightDiff, setHighlightDiff] = useState(true);
-  const [investigations, setInvestigations] = useState([]);
+  const [diffRowsOnly, setDiffRowsOnly] = useState(false);
+  const [matrixQuery, setMatrixQuery] = useState('');
+  const [investigations, setInvestigations] = useState(INVESTIGATIONS);
+  const [compareIds, setCompareIds] = useState(['BASS-II', 'Saffire-III', 'SoFIE']);
   const [dataSource, setDataSource] = useState('loading');
-  const spinoffSectionRef = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     let cancelled = false;
     api.listInvestigations().then((result) => {
       if (cancelled) return;
-      setInvestigations(result.items ?? []);
+      if (Array.isArray(result.items) && result.items.length > 0) {
+        setInvestigations(result.items);
+      }
       setDataSource(result.source ?? 'api');
     });
     return () => {
@@ -114,20 +177,49 @@ export default function ComparePage() {
     };
   }, []);
 
-  const scrollToSpinoff = () => {
-    spinoffSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const selectedStudies = useMemo(
+    () =>
+      compareIds
+        .map((key) =>
+          investigations.find(
+            (item) =>
+              item.acronym === key ||
+              item.psiId === key ||
+              item.id === key ||
+              normalizeKey(item.acronym) === normalizeKey(key)
+          )
+        )
+        .filter(Boolean),
+    [compareIds, investigations]
+  );
+
+  const comparisonDigest = useMemo(
+    () => summarizeInvestigationDifferences(selectedStudies),
+    [selectedStudies]
+  );
+
+  const filteredMatrix = useMemo(() => {
+    const q = matrixQuery.trim().toLowerCase();
+    if (!q) return COMPARISON_MATRIX.studies;
+    return COMPARISON_MATRIX.studies.filter((study) =>
+      [study.name, study.testbed, study.fuel, study.orbit, study.o2Range, study.behavior, ...(study.tags ?? [])]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(q)
+    );
+  }, [matrixQuery]);
+
+  const handleExportSelectedCsv = () => {
+    downloadBlob(
+      buildPsiDatasetCsv(selectedStudies),
+      'nasa-psi-side-by-side-comparison.csv',
+      'text/csv;charset=utf-8;'
+    );
   };
 
   const handleExportCsv = () => {
-    const headers = [
-      'Study',
-      'Testbed',
-      'Orbit',
-      'Oxygen Range',
-      'Ambient Pressure',
-      'Fuel',
-      'Key Behavior',
-    ];
+    const headers = ['Study', 'Testbed', 'Orbit', 'Oxygen Range', 'Ambient Pressure', 'Fuel', 'Key Behavior'];
     const escapeCsv = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`;
     const rows = COMPARISON_MATRIX.studies.map((study) => [
       study.name,
@@ -139,536 +231,742 @@ export default function ComparePage() {
       study.behavior,
     ]);
     const csv = [headers, ...rows].map((r) => r.map(escapeCsv).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'nasa-psi-comparison-matrix.csv';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    downloadBlob(csv, 'nasa-psi-comparison-matrix.csv', 'text/csv;charset=utf-8;');
+  };
+
+  const comparisonRows = useMemo(() => {
+    const rows = [
+      {
+        key: 'pillar',
+        label: 'Safety Pillar',
+        getCompareVal: (s) => String(s.category ?? 'unclassified').toLowerCase(),
+        render: (s) => (
+          <span
+            style={{
+              display: 'inline-block',
+              padding: '2px 8px',
+              borderRadius: '9999px',
+              fontSize: '11px',
+              fontFamily: 'var(--font-mono)',
+              background: 'rgba(56, 189, 248, 0.12)',
+              border: '1px solid rgba(56, 189, 248, 0.3)',
+              color: '#7dd3fc',
+              textTransform: 'capitalize',
+            }}
+          >
+            {s.category ?? 'N/A'}
+          </span>
+        ),
+      },
+      {
+        key: 'hardware',
+        label: 'Hardware / Rack',
+        getCompareVal: (s) => getHardwareFamily(s.hardware),
+        render: (s) => <span style={{ color: '#e2e8f0' }}>{getHardwareFamily(s.hardware)}</span>,
+      },
+      {
+        key: 'fuel',
+        label: 'Fuel & Samples',
+        getCompareVal: (s) => s.fuel ?? 'N/A',
+        render: (s) => <span style={{ color: '#cbd5e1' }}>{s.fuel ?? 'Not reported'}</span>,
+      },
+      {
+        key: 'oxygen',
+        label: 'O₂ Envelope',
+        getCompareVal: (s) => (s.dataAvailable === false ? 'upcoming' : formatOxygenRange(s.conditions) ?? 'N/A'),
+        render: (s) => {
+          if (s.dataAvailable === false) {
+            return <span style={{ color: '#fbbf24', fontFamily: 'var(--font-mono)', fontSize: '11.5px' }}>No PSI data yet</span>;
+          }
+          const bounds = getOxygenBounds(s.conditions);
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <span style={{ color: '#38bdf8', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
+                {formatOxygenRange(s.conditions) ?? 'Not reported'}
+              </span>
+              {bounds && <OxygenBar minPct={bounds.lo} maxPct={bounds.hi} />}
+            </div>
+          );
+        },
+      },
+      {
+        key: 'pressure',
+        label: 'Pressure & Flow',
+        getCompareVal: (s) =>
+          `${s.conditions?.pressurePsi ?? 'na'}-${s.conditions?.flowVelocity ?? 'na'}`,
+        render: (s) => {
+          const c = s.conditions ?? {};
+          return (
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11.5px', color: '#cbd5e1' }}>
+              {c.pressurePsi != null ? `${c.pressurePsi} psi` : 'No pressure data'} ·{' '}
+              {c.flowVelocity != null ? `${c.flowVelocity} m/s` : 'Quiescent / N/R'}
+            </span>
+          );
+        },
+      },
+      {
+        key: 'gravity',
+        label: 'Gravity Regime',
+        getCompareVal: (s) => s.gravityLevel ?? 'N/A',
+        render: (s) => <span style={{ color: '#e2e8f0' }}>{s.gravityLevel ?? 'Not reported'}</span>,
+      },
+      {
+        key: 'series',
+        label: 'Empirical Series',
+        getCompareVal: (s) =>
+          Array.isArray(s.series) ? s.series.reduce((acc, x) => acc + (x?.samples?.length ?? 0), 0) : 0,
+        render: (s) => {
+          const pts = Array.isArray(s.series) ? s.series.reduce((acc, x) => acc + (x?.samples?.length ?? 0), 0) : 0;
+          return (
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11.5px', color: pts > 0 ? '#34d399' : '#64748b' }}>
+              {pts > 0 ? `${pts} measured samples` : 'Metadata / summary only'}
+            </span>
+          );
+        },
+      },
+      {
+        key: 'variables',
+        label: isStudent ? 'Plain-Language Takeaway' : 'Test Variables',
+        getCompareVal: (s) => (isStudent ? s.aiSummary?.student ?? s.objective ?? '' : (s.variables ?? []).join('|')),
+        render: (s) =>
+          isStudent ? (
+            <span style={{ color: '#e2e8f0', lineHeight: 1.5 }}>
+              {s.aiSummary?.student ?? s.objective}
+            </span>
+          ) : (
+            <span style={{ color: '#94a3b8', lineHeight: 1.45 }}>
+              {s.variables?.length ? s.variables.join(', ') : 'None published yet'}
+            </span>
+          ),
+      },
+      ...(!isStudent
+        ? [
+            {
+              key: 'sensors',
+              label: 'Sensors',
+              getCompareVal: (s) => (s.sensors ?? []).join('|'),
+              render: (s) => (
+                <span style={{ color: '#94a3b8', lineHeight: 1.45 }}>
+                  {s.sensors?.length ? s.sensors.join(', ') : 'None published yet'}
+                </span>
+              ),
+            },
+            {
+              key: 'objective',
+              label: 'Objective',
+              getCompareVal: (s) => s.objective ?? '',
+              render: (s) => <span style={{ color: '#cbd5e1', lineHeight: 1.45 }}>{s.objective}</span>,
+            },
+          ]
+        : []),
+    ];
+
+    if (!diffRowsOnly || selectedStudies.length < 2) return rows;
+    return rows.filter((row) => new Set(selectedStudies.map(row.getCompareVal)).size > 1);
+  }, [diffRowsOnly, isStudent, selectedStudies]);
+
+  const showComparator = activeView === 'all' || activeView === 'comparator';
+  const showMatrix = activeView === 'all' || activeView === 'matrix';
+  const showEarth = activeView === 'all' || activeView === 'earth';
+
+  const openStudyByKey = (key) => {
+    const match = investigations.find(
+      (item) => normalizeKey(item.acronym) === normalizeKey(key) || normalizeKey(item.psiId) === normalizeKey(key)
+    );
+    navigate(`/study/${match?.id ?? match?.psiId ?? key}`);
   };
 
   return (
-    <div
-      style={{
-        flex: 1,
-        width: '100%',
-        height: '100%',
-        minHeight: 0,
-        overflowY: 'auto',
-        padding: '24px 32px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '24px',
-        background: '#060a14',
-      }}
-    >
-      {/* ── Top Header Bar ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span
-            aria-hidden="true"
-            style={{
-              width: '8px',
-              height: '8px',
-              borderRadius: '9999px',
-              background: '#38bdf8',
-              boxShadow: '0 0 8px rgba(56, 189, 248, 0.7)',
-            }}
-          />
-          <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: '#8892a8' }}>
-            EARTH COMPARISON &amp; SYSTEM ARCHITECTURE // NASA PSI ARCHIVE
-          </span>
-        </div>
-
-        <div style={{ display: 'flex', gap: '8px', fontSize: '10px', fontFamily: 'var(--font-mono)' }}>
-          <span
-            style={{
-              background: '#111827',
-              border: '1px solid #1c2640',
-              padding: '3px 8px',
-              borderRadius: '4px',
-              color: '#34d399',
-            }}
-          >
-            STUDENT MIND MAP
-          </span>
-          <span
-            style={{
-              background: '#111827',
-              border: '1px solid #1c2640',
-              padding: '3px 8px',
-              borderRadius: '4px',
-              color: '#8892a8',
-            }}
-          >
-            SPACE-TO-EARTH TRANSFER
-          </span>
-        </div>
-      </div>
-
-      {/* ── Interactive Animated App Architecture & Science Mind Map ── */}
-      <AppArchitectureMindMap onJumpToSection={scrollToSpinoff} />
-
-      {/* ── Matrix Section Title ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-        <div>
-          <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#38bdf8', marginBottom: '4px' }}>
-            CORRELATED SPACE FLIGHT ARCHIVES · PSI STUDY COMPARISON
-          </div>
-          <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#f8fafc', margin: '0 0 6px 0' }}>
-            MICROGRAVITY EXPERIMENT COMPARISON MATRIX
-          </h1>
-          <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0, maxWidth: '800px' }}>
-            Parametric variance highlighting critical flammability boundary deviations in oxygen concentration,
-            atmospheric pressure, and combustion fuel geometry.
-          </p>
-        </div>
-
-        <button
-          onClick={() => setHighlightDiff(!highlightDiff)}
-          aria-pressed={highlightDiff}
-          style={{
-            fontSize: '11px',
-            fontFamily: 'var(--font-mono)',
-            background: highlightDiff ? 'rgba(56, 189, 248, 0.12)' : '#111827',
-            border: highlightDiff ? '1px solid #38bdf8' : '1px solid #1c2640',
-            color: highlightDiff ? '#38bdf8' : '#8892a8',
-            padding: '5px 12px',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-          }}
-        >
-          Highlight differences
-        </button>
-      </div>
-
-      {/* ── Comparison Matrix Table ── */}
-      <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748b', marginBottom: '-16px' }}>
-        {dataSource === 'loading'
-          ? 'LOADING PSI RECORDS…'
-          : dataSource === 'api'
-            ? 'STUDY CONDITIONS: API RECORDS'
-            : 'STUDY CONDITIONS: LOCAL PROCESSED PSI FALLBACK'}
-      </div>
-      <div
-        style={{
-          background: '#0d1321',
-          border: '1px solid #1c2640',
-          borderRadius: '8px',
-          overflow: 'hidden',
-        }}
-      >
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
-          <thead>
-            <tr style={{ background: '#111827', borderBottom: '1px solid #1c2640' }}>
-              <th style={{ padding: '12px 16px', fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
-                STUDY & TESTBED
-              </th>
-              <th style={{ padding: '12px 16px', fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
-                OXYGEN CONC. (% O₂)
-              </th>
-              <th style={{ padding: '12px 16px', fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
-                AMBIENT PRESSURE
-              </th>
-              <th style={{ padding: '12px 16px', fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
-                FUEL & GEOMETRY
-              </th>
-              <th style={{ padding: '12px 16px', fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
-                CRITICAL REGIME BEHAVIOR
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {COMPARISON_MATRIX.studies.map((study, idx) => {
-              const record = getComparisonRecord(study, investigations);
-              const conditions = record?.conditions ?? {};
-              const oxygenRange = record ? formatOxygenRange(conditions) : null;
-              return (
-              <tr
-                key={study.id}
-                style={{
-                  borderBottom: idx < COMPARISON_MATRIX.studies.length - 1 ? '1px solid #1c2640' : 'none',
-                  background: idx % 2 === 0 ? 'transparent' : 'rgba(17, 24, 39, 0.4)',
-                }}
-              >
-                {/* Col 1 */}
-                <td style={{ padding: '14px 16px', verticalAlign: 'top' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <button
-                      onClick={() => navigate(`/study/${study.id}`)}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        fontSize: '14px',
-                        fontWeight: 700,
-                        color: '#f8fafc',
-                        cursor: 'pointer',
-                        padding: 0,
-                      }}
-                    >
-                      {study.name}
-                    </button>
-                    {study.tags.map((t) => (
-                      <span
-                        key={t}
-                        style={{
-                          fontSize: '9px',
-                          fontFamily: 'var(--font-mono)',
-                          background: 'rgba(56, 189, 248, 0.1)',
-                          border: '1px solid rgba(56, 189, 248, 0.25)',
-                          color: '#38bdf8',
-                          padding: '1px 5px',
-                          borderRadius: '3px',
-                        }}
-                      >
-                        {t}
-                      </span>
-                    ))}
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>{record?.hardware ?? study.testbed}</div>
-                  <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748b', marginTop: '2px' }}>
-                    {study.orbit}
-                  </div>
-                </td>
-
-                {/* Col 2 */}
-                <td style={{ padding: '14px 16px', verticalAlign: 'top' }}>
-                  <div style={{ fontWeight: 700, color: highlightDiff ? '#38bdf8' : '#e2e8f0', fontFamily: 'var(--font-mono)' }}>
-                    {oxygenRange ?? study.o2Range}
-                  </div>
-                  <div style={{ fontSize: '10px', color: '#64748b', marginTop: '4px' }}>{study.o2Note}</div>
-                </td>
-
-                {/* Col 3 */}
-                <td style={{ padding: '14px 16px', verticalAlign: 'top' }}>
-                  <div style={{ fontWeight: 700, color: highlightDiff ? '#fb7185' : '#e2e8f0', fontFamily: 'var(--font-mono)' }}>
-                    {conditions.pressurePsi == null ? study.pressure : `${conditions.pressurePsi} psi`}
-                  </div>
-                  <div style={{ fontSize: '10px', color: '#64748b', marginTop: '4px' }}>{study.pressureNote}</div>
-                </td>
-
-                {/* Col 4 */}
-                <td style={{ padding: '14px 16px', verticalAlign: 'top' }}>
-                  <div style={{ fontWeight: 600, color: '#f8fafc' }}>{record?.fuel ?? study.fuel}</div>
-                  {!record && <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '2px' }}>{study.fuelNote}</div>}
-                  <div style={{ display: 'flex', gap: '4px', marginTop: '6px' }}>
-                    {study.fuelTags.map((t) => (
-                      <span
-                        key={t}
-                        style={{
-                          fontSize: '9px',
-                          fontFamily: 'var(--font-mono)',
-                          background: '#111827',
-                          border: '1px solid #1c2640',
-                          color: '#a78bfa',
-                          padding: '1px 5px',
-                          borderRadius: '3px',
-                        }}
-                      >
-                        {t}
-                      </span>
-                    ))}
-                  </div>
-                </td>
-
-                {/* Col 5 */}
-                <td style={{ padding: '14px 16px', verticalAlign: 'top', maxWidth: '300px' }}>
-                  <div style={{ color: '#cbd5e1', lineHeight: 1.4 }}>{record?.objective ?? study.behavior}</div>
-                  <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#f59e0b', marginTop: '4px' }}>
-                    {study.behaviorNote}
-                  </div>
-                </td>
-              </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      <section>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '10px', flexWrap: 'wrap' }}>
-          <h2 style={{ fontSize: '14px', color: '#f8fafc', margin: 0 }}>Cross-study findings</h2>
-          <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
-            HOVER OR FOCUS A CARD FOR KEY DETAILS
-          </span>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: '10px', alignItems: 'start' }}>
-          {CROSS_FINDINGS.map((finding, idx) => {
-            const id = `finding-${idx}`;
-            const meta = FINDING_SUMMARIES[idx] ?? {
-              badge: 'Insight',
-              accent: '#38bdf8',
-              summary: finding.text,
-              bullets: [],
-            };
-            return (
-              <article
-                key={id}
-                tabIndex={0}
-                className="compare-hover-card"
-                style={{ ...panelStyle, '--card-accent': meta.accent, padding: '14px 16px' }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                    <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: meta.accent, flexShrink: 0 }} />
-                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#f8fafc' }}>{finding.title}</span>
-                  </span>
-                  <span
-                    style={{
-                      fontSize: '9px',
-                      fontFamily: 'var(--font-mono)',
-                      color: meta.accent,
-                      background: `${meta.accent}18`,
-                      border: `1px solid ${meta.accent}44`,
-                      borderRadius: '4px',
-                      padding: '3px 7px',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {meta.badge}
-                  </span>
-                </div>
-
-                <p style={{ fontSize: '12px', color: '#cbd5e1', lineHeight: 1.5, margin: 0 }}>
-                  {meta.summary}
-                </p>
-
-                <div className="compare-hover-card__hint" style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#64748b', marginTop: '8px' }}>
-                  Hover to inspect breakdown
-                </div>
-
-                <div className="compare-hover-card__body">
-                  <div className="compare-hover-card__inner">
-                    <ul style={{ margin: '10px 0 0', paddingLeft: '16px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                      {meta.bullets.map((bullet) => (
-                        <li key={bullet} style={{ fontSize: '11px', color: '#94a3b8', lineHeight: 1.45 }}>
-                          {bullet}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* ── Earth Spin-Off Applications Section ── */}
-      <div ref={spinoffSectionRef}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+    <div className="compare-page">
+      <div className="compare-page__inner">
+        {/* Clean Hero & Section Switcher */}
+        <header className="compare-hero">
           <div>
-            <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#34d399', marginBottom: '2px' }}>
-              TERRESTRIAL TECHNOLOGY DEPLOYMENT · NASA TECHNOLOGY TRANSFER
+            <div className="compare-hero__eyebrow">
+              <span className="compare-hero__dot" aria-hidden="true" />
+              NASA PSI ARCHIVE · {isStudent ? 'STUDENT GUIDED LEARNING VIEW' : 'ENGINEER PARAMETRIC VIEW'}
             </div>
-            <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#f8fafc', margin: 0 }}>
-              EARTH SPIN-OFF APPLICATIONS
-            </h2>
-            <p style={{ fontSize: '12px', color: '#94a3b8', margin: '4px 0 0 0' }}>
-              How microgravity combustion research improves everyday fire protection on Earth. Hover any card to view metrics.
+            <h1>Compare PSI Studies &amp; Earth Safety Impact</h1>
+            <p>
+              {isStudent
+                ? 'Explore plain-language takeaways explaining what each space fire test studied and how those discoveries protect homes and firefighters on Earth.'
+                : 'Compare combustion testbeds side-by-side, inspect O₂/pressure variables & sensors, and trace microgravity findings to engineering standards.'}
             </p>
           </div>
 
-          <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#38bdf8' }}>
-            HOVER CARDS FOR KEY METRICS
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
+            <div className="compare-tabs" role="tablist" aria-label="Compare page sections">
+              {VIEW_TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  className="compare-tab"
+                  aria-selected={activeView === tab.id}
+                  onClick={() => setActiveView(tab.id)}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="compare-btn compare-btn--active"
+              onClick={() => navigate('/flame')}
+            >
+              Open FireHazR 3D Lab →
+            </button>
           </div>
-        </div>
+        </header>
 
-        {/* 3 Spin-Off Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: '10px', alignItems: 'start' }}>
-          {EARTH_APPLICATIONS.map((app) => {
-            const meta = EARTH_SUMMARY_MAP[app.id] ?? {
-              badge: app.category || 'Spin-Off',
-              accent: '#34d399',
-              summary: app.description,
-              bullets: [],
-            };
-            return (
-              <article
-                key={app.id}
-                tabIndex={0}
-                className="compare-hover-card"
-                style={{ ...panelStyle, '--card-accent': meta.accent, padding: '14px 16px' }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                    <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: meta.accent, flexShrink: 0 }} />
-                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#f8fafc' }}>{app.title}</span>
-                  </span>
-                  <span
-                    style={{
-                      fontSize: '9px',
-                      fontFamily: 'var(--font-mono)',
-                      color: meta.accent,
-                      background: `${meta.accent}18`,
-                      border: `1px solid ${meta.accent}44`,
-                      borderRadius: '4px',
-                      padding: '3px 7px',
-                      whiteSpace: 'nowrap',
+        {/* 1. Side-by-Side Aligned Comparator */}
+        {showComparator && (
+          <section className="compare-section" aria-label="Interactive side-by-side study comparator">
+            <div className="compare-section__head">
+              <div>
+                <div className="compare-section__eyebrow">
+                  ALIGNED COMPARATOR ({investigations.length} STUDIES)
+                </div>
+                <h2 className="compare-section__title">Side-by-Side PSI Study Comparison</h2>
+                <p className="compare-section__sub">
+                  Pick a challenge preset or choose any 2–3 studies to inspect shared bounds and differences row by row.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className={`compare-btn${diffRowsOnly ? ' compare-btn--active' : ''}`}
+                  aria-pressed={diffRowsOnly}
+                  onClick={() => setDiffRowsOnly((v) => !v)}
+                >
+                  {diffRowsOnly ? 'Showing Differences Only' : 'Show Differences Only'}
+                </button>
+                {compareIds.length < 3 && (
+                  <button
+                    type="button"
+                    className="compare-btn"
+                    onClick={() => setCompareIds([...compareIds, 'FLEX'])}
+                  >
+                    + Add 3rd Study
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="compare-btn compare-btn--primary"
+                  disabled={selectedStudies.length === 0}
+                  onClick={handleExportSelectedCsv}
+                >
+                  Export Selected CSV ({selectedStudies.length})
+                </button>
+              </div>
+            </div>
+
+            <div className="compare-presets">
+              {COMPARATOR_PRESETS.map((preset) => {
+                const active =
+                  compareIds.length === preset.ids.length &&
+                  preset.ids.every((id, idx) => compareIds[idx] === id);
+                return (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    className="compare-preset"
+                    aria-pressed={active}
+                    onClick={() => setCompareIds(preset.ids)}
+                  >
+                    {preset.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="compare-slots">
+              {compareIds.map((selectedId, slotIdx) => (
+                <div key={slotIdx} className="compare-slot">
+                  <div className="compare-slot__top">
+                    <span>STUDY {slotIdx + 1}</span>
+                    {compareIds.length > 2 && (
+                      <button
+                        type="button"
+                        aria-label={`Remove study ${slotIdx + 1}`}
+                        onClick={() => setCompareIds(compareIds.filter((_, idx) => idx !== slotIdx))}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: '#94a3b8',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          padding: 0,
+                        }}
+                      >
+                        ✕ Remove
+                      </button>
+                    )}
+                  </div>
+                  <select
+                    aria-label={`Study ${slotIdx + 1}`}
+                    value={selectedId}
+                    onChange={(e) => {
+                      const next = [...compareIds];
+                      next[slotIdx] = e.target.value;
+                      setCompareIds(next);
                     }}
                   >
-                    {meta.badge}
-                  </span>
+                    {investigations.map((item) => (
+                      <option key={item.psiId ?? item.acronym} value={item.acronym ?? item.psiId}>
+                        {item.acronym} — {item.title}
+                      </option>
+                    ))}
+                  </select>
                 </div>
+              ))}
+            </div>
 
-                <p style={{ fontSize: '12px', color: '#cbd5e1', lineHeight: 1.5, margin: 0 }}>
-                  {meta.summary}
-                </p>
-
-                <div className="compare-hover-card__hint" style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#64748b', marginTop: '8px' }}>
-                  Hover to inspect metrics &amp; PSI origin
-                </div>
-
-                <div className="compare-hover-card__body">
-                  <div className="compare-hover-card__inner">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginTop: '10px', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>{app.code}</span>
-                      <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#94a3b8' }}>{app.taxonomy}</span>
-                    </div>
-
-                    {meta.bullets.length > 0 && (
-                      <ul style={{ margin: '0 0 10px', paddingLeft: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        {meta.bullets.map((bullet) => (
-                          <li key={bullet} style={{ fontSize: '11px', color: '#94a3b8', lineHeight: 1.45 }}>
-                            {bullet}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-
-                    <div
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-                        gap: '8px',
-                        background: '#111827',
-                        padding: '9px 10px',
-                        borderRadius: '6px',
-                        border: '1px solid #1c2640',
-                        marginBottom: '8px',
-                      }}
-                    >
-                      {app.stats.map((stat) => (
-                        <div key={stat.label}>
-                          <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
-                            {stat.label.toUpperCase()}
+            <div className="compare-table-wrap">
+              <table className="compare-align-table">
+                <thead>
+                  <tr>
+                    <th>Attribute</th>
+                    {selectedStudies.map((study, idx) => (
+                      <th key={`${study.psiId ?? study.acronym}-${idx}`}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                          <div>
+                            <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#38bdf8' }}>
+                              {study.psiId}
+                            </div>
+                            <div style={{ fontSize: '15px', fontWeight: 700, color: '#f8fafc', marginTop: '2px' }}>
+                              {study.acronym}
+                            </div>
+                            <div style={{ fontSize: '11px', fontWeight: 400, color: '#94a3b8', marginTop: '2px' }}>
+                              {study.title}
+                            </div>
                           </div>
-                          <div
+                          <button
+                            type="button"
+                            className="compare-chip-link"
+                            onClick={() => openStudyByKey(study.acronym ?? study.psiId)}
+                          >
+                            Details →
+                          </button>
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {comparisonRows.map((row) => (
+                    <tr key={row.key}>
+                      <th scope="row">{row.label}</th>
+                      {selectedStudies.map((study, idx) => (
+                        <td key={`${row.key}-${study.psiId ?? study.acronym}-${idx}`}>
+                          {row.render(study)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {(comparisonDigest.similarities.length > 0 || comparisonDigest.differences.length > 0) && (
+              <div className="compare-digest-grid">
+                <div className="compare-digest-card" style={{ borderColor: 'rgba(52, 211, 153, 0.35)' }}>
+                  <div style={{ fontSize: '10.5px', fontFamily: 'var(--font-mono)', color: '#34d399', marginBottom: '6px' }}>
+                    VERIFIED SIMILARITIES
+                  </div>
+                  <ul style={{ margin: 0, paddingLeft: '18px', display: 'grid', gap: '5px', fontSize: '12.5px', color: '#cbd5e1' }}>
+                    {comparisonDigest.similarities.length > 0 ? (
+                      comparisonDigest.similarities.map((item) => <li key={item}>{item}</li>)
+                    ) : (
+                      <li style={{ color: '#64748b' }}>No overlapping categorical bounds across this selection.</li>
+                    )}
+                  </ul>
+                </div>
+                <div className="compare-digest-card" style={{ borderColor: 'rgba(245, 158, 11, 0.35)' }}>
+                  <div style={{ fontSize: '10.5px', fontFamily: 'var(--font-mono)', color: '#fbbf24', marginBottom: '6px' }}>
+                    KEY EXPERIMENTAL DIFFERENCES
+                  </div>
+                  <ul style={{ margin: 0, paddingLeft: '18px', display: 'grid', gap: '5px', fontSize: '12.5px', color: '#cbd5e1' }}>
+                    {comparisonDigest.differences.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* 2. Parametric Conditions Matrix */}
+        {showMatrix && (
+          <section className="compare-section" aria-label="Microgravity experiment comparison matrix">
+            <div className="compare-section__head">
+              <div>
+                <div className="compare-section__eyebrow" style={{ color: '#38bdf8' }}>
+                  {dataSource === 'loading'
+                    ? 'LOADING PSI RECORDS…'
+                    : dataSource === 'api'
+                      ? 'API-BACKED STUDY REGIMES'
+                      : 'LOCAL PROCESSED PSI REGIMES'}
+                </div>
+                <h2 className="compare-section__title">Parametric Flammability Matrix</h2>
+                <p className="compare-section__sub">
+                  Compare O₂ concentration bands, ambient chamber pressures, and fuel geometries across flagship missions.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <input
+                  type="search"
+                  aria-label="Filter comparison matrix"
+                  placeholder="Filter study, fuel, hardware…"
+                  value={matrixQuery}
+                  onChange={(e) => setMatrixQuery(e.target.value)}
+                  style={{
+                    padding: '7px 11px',
+                    borderRadius: '8px',
+                    border: '1px solid #263449',
+                    background: '#080d1a',
+                    color: '#f8fafc',
+                    fontSize: '12px',
+                    minWidth: '210px',
+                  }}
+                />
+                <button
+                  type="button"
+                  className={`compare-btn${highlightDiff ? ' compare-btn--active' : ''}`}
+                  aria-pressed={highlightDiff}
+                  onClick={() => setHighlightDiff(!highlightDiff)}
+                >
+                  Highlight Extremes
+                </button>
+                <button type="button" className="compare-btn" onClick={handleExportCsv}>
+                  Export Matrix CSV
+                </button>
+              </div>
+            </div>
+
+            <div className="compare-table-wrap">
+              <table className="compare-align-table">
+                <thead>
+                  <tr>
+                    <th>Study &amp; Testbed</th>
+                    <th>Oxygen Range (% O₂)</th>
+                    <th>Ambient Pressure</th>
+                    <th>Fuel &amp; Geometry</th>
+                    <th>Critical Regime Behavior</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredMatrix.map((study) => {
+                    const record = getComparisonRecord(study, investigations);
+                    const conditions = record?.conditions ?? {};
+                    const bounds = getOxygenBounds(conditions);
+                    const oxygenRange = record ? formatOxygenRange(conditions) : null;
+                    return (
+                      <tr key={study.id}>
+                        <td style={{ minWidth: '185px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <button
+                              type="button"
+                              onClick={() => openStudyByKey(study.id)}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                padding: 0,
+                                fontSize: '14px',
+                                fontWeight: 700,
+                                color: '#f8fafc',
+                                cursor: 'pointer',
+                                textDecoration: 'underline',
+                                textDecorationColor: 'rgba(56, 189, 248, 0.4)',
+                                textUnderlineOffset: '3px',
+                              }}
+                            >
+                              {study.name}
+                            </button>
+                            {study.tags.map((t) => (
+                              <span
+                                key={t}
+                                style={{
+                                  fontSize: '9.5px',
+                                  fontFamily: 'var(--font-mono)',
+                                  background: 'rgba(56, 189, 248, 0.1)',
+                                  border: '1px solid rgba(56, 189, 248, 0.25)',
+                                  color: '#7dd3fc',
+                                  padding: '1px 6px',
+                                  borderRadius: '4px',
+                                }}
+                              >
+                                {t}
+                              </span>
+                            ))}
+                          </div>
+                          <div style={{ fontSize: '11.5px', color: '#94a3b8', marginTop: '4px' }}>
+                            {record?.hardware ?? study.testbed}
+                          </div>
+                          <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#64748b', marginTop: '2px' }}>
+                            {study.orbit}
+                          </div>
+                        </td>
+
+                        <td style={{ minWidth: '175px' }}>
+                          <div style={{ fontWeight: 700, color: highlightDiff ? '#38bdf8' : '#e2e8f0', fontFamily: 'var(--font-mono)', marginBottom: '5px' }}>
+                            {oxygenRange ?? study.o2Range}
+                          </div>
+                          {bounds && <OxygenBar minPct={bounds.lo} maxPct={bounds.hi} />}
+                          <div style={{ fontSize: '10.5px', color: '#64748b', marginTop: '5px' }}>{study.o2Note}</div>
+                        </td>
+
+                        <td style={{ minWidth: '140px' }}>
+                          <div style={{ fontWeight: 700, color: highlightDiff ? '#fb7185' : '#e2e8f0', fontFamily: 'var(--font-mono)' }}>
+                            {conditions.pressurePsi == null ? study.pressure : `${conditions.pressurePsi} psi`}
+                          </div>
+                          <div style={{ fontSize: '10.5px', color: '#64748b', marginTop: '4px' }}>{study.pressureNote}</div>
+                        </td>
+
+                        <td style={{ minWidth: '170px' }}>
+                          <div style={{ fontWeight: 600, color: '#f8fafc' }}>{record?.fuel ?? study.fuel}</div>
+                          {!record && <div style={{ fontSize: '10.5px', color: '#94a3b8', marginTop: '2px' }}>{study.fuelNote}</div>}
+                          <div style={{ display: 'flex', gap: '4px', marginTop: '6px', flexWrap: 'wrap' }}>
+                            {study.fuelTags.map((t) => (
+                              <span
+                                key={t}
+                                style={{
+                                  fontSize: '9.5px',
+                                  fontFamily: 'var(--font-mono)',
+                                  background: '#111827',
+                                  border: '1px solid #263449',
+                                  color: '#c4b5fd',
+                                  padding: '1px 6px',
+                                  borderRadius: '4px',
+                                }}
+                              >
+                                {t}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+
+                        <td style={{ minWidth: '240px', maxWidth: '340px' }}>
+                          <div style={{ color: '#cbd5e1', lineHeight: 1.45 }}>{record?.objective ?? study.behavior}</div>
+                          <div style={{ fontSize: '10.5px', fontFamily: 'var(--font-mono)', color: '#fbbf24', marginTop: '5px' }}>
+                            {study.behaviorNote}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {filteredMatrix.length === 0 && (
+                    <tr>
+                      <td colSpan={5} style={{ textAlign: 'center', color: '#94a3b8', padding: '24px' }}>
+                        No matrix studies match &ldquo;{matrixQuery}&rdquo;.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {/* 3. Earth Spin-Off Applications & Cross-Study Findings (All Details Visible) */}
+        {showEarth && (
+          <>
+            <section className="compare-section" aria-label="Earth spin-off applications">
+              <div className="compare-section__head">
+                <div>
+                  <div className="compare-section__eyebrow">
+                    NASA TECHNOLOGY TRANSFER · SPACE TO EARTH
+                  </div>
+                  <h2 className="compare-section__title">Earth Spin-Off Fire Safety Applications</h2>
+                  <p className="compare-section__sub">
+                    How ISS microgravity flame, aerosol, and suppression research improves terrestrial fire protection.
+                  </p>
+                </div>
+              </div>
+
+              <div className="compare-card-grid">
+                {EARTH_APPLICATIONS.map((app) => {
+                  const meta = EARTH_SUMMARY_MAP[app.id] ?? {
+                    badge: app.category || 'Spin-Off',
+                    accent: '#34d399',
+                    summary: app.description,
+                    bullets: [],
+                  };
+                  const linkedKeys = EARTH_STUDY_LINKS[app.id] ?? [];
+
+                  return (
+                    <article
+                      key={app.id}
+                      className="compare-info-card"
+                      style={{ '--card-accent': meta.accent }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
+                            {app.code}
+                          </span>
+                          <span
                             style={{
-                              fontSize: '11px',
+                              fontSize: '10px',
                               fontFamily: 'var(--font-mono)',
-                              fontWeight: 700,
-                              color: stat.color === 'green' ? '#34d399' : stat.color === 'amber' ? '#f59e0b' : stat.color === 'rose' ? '#fb7185' : '#38bdf8',
+                              color: meta.accent,
+                              background: `${meta.accent}1a`,
+                              border: `1px solid ${meta.accent}44`,
+                              borderRadius: '9999px',
+                              padding: '2px 9px',
                             }}
                           >
-                            {stat.value}
-                          </div>
+                            {meta.badge}
+                          </span>
                         </div>
-                      ))}
-                    </div>
 
-                    <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
-                      Standard: <span style={{ color: '#94a3b8' }}>{app.standard}</span>
-                    </div>
+                        <h3 style={{ margin: 0, fontSize: '15.5px', fontWeight: 700, color: '#f8fafc' }}>
+                          {app.title}
+                        </h3>
+
+                        <p style={{ margin: 0, fontSize: '12.5px', color: '#cbd5e1', lineHeight: 1.5 }}>
+                          {meta.summary}
+                        </p>
+
+                        {meta.bullets.length > 0 && (
+                          <ul style={{ margin: 0, paddingLeft: '17px', display: 'grid', gap: '4px', fontSize: '12px', color: '#94a3b8' }}>
+                            {meta.bullets.map((b) => (
+                              <li key={b}>{b}</li>
+                            ))}
+                          </ul>
+                        )}
+
+                        <div
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                            gap: '8px',
+                            background: '#060a14',
+                            border: '1px solid #1c2640',
+                            borderRadius: '8px',
+                            padding: '10px 12px',
+                          }}
+                        >
+                          {app.stats.map((stat) => (
+                            <div key={stat.label}>
+                              <div style={{ fontSize: '9.5px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
+                                {stat.label.toUpperCase()}
+                              </div>
+                              <div
+                                style={{
+                                  fontSize: '12px',
+                                  fontFamily: 'var(--font-mono)',
+                                  fontWeight: 700,
+                                  marginTop: '2px',
+                                  color:
+                                    stat.color === 'green'
+                                      ? '#34d399'
+                                      : stat.color === 'amber'
+                                        ? '#fbbf24'
+                                        : stat.color === 'rose'
+                                          ? '#fb7185'
+                                          : '#38bdf8',
+                                }}
+                              >
+                                {stat.value}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '8px', borderTop: '1px solid #162036' }}>
+                        <div style={{ fontSize: '10.5px', fontFamily: 'var(--font-mono)', color: '#94a3b8' }}>
+                          Standard: <span style={{ color: '#e2e8f0' }}>{app.standard}</span>
+                        </div>
+                        {linkedKeys.length > 0 && (
+                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                            {linkedKeys.map((studyKey) => (
+                              <button
+                                key={studyKey}
+                                type="button"
+                                className="compare-chip-link"
+                                onClick={() => openStudyByKey(studyKey)}
+                              >
+                                {studyKey} →
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className="compare-section" aria-label="Cross-study synthesis findings">
+              <div className="compare-section__head">
+                <div>
+                  <div className="compare-section__eyebrow" style={{ color: '#a78bfa' }}>
+                    CROSS-STUDY SYNTHESIS
                   </div>
+                  <h2 className="compare-section__title">Mission Exploration Findings</h2>
                 </div>
-              </article>
-            );
-          })}
-        </div>
-      </div>
+              </div>
 
-      {/* ── Footer ── */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '12px',
-          background: '#0d1321',
-          border: '1px solid #1c2640',
-          borderRadius: '8px',
-          padding: '12px 18px',
-          marginTop: '6px',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#38bdf8"
-            strokeWidth="1.8"
-            aria-hidden="true"
-          >
-            <circle cx="12" cy="12" r="9" />
-            <path d="M3 12h18M12 3a13 13 0 0 1 0 18M12 3a13 13 0 0 0 0 18" />
-          </svg>
-          <div>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#f8fafc' }}>
-              PSI Study Comparison &amp; Earth Transfer
-            </div>
-            <div style={{ fontSize: '10px', color: '#64748b', fontFamily: 'var(--font-mono)' }}>
-              Record conditions are API-backed when available; findings and spin-off summaries are curated reference content.
-            </div>
-          </div>
-        </div>
+              <div className="compare-card-grid">
+                {CROSS_FINDINGS.map((finding, idx) => {
+                  const meta = FINDING_SUMMARIES[idx] ?? {
+                    badge: 'Insight',
+                    accent: '#38bdf8',
+                    summary: finding.text,
+                    bullets: [],
+                  };
+                  return (
+                    <article
+                      key={finding.title}
+                      className="compare-info-card"
+                      style={{ '--card-accent': meta.accent }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: meta.accent }} />
+                            <h3 style={{ margin: 0, fontSize: '14.5px', fontWeight: 700, color: '#f8fafc' }}>
+                              {finding.title}
+                            </h3>
+                          </span>
+                          <span
+                            style={{
+                              fontSize: '10px',
+                              fontFamily: 'var(--font-mono)',
+                              color: meta.accent,
+                              background: `${meta.accent}1a`,
+                              border: `1px solid ${meta.accent}44`,
+                              borderRadius: '9999px',
+                              padding: '2px 8px',
+                            }}
+                          >
+                            {meta.badge}
+                          </span>
+                        </div>
 
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            onClick={handleExportCsv}
-            style={{
-              fontSize: '11px',
-              fontFamily: 'var(--font-mono)',
-              background: '#111827',
-              border: '1px solid #1c2640',
-              color: '#cbd5e1',
-              padding: '6px 12px',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-              <path d="M12 3v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
-            </svg>
-            EXPORT CSV MATRIX
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/flame')}
-            style={{
-              fontSize: '11px',
-              fontFamily: 'var(--font-mono)',
-              fontWeight: 600,
-              background: '#4f8ef7',
-              border: 'none',
-              color: '#ffffff',
-              padding: '6px 12px',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-              <path d="M5 12h14m-6-6 6 6-6 6" />
-            </svg>
-            OPEN FIREHAZR 3D LAB
-          </button>
-        </div>
+                        <p style={{ margin: 0, fontSize: '12.5px', color: '#cbd5e1', lineHeight: 1.5 }}>
+                          {meta.summary}
+                        </p>
+
+                        <ul style={{ margin: 0, paddingLeft: '17px', display: 'grid', gap: '5px', fontSize: '12px', color: '#94a3b8' }}>
+                          {meta.bullets.map((bullet) => (
+                            <li key={bullet}>{bullet}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          </>
+        )}
       </div>
     </div>
   );

@@ -27,6 +27,24 @@ export const CATALOG_HARDWARE_FILTERS = [
   { id: 'same', label: 'SAME Pegasor', match: (hw) => /same\s+pegasor/i.test(hw) },
 ];
 
+export const CATALOG_DATA_FILTERS = [
+  { id: 'all', label: 'All Records' },
+  { id: 'published', label: 'Published PSI Data' },
+  { id: 'series', label: 'Empirical Curves (FLEX)' },
+  { id: 'upcoming', label: 'Upcoming Lunar (LUCI / FM2)' },
+];
+
+export function getHardwareFamily(hardware = '') {
+  const hw = String(hardware ?? '');
+  if (/acme/i.test(hw)) return 'CIR / ACME (Modular Gas Rack)';
+  if (/mdca/i.test(hw)) return 'CIR / MDCA (Droplet Apparatus)';
+  if (/spice/i.test(hw) || /\bmsg\b/i.test(hw)) return 'ISS MSG (SPICE Flow Duct / Glovebox)';
+  if (/saffire/i.test(hw)) return 'Cygnus Spacecraft (Saffire Duct)';
+  if (/same/i.test(hw) || /pegasor/i.test(hw)) return 'SAME / DAFT Aerosol Suite';
+  if (/lunar|clps|planned/i.test(hw)) return 'Planned Lunar Payload';
+  return hw || 'ISS Combustion Hardware';
+}
+
 export const CATEGORY_STYLE = {
   prevention: { label: 'PREVENTION', color: '#38bdf8', bg: 'rgba(56, 189, 248, 0.12)' },
   detection: { label: 'DETECTION', color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.12)' },
@@ -34,11 +52,11 @@ export const CATEGORY_STYLE = {
 };
 
 /**
- * Filters PSI investigations by query string, pillar category, fuel type, and hardware family.
+ * Filters PSI investigations by query string, pillar category, fuel type, hardware family, and data status.
  */
 export function filterPsiInvestigations(
   items = [],
-  { query = '', category = 'all', fuelType = 'all', hardware = 'all' } = {}
+  { query = '', category = 'all', fuelType = 'all', hardware = 'all', dataStatus = 'all' } = {}
 ) {
   const q = String(query ?? '').trim().toLowerCase();
   const hwFilter =
@@ -48,6 +66,16 @@ export function filterPsiInvestigations(
     if (category && category !== 'all' && inv.category !== category) return false;
     if (fuelType && fuelType !== 'all' && inv.fuelType !== fuelType) return false;
     if (!hwFilter.match(String(inv.hardware ?? ''))) return false;
+
+    const isUpcoming = inv.dataAvailable === false || inv.status === 'upcoming';
+    if (dataStatus === 'published' && isUpcoming) return false;
+    if (dataStatus === 'upcoming' && !isUpcoming) return false;
+    if (dataStatus === 'series') {
+      const pts = Array.isArray(inv.series)
+        ? inv.series.reduce((sum, s) => sum + (s?.samples?.length ?? 0), 0)
+        : 0;
+      if (pts === 0) return false;
+    }
 
     if (!q) return true;
     const haystack = [
@@ -96,4 +124,145 @@ export function summarizeCatalogMetrics(items = []) {
     hardwareCount: hardwareSet.size,
     earthApplicationsCount,
   };
+}
+
+function escapeCsvCell(value) {
+  return `"${String(value ?? '').replace(/"/g, '""')}"`;
+}
+
+/**
+ * Builds an RFC-4180 CSV export from verified PSI investigation records for predictive modeling.
+ */
+export function buildPsiDatasetCsv(items = []) {
+  const headers = [
+    'psiId',
+    'acronym',
+    'title',
+    'category',
+    'gravityLevel',
+    'status',
+    'dataAvailable',
+    'fuelType',
+    'fuel',
+    'hardware',
+    'oxygenMinPct',
+    'oxygenPct',
+    'oxygenMaxPct',
+    'pressurePsi',
+    'flowVelocityMs',
+    'variables',
+    'sensors',
+    'seriesPointCount',
+    'earthApplications',
+    'sourceUrl',
+  ];
+
+  const rows = items.map((inv) => {
+    const cond = inv.conditions ?? {};
+    const pts = Array.isArray(inv.series)
+      ? inv.series.reduce((sum, s) => sum + (s?.samples?.length ?? 0), 0)
+      : 0;
+    return [
+      inv.psiId ?? '',
+      inv.acronym ?? '',
+      inv.title ?? '',
+      inv.category ?? '',
+      inv.gravityLevel ?? '',
+      inv.status ?? 'published',
+      inv.dataAvailable !== false,
+      inv.fuelType ?? '',
+      inv.fuel ?? '',
+      inv.hardware ?? '',
+      cond.oxygenMinPct ?? '',
+      cond.oxygenPct ?? '',
+      cond.oxygenMaxPct ?? '',
+      cond.pressurePsi ?? '',
+      cond.flowVelocity ?? '',
+      Array.isArray(inv.variables) ? inv.variables.join(' | ') : '',
+      Array.isArray(inv.sensors) ? inv.sensors.join(' | ') : '',
+      pts,
+      Array.isArray(inv.earthApplications) ? inv.earthApplications.join(' | ') : '',
+      inv.sourceUrl ?? '',
+    ];
+  });
+
+  return [headers, ...rows].map((row) => row.map(escapeCsvCell).join(',')).join('\n');
+}
+
+/**
+ * Computes transparent similarities and differences across 2-3 selected PSI investigations
+ * using strictly verified dataset attributes.
+ */
+export function summarizeInvestigationDifferences(studies = []) {
+  if (!Array.isArray(studies) || studies.length < 2) {
+    return { similarities: [], differences: [] };
+  }
+
+  const similarities = [];
+  const differences = [];
+
+  const categories = [...new Set(studies.map((s) => s.category).filter(Boolean))];
+  if (categories.length === 1) {
+    similarities.push(`Shared safety pillar: ${categories[0]}`);
+  } else if (categories.length > 1) {
+    differences.push(`Cross-pillar scope: ${categories.join(' vs ')}`);
+  }
+
+  const hwFamilies = [...new Set(studies.map((s) => getHardwareFamily(s.hardware)))];
+  if (hwFamilies.length === 1) {
+    similarities.push(`Shared testbed family: ${hwFamilies[0]}`);
+  } else {
+    differences.push(`Different testbeds: ${hwFamilies.join(' vs ')}`);
+  }
+
+  const fuelTypes = [...new Set(studies.map((s) => s.fuelType).filter(Boolean))];
+  if (fuelTypes.length === 1) {
+    similarities.push(`Same fuel phase: ${fuelTypes[0]}`);
+  } else if (fuelTypes.length > 1) {
+    differences.push(`Different fuel phases: ${fuelTypes.join(' vs ')}`);
+  }
+
+  const gravities = [...new Set(studies.map((s) => s.gravityLevel).filter(Boolean))];
+  if (gravities.length === 1) {
+    similarities.push(`Same gravity regime: ${gravities[0]}`);
+  } else if (gravities.length > 1) {
+    differences.push(`Gravity regime gap: ${gravities.join(' vs ')}`);
+  }
+
+  const o2Bounds = studies
+    .map((s) => {
+      const c = s.conditions ?? {};
+      const low = c.oxygenMinPct ?? c.oxygenPct;
+      const high = c.oxygenMaxPct ?? c.oxygenPct;
+      return low != null && high != null ? { acronym: s.acronym, low, high } : null;
+    })
+    .filter(Boolean);
+
+  if (o2Bounds.length >= 2) {
+    const minO2 = Math.min(...o2Bounds.map((b) => b.low));
+    const maxO2 = Math.max(...o2Bounds.map((b) => b.high));
+    if (minO2 === maxO2) {
+      similarities.push(`Identical reported O₂ level: ${minO2}%`);
+    } else {
+      differences.push(
+        `O₂ span ranges from ${minO2}% to ${maxO2}% (${o2Bounds.map((b) => `${b.acronym}: ${b.low === b.high ? `${b.low}%` : `${b.low}-${b.high}%`}`).join(', ')})`
+      );
+    }
+  }
+
+  const flowValues = studies.filter((s) => s.conditions?.flowVelocity != null);
+  if (flowValues.length > 0 && flowValues.length < studies.length) {
+    differences.push(
+      `Flow regime contrast: ${flowValues.map((s) => `${s.acronym} (${s.conditions.flowVelocity} m/s)`).join(', ')} vs quiescent/unreported studies`
+    );
+  }
+
+  const upcoming = studies.filter((s) => s.dataAvailable === false || s.status === 'upcoming');
+  if (upcoming.length > 0) {
+    differences.push(
+      `Pending PSI data gap: ${upcoming.map((s) => s.acronym).join(', ')} have no published experimental conditions yet`
+    );
+  }
+
+  return { similarities, differences };
 }

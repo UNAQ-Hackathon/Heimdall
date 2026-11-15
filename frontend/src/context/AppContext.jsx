@@ -123,7 +123,7 @@ export function AppProvider({ children }) {
         if (res.sessionUrl) setChatSessionUrl(res.sessionUrl);
         if (res.sessionStatus) setChatSessionStatus(res.sessionStatus);
 
-        if (res.status === 'completed' && res.answer) {
+        if ((res.status === 'completed' || res.status === 'unavailable') && res.answer) {
           setChatLoading(false);
           setChatMessages((prev) =>
             prev.map((m) =>
@@ -133,6 +133,7 @@ export function AppProvider({ children }) {
                     text: res.answer,
                     citations: res.citations,
                     usage: res.usage ?? null,
+                    isError: res.status === 'unavailable',
                     pending: false,
                   }
                 : m

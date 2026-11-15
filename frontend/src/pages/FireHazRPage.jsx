@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import FireHazrResultChart from '../components/charts/FireHazrResultChart.jsx';
 import FlameVisualization, { TEST_SUBJECT_OPTIONS } from '../components/three/FlameVisualization.jsx';
 import FlexCoverageMap from '../components/ui/FlexCoverageMap.jsx';
 import { useApp } from '../context/AppContext.jsx';
@@ -192,6 +193,53 @@ const REASONS = {
     'No sufficiently close trial with the same fuel and gas mixture.',
 };
 
+function buildFireHazrDeterministicSummary(conditions, result, isStudent = false) {
+  if (!conditions || !result) return '';
+  const o2Num = Number(conditions.o2_fraction) * 100;
+  const co2Num = Number(conditions.co2_fraction) * 100;
+  const heNum = Number(conditions.he_fraction) * 100;
+  const gases = [
+    `${o2Num.toFixed(0)}% O₂`,
+    Number(conditions.n2_fraction) > 0 ? `${(Number(conditions.n2_fraction) * 100).toFixed(0)}% N₂` : null,
+    co2Num > 0 ? `${co2Num.toFixed(0)}% CO₂` : null,
+    heNum > 0 ? `${heNum.toFixed(0)}% He` : null,
+  ]
+    .filter(Boolean)
+    .join(' / ');
+
+  if (isStudent) {
+    if (!result.aceptado) {
+      return `In microgravity (0g), FireHazR only predicts inside real NASA ISS droplet tests. Your mix (${gases} at ${conditions.pressure_mmhg} mmHg) is outside the measured FLEX trials (${REASONS[result.motivo] ?? result.motivo}), so the model refuses to guess.`;
+    }
+    const oxygenCompare =
+      o2Num > 22
+        ? `${o2Num.toFixed(0)}% O₂ is higher than Earth air (21%), giving flames more oxygen to sustain burning.`
+        : o2Num < 20
+          ? `${o2Num.toFixed(0)}% O₂ is lower than Earth air (21%), making sustained burning harder.`
+          : `This ${o2Num.toFixed(0)}% O₂ mix is close to Earth cabin air (21%).`;
+    const diluentExplain =
+      co2Num > 0 || heNum > 0
+        ? ` Inert suppressants (${[co2Num > 0 ? `${co2Num.toFixed(0)}% CO₂` : null, heNum > 0 ? `${heNum.toFixed(0)}% He` : null].filter(Boolean).join(' + ')}) dilute oxygen and absorb heat.`
+        : '';
+    return `A ${conditions.diameter_mm} mm ${conditions.fuel} droplet in ${gases} is estimated to burn for ${result.duracion_estimada_s.toFixed(2)} s in microgravity (based on ${result.cobertura_mezcla ?? 0} real ISS FLEX trials). ${oxygenCompare}${diluentExplain}`;
+  }
+
+  if (!result.aceptado) {
+    return `${conditions.fuel} droplet (${conditions.diameter_mm} mm) at ${conditions.pressure_mmhg} mmHg (${gases}) fell outside supported FLEX v3 bounds (${REASONS[result.motivo] ?? result.motivo}).`;
+  }
+
+  const topNeighbor = Array.isArray(result.vecinos) && result.vecinos.length > 0 ? result.vecinos[0] : null;
+  const distPart =
+    result.distancia_soporte != null && result.limite_soporte != null
+      ? `Support distance ${result.distancia_soporte.toFixed(3)} ≤ ${result.limite_soporte.toFixed(3)} limit across ${result.cobertura_mezcla ?? 0} matching trials.`
+      : '';
+  const neighborPart = topNeighbor
+    ? ` Closest trial: #${topNeighbor.prueba} (${topNeighbor.observado_s} s, weight ${((topNeighbor.peso ?? 0) * 100).toFixed(1)}%).`
+    : '';
+
+  return `${conditions.fuel} droplet (${conditions.diameter_mm} mm) at ${conditions.pressure_mmhg} mmHg in ${gases} estimates ${result.duracion_estimada_s.toFixed(4)} s recorded burn duration. ${distPart}${neighborPart}`.trim();
+}
+
 // Exact observed FLEX v3 mixture envelopes from modelo.json (soporte)
 const FLEX_ENVELOPES = {
   'Methanol | O₂/N₂': { pressure_mmhg: [534.3, 774.1], o2_fraction: [0.12, 0.34], n2_fraction: [0.66, 0.88], co2_fraction: [0, 0], he_fraction: [0, 0], diameter_mm: [1.61, 3.97] },
@@ -311,8 +359,8 @@ function MeterSlider({
 }
 
 export default function FireHazRPage({ compact = false, embedded = false }) {
-  const { scenario, focusPlanet } = useApp();
-  const isStudent = false;
+  const { scenario, focusPlanet, audience } = useApp();
+  const isStudent = audience === 'Student';
   const [form, setForm] = useState(EXAMPLE);
   const [mixtureMode, setMixtureMode] = useState(() => inferMixture(EXAMPLE));
   const [metadata, setMetadata] = useState(null);
@@ -439,12 +487,12 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
           title: isHighDemand
             ? 'Gemini temporarily busy (503)'
             : isQuota
-              ? 'Gemini quota / token limit (429)'
+              ? 'Gemini rate / quota limit (429)'
               : 'AI interpretation unavailable',
           detail: isHighDemand
-            ? 'Google AI Studio is experiencing a temporary spike in demand. Your FireHazR result above is valid — try again in a few seconds.'
+            ? `Google AI Studio is experiencing high demand (${rawMsg}). Your FireHazR result above is valid.`
             : isQuota
-              ? 'The API token budget or rate limit was reached. No extra tokens were spent.'
+              ? `${rawMsg} Wait a few seconds if you hit Google per-minute RPM/TPM limits; your deterministic readout above stays active.`
               : rawMsg,
         });
       })
@@ -476,9 +524,6 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
     try {
       const resData = await api.predictFirehazr(conditions);
       setResponse(resData);
-      if (resData?.result?.aceptado) {
-        runGeminiInterpretation(conditions, resData.result);
-      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -1395,31 +1440,81 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
                 </div>
               )}
 
-              {/* Gemini AI Technical Interpretation */}
+              <FireHazrResultChart result={result} conditions={submittedConditions} />
+
+              {/* Deterministic Readout + On-Demand Gemini AI Technical Interpretation */}
               <div className="firehazr-gemini-box">
                 <div className="firehazr-gemini-box__head">
-                  <strong>Technical Interpretation</strong>
-                  <span className="firehazr-gemini-badge">
-                    Powered by Gemini
-                    {interpretation?.usage?.totalTokenCount
-                      ? ` · ${interpretation.usage.totalTokenCount} tok`
-                      : ''}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <strong>Technical Interpretation</strong>
+                    <span
+                      style={{
+                        fontSize: '10px',
+                        fontFamily: 'var(--font-mono)',
+                        padding: '2px 7px',
+                        borderRadius: '9999px',
+                        background: 'var(--audience-tint)',
+                        border: '1px solid var(--audience-border)',
+                        color: 'var(--audience-accent)',
+                      }}
+                    >
+                      {isStudent ? 'Student Guided' : 'Engineer Parametric'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    {result.aceptado && !interpretation?.interpretation && !interpreting && (
+                      <button
+                        type="button"
+                        onClick={() => runGeminiInterpretation(submittedConditions, result)}
+                        style={{
+                          padding: '4px 10px',
+                          borderRadius: '6px',
+                          border: '1px solid var(--audience-border)',
+                          background: 'var(--audience-tint)',
+                          color: 'var(--audience-accent)',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {interpretError ? '↻ Retry Gemini AI' : '✦ Explain with Gemini AI'}
+                      </button>
+                    )}
+                    <span className="firehazr-gemini-badge">
+                      {interpretation?.usage?.totalTokenCount
+                        ? `Gemini · ${interpretation.usage.totalTokenCount} tok`
+                        : '0 tokens used'}
+                    </span>
+                  </div>
                 </div>
+                <p style={{ margin: '0 0 8px', color: '#e2e8f0', fontSize: '12.5px', lineHeight: 1.5 }}>
+                  {buildFireHazrDeterministicSummary(submittedConditions, result, isStudent)}
+                </p>
                 {!result.aceptado && (
-                  <p style={{ margin: 0, color: '#94a3b8', fontSize: '12px' }}>
-                    AI analysis skipped — conditions are outside FLEX experimental bounds (0 tokens used).
+                  <p style={{ margin: 0, color: '#94a3b8', fontSize: '11.5px' }}>
+                    AI explanation disabled — conditions are outside FLEX experimental bounds.
                   </p>
                 )}
                 {result.aceptado && interpreting && (
-                  <p style={{ margin: 0, color: '#94a3b8', fontStyle: 'italic' }}>
+                  <p style={{ margin: 0, color: '#94a3b8', fontStyle: 'italic', fontSize: '12px' }}>
                     Analyzing test parameters &amp; NASA PSI context with Gemini…
                   </p>
                 )}
                 {result.aceptado && !interpreting && interpretation?.interpretation && (
-                  <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-                    {interpretation.interpretation}
-                  </p>
+                  <div
+                    style={{
+                      marginTop: '6px',
+                      paddingTop: '8px',
+                      borderTop: '1px solid rgba(148, 163, 184, 0.18)',
+                    }}
+                  >
+                    <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#7dd3fc', marginBottom: '4px' }}>
+                      GEMINI AI BRIEF
+                    </div>
+                    <p style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: '12.5px', lineHeight: 1.5 }}>
+                      {interpretation.interpretation}
+                    </p>
+                  </div>
                 )}
                 {result.aceptado && !interpreting && !interpretation && interpretError && (
                   <div
@@ -1427,7 +1522,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
                     style={{
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: '8px',
+                      gap: '6px',
                       padding: '10px 12px',
                       borderRadius: '8px',
                       background: interpretError.isHighDemand
@@ -1438,33 +1533,15 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
                         : '1px solid rgba(248, 113, 113, 0.35)',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                      <strong
-                        style={{
-                          fontSize: '12px',
-                          color: interpretError.isHighDemand ? '#fde68a' : '#fca5a5',
-                        }}
-                      >
-                        {interpretError.title}
-                      </strong>
-                      <button
-                        type="button"
-                        onClick={() => runGeminiInterpretation(submittedConditions, result)}
-                        style={{
-                          padding: '4px 9px',
-                          borderRadius: '6px',
-                          border: '1px solid rgba(148, 163, 184, 0.35)',
-                          background: 'rgba(15, 23, 42, 0.75)',
-                          color: '#e2e8f0',
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        ↻ Retry AI
-                      </button>
-                    </div>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#cbd5e1', lineHeight: 1.45 }}>
+                    <strong
+                      style={{
+                        fontSize: '12px',
+                        color: interpretError.isHighDemand ? '#fde68a' : '#fca5a5',
+                      }}
+                    >
+                      {interpretError.title}
+                    </strong>
+                    <p style={{ margin: 0, fontSize: '11.5px', color: '#cbd5e1', lineHeight: 1.45 }}>
                       {interpretError.detail}
                     </p>
                   </div>

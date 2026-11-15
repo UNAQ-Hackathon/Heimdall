@@ -5,6 +5,7 @@ import { api } from '../../services/api.js';
 import {
   initialPredictionState, predictionReducer, parsePredictionConditions, PREDICTION_REASONS,
 } from '../../services/firehazr-prediction.js';
+import FireHazrResultChart from '../charts/FireHazrResultChart.jsx';
 import '../../styles/firehazr-predictor.css';
 
 const FIELDS = [
@@ -113,6 +114,7 @@ export default function FireHazrPredictor() {
             </ol>
             {result.aceptado && <div className="flex-predictor__estimate"><span>Estimated recorded burn duration</span><strong>{result.duracion_estimada_s.toFixed(4)} <small>s</small></strong></div>}
             {!result.aceptado && <h3>No supported estimate</h3>}
+            <FireHazrResultChart result={result} conditions={form} />
             {result.vecinos?.length > 0 && (
               <details>
                 <summary>Neighbor weights ({result.vecinos.length})</summary>

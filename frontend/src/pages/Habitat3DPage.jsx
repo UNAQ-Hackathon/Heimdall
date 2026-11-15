@@ -56,7 +56,7 @@ export default function Habitat3DPage() {
         <div>
           <p className="planet-preview__eyebrow"><HeimdallLogo /> / EXPLORER</p>
           <h1>Planetary explorer</h1>
-          <p className="planet-preview__muted">Navigation prototype · Illustrative models, not physical scale.</p>
+          <p className="planet-preview__muted">Low-gravity exploration destinations and pressurized crew environments.</p>
         </div>
         <label className="planet-preview__selector">
           Model

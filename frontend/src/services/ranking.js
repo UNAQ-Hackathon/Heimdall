@@ -66,21 +66,29 @@ export function enrichInvestigationForUI(rawInv, rankItem = null) {
       inv.slug ?? inv.id ?? inv.psiId ?? inv.acronym ?? inv.title ?? inv._id
     ) || 'study';
 
+  const isUpcoming = inv.dataAvailable === false || inv.status === 'upcoming';
   const cond = inv.conditions ?? {};
   const minO2 = cond.oxygenMinPct ?? cond.oxygenPct;
   const maxO2 = cond.oxygenMaxPct ?? cond.oxygenPct;
-  const oxygenRange =
-    minO2 != null && maxO2 != null && minO2 !== maxO2
+  const oxygenRange = isUpcoming
+    ? 'No PSI data yet'
+    : minO2 != null && maxO2 != null && minO2 !== maxO2
       ? `${minO2}% → ${maxO2}% O₂ (nominal ${cond.oxygenPct ?? maxO2}%)`
       : cond.oxygenPct != null
         ? `${cond.oxygenPct}% O₂`
         : 'null (unverified)';
 
-  const ambientPressure =
-    cond.pressurePsi != null ? `${cond.pressurePsi} psi` : 'null (unverified)';
+  const ambientPressure = isUpcoming
+    ? 'No PSI data yet'
+    : cond.pressurePsi != null
+      ? `${cond.pressurePsi} psi`
+      : 'null (unverified)';
 
-  const flowVelocityLabel =
-    cond.flowVelocity != null ? `${cond.flowVelocity} m/s` : 'null (unverified / quiescent)';
+  const flowVelocityLabel = isUpcoming
+    ? 'No PSI data yet'
+    : cond.flowVelocity != null
+      ? `${cond.flowVelocity} m/s`
+      : 'null (unverified / quiescent)';
 
   const score = rankItem?.score ?? null;
   const matchScore = score != null ? Math.round(score * 100) : null;
@@ -89,6 +97,8 @@ export function enrichInvestigationForUI(rawInv, rankItem = null) {
   return {
     ...inv,
     id: slug,
+    status: inv.status ?? (isUpcoming ? 'upcoming' : 'published'),
+    dataAvailable: !isUpcoming,
     name: inv.acronym ?? inv.title,
     facility: inv.hardware ?? 'NASA ISS Facility',
     subtitle: inv.title,
@@ -97,11 +107,13 @@ export function enrichInvestigationForUI(rawInv, rankItem = null) {
     fuelDetail: inv.fuel ?? 'null',
     oxygenRange,
     ambientPressure,
-    ambientLabel: cond.ambient ?? 'ISS microgravity testbed',
+    ambientLabel:
+      cond.ambient ??
+      (isUpcoming ? 'Upcoming lunar payload · No PSI conditions yet' : 'ISS microgravity testbed'),
     flowVelocity: flowVelocityLabel,
     criticalBehavior: inv.objective,
-    verified: true,
-    verifiedLabel: 'NASA PSI ARCHIVE RECORD',
+    verified: !isUpcoming,
+    verifiedLabel: isUpcoming ? 'UPCOMING · NO PSI DATA YET' : 'NASA PSI ARCHIVE RECORD',
     archiveCode: inv.psiId ?? slug.toUpperCase(),
     vehicle: inv.hardware ?? 'ISS',
     score,
@@ -117,12 +129,13 @@ export function enrichInvestigationForUI(rawInv, rankItem = null) {
         inv.fuel ?? 'N/A'
       } | O₂: ${oxygenRange} | P: ${ambientPressure} | Flow: ${flowVelocityLabel}]`,
     },
-    aiInsight:
-      inv.tags?.includes('partial-gravity-proxy')
+    aiInsight: isUpcoming
+      ? `${inv.acronym} (${inv.title}) is a planned lunar-gravity investigation with no experimental PSI dataset published yet.`
+      : inv.acronym === 'E-FIELD Flames'
         ? 'E-FIELD Flames uses electric-field ion-driven convection in microgravity as an experimental body-force proxy for partial gravity (lunar/Martian buoyancy).'
         : inv.acronym === 'CFI-G'
           ? 'CFI-G tested the highest oxygen concentration in the PSI combustion archive (up to 85% O₂ injected from the spherical burner).'
-          : `${inv.acronym} provides empirical microgravity bounds in ${inv.hardware ?? 'ISS facility'}.`,
+          : `${inv.acronym} provides empirical ${inv.gravityLevel ?? 'microgravity'} bounds in ${inv.hardware ?? 'ISS facility'}.`,
     synthesis: {
       missionObjective: inv.objective ?? 'Not available in PSI record.',
       fuelAndGeometry: inv.fuel ?? 'Not available in PSI record.',
@@ -227,4 +240,72 @@ export function checkConditionCoverage(
     detail: reasons.join('; '),
     envelope: { minO2, maxO2, minP, maxP, maxFlow },
   };
+}
+
+/**
+ * Generates an honest Markdown mission fire-safety brief from the active scenario,
+ * factor weights, and top ranked PSI investigations without fabricating metrics.
+ */
+export function buildMissionBriefMarkdown({
+  scenario,
+  rankedItems = [],
+  weights = {},
+  audience = 'Engineer',
+  category = 'all',
+}) {
+  const label = scenario?.label ?? scenario?.id ?? 'Custom Scenario';
+  const lines = [
+    `# Heimdall Mission Fire Safety Brief — ${label}`,
+    '',
+    `- **Audience mode:** ${audience}`,
+    `- **Category filter:** ${category}`,
+    `- **Target environment:** Gravity ${scenario?.gravity ?? 'N/A'} | O₂ ${scenario?.oxygenPct ?? 'N/A'}% | Pressure ${scenario?.pressurePsi ?? 'N/A'} psi | Flow ${scenario?.flow ?? 'N/A'} m/s`,
+  ];
+
+  if (scenario?.partialGravity) {
+    lines.push(
+      '- **Partial-gravity note:** NASA PSI currently contains no direct lunar (0.165g) or Martian (0.38g) datasets (LUCI & FM2 upcoming). Risk is bounded between 0g microgravity and 1g baselines.'
+    );
+  }
+
+  const weightEntries = Object.entries(weights);
+  if (weightEntries.length > 0) {
+    lines.push(
+      `- **Ranking weights:** ${weightEntries
+        .map(([k, v]) => `${FACTOR_LABELS[k] ?? k}: ${v}`)
+        .join(' · ')}`
+    );
+  }
+
+  lines.push('', '## Top Ranked NASA PSI Investigations', '');
+
+  const topItems = rankedItems.slice(0, 5);
+  if (!topItems.length) {
+    lines.push('No investigations matched the active filters.');
+  } else {
+    topItems.forEach((item, idx) => {
+      const scorePct = item.matchScore != null ? `${item.matchScore}%` : 'N/A';
+      const summary =
+        audience === 'Student'
+          ? item.aiSummary?.student ?? item.objective
+          : item.aiSummary?.engineer ?? item.objective;
+      const breakdownStr = Array.isArray(item.breakdown) && item.breakdown.length
+        ? item.breakdown
+            .map((b) => `${FACTOR_LABELS[b.factor] ?? b.factor}: +${(b.contribution * 100).toFixed(0)}%`)
+            .join(', ')
+        : 'N/A';
+
+      lines.push(
+        `### ${idx + 1}. ${item.acronym ?? item.name} (${item.psiId ?? item.id}) — Match ${scorePct}`,
+        `- **Category / Hardware:** ${item.category ?? 'N/A'} · ${item.hardware ?? 'N/A'}`,
+        `- **Test Conditions:** O₂ ${item.oxygenRange ?? 'N/A'} · Pressure ${item.ambientPressure ?? 'N/A'} · Gravity ${item.gravityLevel ?? 'N/A'}`,
+        `- **Score Breakdown:** ${breakdownStr}`,
+        `- **Brief:** ${summary ?? 'No summary available.'}`,
+        item.sourceUrl ? `- **PSI Source:** ${item.sourceUrl}` : null,
+        ''
+      );
+    });
+  }
+
+  return lines.filter((line) => line !== null).join('\n');
 }

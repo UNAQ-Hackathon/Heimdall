@@ -11,8 +11,13 @@ export const FACTOR_LABELS = {
   documentation: 'Experimental Documentation',
 };
 
+function isNoDataPlaceholder(inv) {
+  return inv?.dataAvailable === false || inv?.status === 'upcoming';
+}
+
 export const FACTORS = {
   atmosphereMatch: (inv, s) => {
+    if (isNoDataPlaceholder(inv)) return 0;
     if (inv.conditions?.oxygenPct == null || s?.oxygenPct == null) return 0;
     const minO2 = inv.conditions?.oxygenMinPct ?? inv.conditions.oxygenPct;
     const maxO2 = inv.conditions?.oxygenMaxPct ?? inv.conditions.oxygenPct;
@@ -41,6 +46,7 @@ export const FACTORS = {
   },
 
   gravityMatch: (inv, s) => {
+    if (isNoDataPlaceholder(inv)) return 0;
     const targetG = s?.gravity ?? 'microgravity';
     if (inv.gravityLevel === targetG) return 1;
     const isPartialG = targetG === 'lunar' || targetG === 'martian';
@@ -53,6 +59,7 @@ export const FACTORS = {
   },
 
   dataRichness: (inv) => {
+    if (isNoDataPlaceholder(inv)) return 0;
     const pts = inv.series?.reduce((n, s) => n + (s.samples?.length ?? 0), 0) ?? 0;
     if (pts > 0) return Number(Math.min(1, pts / 500).toFixed(4));
     const condFields = [

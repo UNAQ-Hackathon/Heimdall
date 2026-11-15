@@ -3,9 +3,13 @@ import assert from 'node:assert/strict';
 
 import processedInvestigations from '../../data/processed/psi-investigations.json' with { type: 'json' };
 import {
+  buildPsiDatasetCsv,
+  CATALOG_DATA_FILTERS,
   CATALOG_HARDWARE_FILTERS,
   filterPsiInvestigations,
+  getHardwareFamily,
   summarizeCatalogMetrics,
+  summarizeInvestigationDifferences,
 } from '../src/services/psi-catalog.js';
 
 test('filterPsiInvestigations filters by pillar, fuelType, hardware, and query', () => {
@@ -34,9 +38,47 @@ test('every hardware filter chip matches at least one verified PSI study', () =>
 
 test('summarizeCatalogMetrics reports exact observed counts and O2 bounds without inventing values', () => {
   const summary = summarizeCatalogMetrics(processedInvestigations);
-  assert.equal(summary.count, 20);
+  assert.equal(summary.count, 23);
   assert.equal(summary.oxygenMinPct, 13.5);
   assert.equal(summary.oxygenMaxPct, 85);
   assert.ok(summary.hardwareCount >= 5);
-  assert.ok(summary.earthApplicationsCount >= 20);
+  assert.ok(summary.earthApplicationsCount >= 23);
+});
+
+test('dataStatus filters isolate FLEX empirical series and upcoming LUCI/FM2 records cleanly', () => {
+  assert.ok(CATALOG_DATA_FILTERS.length === 4);
+
+  const seriesOnly = filterPsiInvestigations(processedInvestigations, { dataStatus: 'series' });
+  assert.deepEqual(
+    seriesOnly.map((item) => item.acronym),
+    ['FLEX']
+  );
+
+  const upcomingOnly = filterPsiInvestigations(processedInvestigations, { dataStatus: 'upcoming' });
+  assert.deepEqual(
+    upcomingOnly.map((item) => item.acronym),
+    ['LUCI', 'FM2']
+  );
+
+  const publishedOnly = filterPsiInvestigations(processedInvestigations, { dataStatus: 'published' });
+  assert.equal(publishedOnly.length, 21);
+});
+
+test('buildPsiDatasetCsv and summarizeInvestigationDifferences extract verified PSI attributes', () => {
+  const flex = processedInvestigations.find((i) => i.acronym === 'FLEX');
+  const cfiG = processedInvestigations.find((i) => i.acronym === 'CFI-G');
+  const luci = processedInvestigations.find((i) => i.acronym === 'LUCI');
+
+  const csv = buildPsiDatasetCsv([flex, luci]);
+  const lines = csv.split('\n');
+  assert.equal(lines.length, 3);
+  assert.ok(lines[0].includes('seriesPointCount'));
+  assert.ok(lines[1].includes('"258"'));
+  assert.ok(lines[2].includes('"false"'));
+
+  assert.equal(getHardwareFamily(cfiG.hardware), 'CIR / ACME (Modular Gas Rack)');
+
+  const digest = summarizeInvestigationDifferences([flex, cfiG, luci]);
+  assert.ok(digest.differences.some((d) => d.includes('Different fuel phases')));
+  assert.ok(digest.differences.some((d) => d.includes('LUCI')));
 });

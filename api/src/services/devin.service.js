@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
 import env from '../config/env.js';
 import HttpError from '../utils/http-error.js';
 
@@ -38,68 +40,71 @@ export function getGeminiTokenBudget() {
   };
 }
 
-export const PSI_FALLBACK_DOCS = [
-  {
-    _id: 'saffire-iii',
-    studyId: 'saffire-iii',
-    acronym: 'Saffire-III',
-    title: 'Spacecraft Fire Experiment - III',
-    objective:
-      'Characterize large-scale concurrent flame spread rate and steady burning limits over a 0.4 m x 1.0 m cotton-fiberglass panel at forced ventilation flow speeds inside Cygnus OA-5.',
-    aiSummary:
-      'Fuel: SIBAL composite fabric sheet (0.4 x 1.0 m). Hardware: Saffire flow duct in Cygnus OA-5. Conditions: O2 21.0%, Pressure 14.7 psi, Flow 0.20 to 0.30 m/s, microgravity.',
-  },
-  {
-    _id: 'bass-ii',
-    studyId: 'bass-ii',
-    acronym: 'BASS-II',
-    title: 'Burning and Suppression of Solids - II',
-    objective:
-      'Investigate solid-fuel flammability limits, flame spread rates, and radiative/low-flow quenching in microgravity inside the MSG with the SPICE flow duct.',
-    aiSummary:
-      'Fuel: Solid PMMA slabs/rods, SIBAL cotton-fiberglass, and Nomex fabrics. Hardware: MSG with SPICE flow duct. Conditions: O2 13.5% -> 30.0% (nominal 21%), Pressure 14.7 psi, Forced flow 0.0 to 0.50 m/s, microgravity.',
-  },
-  {
-    _id: 'cfi-g',
-    studyId: 'cfi-g',
-    acronym: 'CFI-G',
-    title: 'ACME: Cool Flames Investigation with Gases',
-    objective:
-      'Investigate non-premixed spherical gaseous cool flames in microgravity inside CIR/ACME, testing up to 85% O2 supplied from the porous spherical burner.',
-    aiSummary:
-      'Fuel: Gas (n-butane and methane mixtures from porous spherical burner). Hardware: CIR/ACME (one of 6 ACME gas flame experiments). Conditions: O2 up to 85% from burner, Pressure 14.7 psi, microgravity.',
-  },
-  {
-    _id: 'e-field-flames',
-    studyId: 'e-field-flames',
-    acronym: 'E-FIELD Flames',
-    title: 'ACME: Electric-Field Effects on Laminar Diffusion Flames',
-    objective:
-      'Apply high-voltage electric fields to laminar gas diffusion flames in CIR/ACME so ion-driven wind acts as an adjustable body-force proxy for partial gravity (lunar/Martian convection).',
-    aiSummary:
-      'Fuel: Gas (methane and ethylene coflow/jet diffusion flames). Hardware: CIR/ACME. Conditions: O2 21.0%, Pressure 14.7 psi, Flow 0.15 m/s, microgravity with electric-field partial-gravity proxy.',
-  },
-  {
-    _id: 'flex-2',
-    studyId: 'flex-2',
-    acronym: 'FLEX-2',
-    title: 'Flame Extinguishment Experiment - 2',
-    objective:
-      'Investigate spherical liquid droplet combustion dynamics, radiative extinction, and second-stage cool-flame transitions inside the Multi-user Droplet Combustion Apparatus (MDCA) in the CIR.',
-    aiSummary:
-      'Fuel: Liquid droplets (n-heptane, n-octane, n-decane, methanol, 1.5 - 4.0 mm). Hardware: CIR/MDCA. Conditions: O2 15.0% -> 30.0%, Pressure 14.7 psi (0.5 - 3.0 atm), microgravity.',
-  },
-  {
-    _id: 'same',
-    studyId: 'same',
-    acronym: 'SAME',
-    title: 'Smoke Aerosol Measurement Experiment',
-    objective:
-      'Characterization of smoke particle size distributions from overheated spacecraft materials in microgravity (MSG).',
-    aiSummary:
-      'Fuel: Solid pyrolysis (Kapton wire insulation, Teflon, silicone rubber, cellulose). Hardware: MSG (instrument also used by DAFT/DAFT-2 to measure cabin dust). Conditions: O2 21.0%, Pressure 14.7 psi, Flow 0.05 m/s, microgravity.',
-  },
-];
+function toSlugKey(value) {
+  return String(value ?? '')
+    .toLowerCase()
+    .replace(/^psi-/, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
+function buildFallbackSummary(doc) {
+  if (doc.dataAvailable === false || doc.status === 'upcoming') {
+    return `Status: ${doc.status ?? 'upcoming'} (no PSI experimental data published yet). Gravity: ${doc.gravityLevel ?? 'lunar-partial'}.`;
+  }
+  const c = doc.conditions ?? {};
+  const parts = [];
+  if (doc.fuel) parts.push(`Fuel: ${doc.fuel}.`);
+  if (doc.hardware) parts.push(`Hardware: ${doc.hardware}.`);
+  const condParts = [];
+  if (c.oxygenPct != null) {
+    const range =
+      c.oxygenMinPct != null && c.oxygenMaxPct != null && c.oxygenMinPct !== c.oxygenMaxPct
+        ? `${c.oxygenMinPct}%-${c.oxygenMaxPct}% (nominal ${c.oxygenPct}%)`
+        : `${c.oxygenPct}%`;
+    condParts.push(`O2 ${range}`);
+  }
+  if (c.pressurePsi != null) condParts.push(`Pressure ${c.pressurePsi} psi`);
+  if (c.flowVelocity != null) condParts.push(`Flow ${c.flowVelocity} m/s`);
+  if (doc.gravityLevel) condParts.push(doc.gravityLevel);
+  if (condParts.length) parts.push(`Conditions: ${condParts.join(', ')}.`);
+  return parts.join(' ');
+}
+
+function loadFallbackDocs() {
+  const candidates = [
+    path.resolve(import.meta.dirname, '../../../data/processed/psi-investigations.json'),
+    path.resolve(import.meta.dirname, '../../data/processed/psi-investigations.json'),
+  ];
+  const filePath = candidates.find((candidate) => existsSync(candidate));
+  if (!filePath) return [];
+  try {
+    const processed = JSON.parse(readFileSync(filePath, 'utf8'));
+    return processed.map((doc) => {
+      const slug = toSlugKey(doc.psiId ?? doc.acronym ?? doc.title);
+      return {
+        _id: slug,
+        studyId: slug,
+        psiId: doc.psiId,
+        acronym: doc.acronym,
+        title: doc.title,
+        objective: doc.objective,
+        fuel: doc.fuel,
+        hardware: doc.hardware,
+        category: doc.category,
+        gravityLevel: doc.gravityLevel,
+        status: doc.status ?? 'published',
+        dataAvailable: doc.dataAvailable !== false,
+        conditions: doc.conditions ?? {},
+        aiSummary: buildFallbackSummary(doc),
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+export const PSI_FALLBACK_DOCS = loadFallbackDocs();
 
 const isDevinSessionsApi = () => apiBase.includes('api.devin.ai');
 
@@ -454,9 +459,77 @@ const SUMMARY_SYSTEM = [
   'Return: objective, fuel, test conditions (O2 %, pressure, gravity), variables, sensors, and key findings.',
 ].join(' ');
 
-export async function summarizeInvestigation(investigation) {
+function hasAiProviderConfigured() {
+  return Boolean(gemini.apiKey || apiKey);
+}
+
+function buildStructuredOfflineBrief(inv, audience = 'Engineer') {
+  if (!inv) return 'No PSI investigation metadata available.';
+  const isUpcoming = inv.dataAvailable === false || inv.status === 'upcoming';
+  if (isUpcoming) {
+    return `${inv.acronym ?? inv.title} is an upcoming (${inv.gravityLevel ?? 'lunar-partial'}) mission placeholder with NO PSI experimental data published yet. Planned objective: ${inv.objective ?? 'Not reported.'}`;
+  }
+  const c = inv.conditions ?? {};
+  const o2 =
+    c.oxygenMinPct != null && c.oxygenMaxPct != null && c.oxygenMinPct !== c.oxygenMaxPct
+      ? `${c.oxygenMinPct}%-${c.oxygenMaxPct}% (nominal ${c.oxygenPct ?? c.oxygenMaxPct}%)`
+      : c.oxygenPct != null
+        ? `${c.oxygenPct}%`
+        : 'not reported';
+  const pressure = c.pressurePsi != null ? `${c.pressurePsi} psi` : 'not reported';
+  const flow = c.flowVelocity != null ? `${c.flowVelocity} m/s` : 'quiescent / not reported';
+
+  if (audience === 'Student') {
+    const earthNote = inv.earthApplications?.length
+      ? ` On Earth, this informs: ${inv.earthApplications[0]}.`
+      : '';
+    return `${inv.acronym} (${inv.title}) studies ${inv.fuel ?? 'spacecraft fuels'} in ${inv.gravityLevel ?? 'microgravity'} (${o2} O2, ${pressure}). Objective: ${inv.objective ?? 'Not reported.'}${earthNote}`;
+  }
+
+  return [
+    `${inv.acronym} [${inv.psiId ?? 'PSI'}] — ${inv.title}.`,
+    `Hardware: ${inv.hardware ?? 'Not reported'} | Fuel: ${inv.fuel ?? 'Not reported'}.`,
+    `Verified conditions: O2 ${o2}, Pressure ${pressure}, Flow ${flow}, Gravity ${inv.gravityLevel ?? 'microgravity'}.`,
+    `Variables: ${inv.variables?.length ? inv.variables.join(', ') : 'Not reported'}.`,
+    `Sensors: ${inv.sensors?.length ? inv.sensors.join(', ') : 'Not reported'}.`,
+  ].join(' ');
+}
+
+function selectRelevantFallbackDocs(docs, question, limit = 3) {
+  const tokens = String(question ?? '')
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((t) => t.length >= 2);
+  if (!tokens.length) return docs.slice(0, limit);
+
+  const scored = docs.map((d) => {
+    const hay = `${d.acronym ?? ''} ${d.title ?? ''} ${d.objective ?? ''} ${d.fuel ?? ''} ${d.hardware ?? ''} ${d.aiSummary ?? ''}`.toLowerCase();
+    const hits = tokens.reduce((acc, tok) => acc + (hay.includes(tok) ? 1 : 0), 0);
+    return { d, hits };
+  });
+  const matched = scored.filter((item) => item.hits > 0).sort((a, b) => b.hits - a.hits);
+  return (matched.length ? matched : scored).slice(0, limit).map((item) => item.d);
+}
+
+export async function summarizeInvestigation(investigation, { audience = 'Engineer' } = {}) {
+  if (!hasAiProviderConfigured()) {
+    return {
+      summary: buildStructuredOfflineBrief(investigation, audience),
+      unavailable: true,
+      status: 'unavailable',
+      reason: 'LLM key not configured offline; showing verified PSI record brief.',
+      sessionId: null,
+      sessionUrl: null,
+      provider: 'offline',
+      model: null,
+    };
+  }
+  const audienceInstruction =
+    audience === 'Student'
+      ? 'Audience: Student — explain clearly in plain language while preserving all exact PSI numbers.'
+      : 'Audience: Aerospace Fire Safety Engineer — highlight O2%, pressure, flow regime, variables, and sensors.';
   const res = await chat([
-    { role: 'system', content: SUMMARY_SYSTEM },
+    { role: 'system', content: `${SUMMARY_SYSTEM} ${audienceInstruction}` },
     { role: 'user', content: JSON.stringify(investigation, null, 2) },
   ]);
   return {
@@ -464,7 +537,8 @@ export async function summarizeInvestigation(investigation) {
     status: res.status,
     sessionId: res.sessionId,
     sessionUrl: res.sessionUrl,
-    model,
+    provider: res.provider ?? (gemini.apiKey ? 'gemini' : 'devin'),
+    model: res.model ?? model,
   };
 }
 
@@ -481,6 +555,37 @@ export async function answerQuestion(
   { sessionId, audience = 'Engineer', scenario = null, mongoContext = null } = {}
 ) {
   const activeDocs = contextDocs.length ? contextDocs : PSI_FALLBACK_DOCS;
+  if (!hasAiProviderConfigured()) {
+    const matchedDocs = selectRelevantFallbackDocs(activeDocs, question, 3);
+    const excerpts = matchedDocs
+      .map(
+        (d) =>
+          `• ${d.acronym ?? d.title} (${d.psiId ?? d.studyId}): ${d.aiSummary || d.objective || 'Verified PSI record.'}`
+      )
+      .join('\n');
+    return {
+      answer: [
+        `[Offline Verified PSI Excerpts — LLM key unavailable]`,
+        scenario
+          ? `Active scenario: ${scenario.label ?? scenario.id} (${scenario.oxygenPct ?? 21}% O2, ${scenario.pressurePsi ?? 14.7} psi).`
+          : null,
+        excerpts,
+      ]
+        .filter(Boolean)
+        .join('\n'),
+      status: 'unavailable',
+      unavailable: true,
+      sessionId: null,
+      sessionUrl: null,
+      sessionStatus: 'unavailable',
+      baselineCount: 0,
+      citations: extractCitations(matchedDocs, `${question} ${excerpts}`),
+      model: null,
+      provider: 'offline',
+      usage: null,
+      tokenBudget: null,
+    };
+  }
   const context = activeDocs
     .map(
       (d, i) =>
@@ -539,6 +644,17 @@ export async function answerQuestion(
 }
 
 export async function interpretFirehazrResult({ conditions, result, study = null }) {
+  if (!hasAiProviderConfigured()) {
+    return {
+      interpretation: null,
+      unavailable: true,
+      reason: 'AI interpretation unavailable offline (no GEMINI_API_KEY or DEVIN_API_KEY configured).',
+      model: null,
+      provider: 'offline',
+      usage: null,
+      tokenBudget: null,
+    };
+  }
   const system = [
     'You are a NASA spacecraft fire safety specialist explaining a FireHazR (KNN FLEX v3) droplet-burn test result.',
     'Write two short, clear sections in plain text (no markdown headers needed, use **bold** sparingly):',

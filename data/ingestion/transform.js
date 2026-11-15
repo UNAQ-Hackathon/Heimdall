@@ -5,8 +5,9 @@
  * Keeps strict provenance: never invents numbers; unverified values remain null.
  */
 const VALID_CATEGORIES = new Set(['prevention', 'detection', 'suppression']);
-const VALID_GRAVITY = new Set(['microgravity', 'lunar', 'martian', '1g', 'unknown']);
+const VALID_GRAVITY = new Set(['microgravity', 'lunar', 'lunar-partial', 'martian', '1g', 'unknown']);
 const VALID_FUEL_TYPES = new Set(['solid', 'gas', 'droplet', 'aerosol']);
+const VALID_STATUS = new Set(['published', 'upcoming']);
 
 function toNullableNumber(val) {
   if (val === null || val === undefined || val === '') return null;
@@ -19,6 +20,8 @@ export function transformInvestigation(raw) {
   const category = VALID_CATEGORIES.has(raw.category) ? raw.category : 'prevention';
   const gravityLevel = VALID_GRAVITY.has(raw.gravityLevel) ? raw.gravityLevel : 'unknown';
   const fuelType = VALID_FUEL_TYPES.has(raw.fuelType) ? raw.fuelType : null;
+  const status = VALID_STATUS.has(raw.status) ? raw.status : 'published';
+  const dataAvailable = raw.dataAvailable !== false && status !== 'upcoming';
 
   return {
     psiId: raw.psiId ?? raw.id ?? null,
@@ -30,6 +33,8 @@ export function transformInvestigation(raw) {
     hardware: raw.hardware ?? null,
     category,
     gravityLevel,
+    status,
+    dataAvailable,
     conditions: {
       oxygenPct: toNullableNumber(cond.oxygenPct ?? raw.oxygenPct),
       oxygenMinPct: toNullableNumber(cond.oxygenMinPct ?? raw.oxygenMinPct),
@@ -41,6 +46,7 @@ export function transformInvestigation(raw) {
     variables: Array.isArray(raw.variables) ? raw.variables : [],
     sensors: Array.isArray(raw.sensors) ? raw.sensors : [],
     series: Array.isArray(raw.series) ? raw.series : [],
+    seriesSource: raw.seriesSource ?? null,
     earthApplications: Array.isArray(raw.earthApplications) ? raw.earthApplications : [],
     sourceUrl: raw.sourceUrl ?? 'https://psi.nasa.gov/',
     tags: Array.isArray(raw.tags) ? raw.tags : [],

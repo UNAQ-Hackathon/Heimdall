@@ -95,7 +95,7 @@ export default function ChatPage() {
       if (res.sessionUrl) setSessionUrl(res.sessionUrl);
       if (res.sessionStatus) setSessionStatus(res.sessionStatus);
 
-      if (res.status === 'completed' && res.answer) {
+      if ((res.status === 'completed' || res.status === 'unavailable') && res.answer) {
         setLoading(false);
         setMessages((prev) =>
           prev.map((m) =>

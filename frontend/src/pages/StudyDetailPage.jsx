@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import F1TelemetryDeck from '../components/charts/F1TelemetryDeck.jsx';
+import { useApp } from '../context/AppContext.jsx';
 import { api } from '../services/api.js';
 import { INVESTIGATIONS } from '../services/mockData.js';
 import {
@@ -69,6 +70,7 @@ function RpmBar({ ratio, total = 12 }) {
 export default function StudyDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { audience } = useApp();
 
   const [allStudies, setAllStudies] = useState(INVESTIGATIONS);
   const [study, setStudy] = useState(() => findInitialStudy(id, INVESTIGATIONS));
@@ -76,6 +78,13 @@ export default function StudyDetailPage() {
   const [mongoMeasurements, setMongoMeasurements] = useState([]);
   const [telemetrySource, setTelemetrySource] = useState('verified-psi');
   const [loadError, setLoadError] = useState('');
+  const [aiBriefState, setAiBriefState] = useState({
+    loading: false,
+    key: null,
+    summary: null,
+    provider: null,
+    reason: null,
+  });
 
   // Study-level filters
   const [query, setQuery] = useState('');
@@ -625,7 +634,7 @@ export default function StudyDetailPage() {
                 <div className="f1-study-tab__top">
                   <span>{inv.acronym}</span>
                   <span className="f1-study-tab__o2">
-                    {o2Peak != null ? `${o2Peak}% O₂` : 'PSI'}
+                    {inv.dataAvailable === false ? 'NO DATA' : o2Peak != null ? `${o2Peak}% O₂` : 'PSI'}
                   </span>
                 </div>
                 <div className="f1-study-tab__meta">
@@ -647,6 +656,18 @@ export default function StudyDetailPage() {
               <span className="f1-panel__tag">{theme.liveryReason}</span>
             </div>
 
+            {activeStudy.dataAvailable === false && (
+              <div className="f1-no-data" role="status" style={{ marginBottom: '12px' }}>
+                <span className="f1-no-data__badge">UPCOMING · NO PSI DATA YET</span>
+                <div className="f1-no-data__title">
+                  {activeStudy.acronym} ({activeStudy.title}) has no published PSI experimental dataset yet
+                </div>
+                <p className="f1-no-data__desc">
+                  Chamber oxygen, pressure, flow, and time-series records are empty rather than estimated.
+                </p>
+              </div>
+            )}
+
             <div className="f1-gauge-grid">
               <div className="f1-gauge">
                 <span className="f1-gauge__label">O₂ CONCENTRATION</span>
@@ -654,7 +675,9 @@ export default function StudyDetailPage() {
                   {o2PctDisplay}
                 </span>
                 <RpmBar ratio={(kpis.o2Value ?? 0) / 85} />
-                <span className="f1-gauge__sub">{o2RangeText}</span>
+                <span className="f1-gauge__sub">
+                  {activeStudy.dataAvailable === false ? 'No PSI data yet' : o2RangeText}
+                </span>
               </div>
 
               <div className="f1-gauge">
@@ -665,7 +688,7 @@ export default function StudyDetailPage() {
                 <RpmBar ratio={(kpis.pressurePsi ?? 0) / 45} />
                 <span className="f1-gauge__sub">
                   {kpis.pressureMmhg != null ? `${kpis.pressureMmhg} mmHg · ` : ''}
-                  {formatDelta(kpis.pressureDeltaEarth, ' psi')}
+                  {activeStudy.dataAvailable === false ? 'No PSI data yet' : formatDelta(kpis.pressureDeltaEarth, ' psi')}
                 </span>
               </div>
 
@@ -674,11 +697,13 @@ export default function StudyDetailPage() {
                   {kpis.diameterMm != null ? 'DROPLET Ø (MDCA)' : 'FORCED FLOW'}
                 </span>
                 <span className="f1-gauge__value" style={{ color: theme.channels.flow }}>
-                  {kpis.diameterMm != null
-                    ? `${kpis.diameterMm} mm`
-                    : kpis.flowVelocity != null
-                      ? `${kpis.flowVelocity} m/s`
-                      : 'Quiescent'}
+                  {activeStudy.dataAvailable === false
+                    ? 'No data'
+                    : kpis.diameterMm != null
+                      ? `${kpis.diameterMm} mm`
+                      : kpis.flowVelocity != null
+                        ? `${kpis.flowVelocity} m/s`
+                        : 'Quiescent'}
                 </span>
                 <RpmBar
                   ratio={
@@ -688,7 +713,11 @@ export default function StudyDetailPage() {
                   }
                 />
                 <span className="f1-gauge__sub">
-                  {kpis.diameterMm != null ? 'Tethered / free droplet' : 'Ventilation duct'}
+                  {activeStudy.dataAvailable === false
+                    ? 'No PSI data yet'
+                    : kpis.diameterMm != null
+                      ? 'Tethered / free droplet'
+                      : 'Ventilation duct'}
                 </span>
               </div>
 
@@ -699,9 +728,11 @@ export default function StudyDetailPage() {
                 </span>
                 <RpmBar ratio={activeStudy.tags?.includes('partial-gravity-proxy') ? 0.65 : 0.25} />
                 <span className="f1-gauge__sub">
-                  {activeStudy.tags?.includes('partial-gravity-proxy')
-                    ? 'E-FIELD body-force proxy'
-                    : 'Free-fall ISS / Cygnus'}
+                  {activeStudy.dataAvailable === false
+                    ? 'Planned 1/6 g lunar mission'
+                    : activeStudy.acronym === 'E-FIELD Flames'
+                      ? 'E-FIELD body-force proxy'
+                      : 'Free-fall ISS / Cygnus'}
                 </span>
               </div>
             </div>
@@ -919,31 +950,87 @@ export default function StudyDetailPage() {
           )}
         </div>
 
-        {activeStudy.aiInsight && (
-          <div
-            style={{
-              background: 'var(--tel-tint)',
-              border: '1px solid var(--tel-border)',
-              borderRadius: '8px',
-              padding: '10px 14px',
-            }}
-          >
+        {(activeStudy.aiInsight || activeStudy.aiSummary) && (() => {
+          const briefKey = `${activeStudy.id}:${audience}`;
+          const hasGenerated = aiBriefState.key === briefKey && aiBriefState.summary;
+          const audienceText =
+            audience === 'Student'
+              ? activeStudy.aiSummary?.student ?? activeStudy.aiInsight
+              : activeStudy.aiSummary?.engineer ?? activeStudy.aiInsight;
+
+          const handleGenerateSummary = async () => {
+            setAiBriefState({
+              loading: true,
+              key: briefKey,
+              summary: null,
+              provider: null,
+              reason: null,
+            });
+            const res = await api.summarizeStudy(activeStudy.id, audience);
+            setAiBriefState({
+              loading: false,
+              key: briefKey,
+              summary: res?.summary ?? audienceText,
+              provider: res?.provider ?? (res?.unavailable ? 'offline' : 'ai'),
+              reason: res?.reason ?? null,
+            });
+          };
+
+          return (
             <div
               style={{
-                fontSize: '10px',
-                fontFamily: 'var(--font-mono)',
-                fontWeight: 700,
-                color: 'var(--tel-primary)',
-                marginBottom: '4px',
+                background: 'var(--tel-tint)',
+                border: '1px solid var(--tel-border)',
+                borderRadius: '8px',
+                padding: '10px 14px',
               }}
             >
-              HEIMDALL TELEMETRY BRIEF
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: '8px',
+                  flexWrap: 'wrap',
+                  marginBottom: '6px',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: '10px',
+                    fontFamily: 'var(--font-mono)',
+                    fontWeight: 700,
+                    color: 'var(--tel-primary)',
+                  }}
+                >
+                  HEIMDALL BRIEF // {audience.toUpperCase()} MODE
+                  {aiBriefState.key === briefKey && aiBriefState.provider
+                    ? ` · ${aiBriefState.provider.toUpperCase()}`
+                    : ''}
+                </div>
+                <button
+                  type="button"
+                  className="f1-btn"
+                  disabled={aiBriefState.loading && aiBriefState.key === briefKey}
+                  onClick={handleGenerateSummary}
+                  style={{ fontSize: '10px', padding: '4px 9px' }}
+                >
+                  {aiBriefState.loading && aiBriefState.key === briefKey
+                    ? 'Summarizing…'
+                    : `Generate ${audience} AI Summary`}
+                </button>
+              </div>
+              <div style={{ fontSize: '12px', color: '#e2e8f0', lineHeight: 1.5 }}>
+                {hasGenerated ? aiBriefState.summary : audienceText}
+              </div>
+              {aiBriefState.key === briefKey && aiBriefState.reason && (
+                <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '4px', fontFamily: 'var(--font-mono)' }}>
+                  {aiBriefState.reason}
+                </div>
+              )}
             </div>
-            <div style={{ fontSize: '12px', color: '#e2e8f0', lineHeight: 1.45 }}>
-              {activeStudy.aiInsight}
-            </div>
-          </div>
-        )}
+          );
+        })()}
       </section>
 
       {/* ── Scientific Partial-Gravity Guardrail ── */}
