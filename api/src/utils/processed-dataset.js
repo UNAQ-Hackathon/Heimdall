@@ -1,12 +1,16 @@
+import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import mongoose from 'mongoose';
 import Investigation from '../models/Investigation.js';
 
-const PROCESSED_FILE = path.resolve(
-  import.meta.dirname,
-  '../../../data/processed/psi-investigations.json'
-);
+const PROCESSED_FILE_CANDIDATES = [
+  path.resolve(import.meta.dirname, '../../../data/processed/psi-investigations.json'),
+  path.resolve(import.meta.dirname, '../../data/processed/psi-investigations.json'),
+];
+const PROCESSED_FILE =
+  PROCESSED_FILE_CANDIDATES.find((candidate) => existsSync(candidate)) ??
+  PROCESSED_FILE_CANDIDATES[0];
 
 let cachedProcessed = null;
 

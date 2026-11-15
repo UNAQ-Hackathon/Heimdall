@@ -12,6 +12,7 @@ __pycache__/
 # Builds
 dist/
 build/
+deploy-artifacts/
 *.tsbuildinfo
 
 # Data (large/raw exports stay local)
