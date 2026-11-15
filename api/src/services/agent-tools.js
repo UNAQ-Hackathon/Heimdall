@@ -215,6 +215,122 @@ async function predictBurnDuration(args = {}) {
   }
 }
 
+/**
+ * Compact "(arg1, arg2)" label for the live tool-call trace.
+ * Only shows semantically meaningful args — no nulls, no noise.
+ */
+export function formatToolArgs(name, args = {}) {
+  const parts = [];
+  const push = (v) => {
+    if (v != null && v !== '' && v !== 'all') parts.push(String(v));
+  };
+  switch (name) {
+    case 'search_investigations':
+      push(args.query ? `"${args.query}"` : null);
+      push(args.category);
+      push(args.fuelType);
+      break;
+    case 'get_investigation':
+      push(args.acronym ?? args.id ?? args.title);
+      break;
+    case 'rank_investigations':
+      push(args.gravity);
+      if (args.oxygenPct != null) push(`${args.oxygenPct}% O2`);
+      if (args.pressurePsi != null) push(`${args.pressurePsi} psi`);
+      break;
+    case 'predict_burn_duration':
+      push(args.fuel);
+      if (args.diameter_mm != null) push(`${args.diameter_mm} mm`);
+      if (args.pressure_mmhg != null) push(`${args.pressure_mmhg} mmHg`);
+      break;
+    default:
+      break;
+  }
+  return parts.join(', ');
+}
+
+/**
+ * One-line human summary of a tool result for the live trace.
+ * Never fabricates — an error result surfaces its message.
+ */
+export function summarizeToolResult(name, result = {}) {
+  if (result == null || typeof result !== 'object') return 'done';
+  if (result.error) return `error: ${String(result.error).slice(0, 90)}`;
+  switch (name) {
+    case 'search_investigations':
+      return `${result.returned ?? 0}/${result.total ?? 0} studies`;
+    case 'get_investigation': {
+      const pts = (result.series ?? []).reduce((n, s) => n + (s.samples ?? 0), 0);
+      return `${result.acronym ?? 'study'}${pts > 0 ? ` · ${pts} data pts` : ''}`;
+    }
+    case 'rank_investigations': {
+      const top = result.ranking?.[0];
+      return top ? `top: ${top.acronym} ${top.score}` : `${result.total ?? 0} ranked`;
+    }
+    case 'predict_burn_duration': {
+      const r = result.prediction?.result ?? {};
+      if (r.duracion_estimada_s != null) return `${Number(r.duracion_estimada_s).toFixed(3)} s`;
+      return `abstained: ${r.motivo ?? 'out of coverage'}`;
+    }
+    case 'list_mission_scenarios':
+      return `${result.scenarios?.length ?? 0} scenarios`;
+    default:
+      return 'done';
+  }
+}
+
+/**
+ * Short preview lines (max 3) of real tool output, shown inside the live
+ * trace so the audience sees actual data flowing through the agent.
+ */
+export function detailToolResult(name, result = {}) {
+  if (result == null || typeof result !== 'object' || result.error) return [];
+  switch (name) {
+    case 'search_investigations':
+      return (result.investigations ?? [])
+        .slice(0, 3)
+        .map((d) => `${d.acronym} · ${d.category ?? 'study'}`);
+    case 'get_investigation': {
+      const lines = [];
+      if (result.fuel) lines.push(String(result.fuel).slice(0, 80));
+      if (result.series?.length) {
+        const total = result.series.reduce((n, s) => n + (s.samples ?? 0), 0);
+        lines.push(`${result.series.length} series · ${total} measured pts`);
+      }
+      return lines.slice(0, 3);
+    }
+    case 'rank_investigations':
+      return (result.ranking ?? [])
+        .slice(0, 3)
+        .map((r, i) => `${i + 1}. ${r.acronym} — ${r.score}`);
+    case 'predict_burn_duration': {
+      const r = result.prediction?.result ?? {};
+      const lines = [];
+      if (r.duracion_estimada_s != null) {
+        lines.push(`duration: ${Number(r.duracion_estimada_s).toFixed(3)} s`);
+        const k = r.config?.k ?? (Array.isArray(r.vecinos) ? r.vecinos.length : null);
+        if (k != null) lines.push(`KNN k=${k} · mix coverage ${r.cobertura_mezcla ?? '?'} pts`);
+        const nearest = r.vecinos?.[0];
+        if (nearest?.observado_s != null) {
+          lines.push(`nearest observed: ${nearest.observado_s} s (d=${Number(nearest.diametro_mm ?? 0)} mm)`);
+        }
+      } else {
+        lines.push(`abstained: ${r.motivo ?? 'out of coverage'}`);
+        if (r.distancia_soporte != null && r.limite_soporte != null) {
+          lines.push(
+            `support distance ${Number(r.distancia_soporte).toFixed(2)} > limit ${Number(r.limite_soporte).toFixed(2)}`
+          );
+        }
+      }
+      return lines.slice(0, 3);
+    }
+    case 'list_mission_scenarios':
+      return (result.scenarios ?? []).slice(0, 3).map((s) => s.label ?? s.id);
+    default:
+      return [];
+  }
+}
+
 const EXECUTORS = {
   search_investigations: searchInvestigations,
   get_investigation: getInvestigation,

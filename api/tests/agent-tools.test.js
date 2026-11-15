@@ -2,8 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   AGENT_TOOL_DECLARATIONS,
+  detailToolResult,
   executeAgentTool,
+  formatToolArgs,
   MISSION_SCENARIOS,
+  summarizeToolResult,
 } from '../src/services/agent-tools.js';
 
 test('tool declarations match implemented executors', () => {
@@ -78,4 +81,61 @@ test('predict_burn_duration never throws and never invents a result', async () =
 test('unknown tools return an error instead of throwing', async () => {
   const res = await executeAgentTool('hack_the_planet', {});
   assert.match(res.error, /Unknown tool/);
+});
+
+test('formatToolArgs renders only meaningful args', () => {
+  assert.equal(
+    formatToolArgs('rank_investigations', {
+      gravity: 'lunar',
+      oxygenPct: 30,
+      pressurePsi: 10.2,
+      category: 'all',
+    }),
+    'lunar, 30% O2, 10.2 psi'
+  );
+  assert.equal(
+    formatToolArgs('predict_burn_duration', {
+      fuel: 'Heptane',
+      diameter_mm: 2,
+      pressure_mmhg: 760,
+      o2_fraction: 0.21,
+    }),
+    'Heptane, 2 mm, 760 mmHg'
+  );
+  assert.equal(formatToolArgs('search_investigations', { query: 'oxygen' }), '"oxygen"');
+});
+
+test('summarizeToolResult condenses real results and surfaces errors', async () => {
+  const rank = await executeAgentTool('rank_investigations', {
+    gravity: 'lunar',
+    oxygenPct: 30,
+    pressurePsi: 10.2,
+    limit: 3,
+  });
+  assert.match(summarizeToolResult('rank_investigations', rank), /^top: \S+ 0\.\d+$/);
+
+  const flex = await executeAgentTool('get_investigation', { acronym: 'FLEX' });
+  assert.equal(summarizeToolResult('get_investigation', flex), 'FLEX · 258 data pts');
+
+  assert.match(
+    summarizeToolResult('get_investigation', { error: 'not found' }),
+    /^error: not found/
+  );
+});
+
+test('detailToolResult exposes real data previews for the trace', async () => {
+  const rank = await executeAgentTool('rank_investigations', {
+    gravity: 'lunar',
+    oxygenPct: 30,
+    pressurePsi: 10.2,
+    limit: 3,
+  });
+  const lines = detailToolResult('rank_investigations', rank);
+  assert.equal(lines.length, 3);
+  assert.match(lines[0], /^1\. \S+ — 0\.\d+$/);
+
+  const flex = await executeAgentTool('get_investigation', { acronym: 'FLEX' });
+  assert.ok(detailToolResult('get_investigation', flex).some((l) => l.includes('258')));
+
+  assert.deepEqual(detailToolResult('get_investigation', { error: 'x' }), []);
 });

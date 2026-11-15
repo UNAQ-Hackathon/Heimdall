@@ -112,11 +112,52 @@ export function AppProvider({ children }) {
       ]);
 
       try {
-        const res = await backendApi.ask(userText, {
-          sessionId: chatSessionId,
-          audience,
-          scenario: activeScenario,
-        });
+        const applyStep = (event, data) => {
+          setChatMessages((prev) =>
+            prev.map((m) => {
+              if (m.id !== pendingMsgId) return m;
+              if (event === 'delta') {
+                // First token replaces the "working…" placeholder, then appends.
+                return {
+                  ...m,
+                  text: (m.streamStarted ? m.text : '') + (data.text ?? ''),
+                  streamStarted: true,
+                };
+              }
+              const steps = [...(m.steps ?? [])];
+              if (event === 'tool_call') {
+                steps.push({ name: data.name, argsLabel: data.argsLabel ?? '', status: 'running' });
+              } else if (event === 'tool_result') {
+                const idx = steps.map((s) => s.status).lastIndexOf('running');
+                if (idx !== -1) {
+                  steps[idx] = {
+                    ...steps[idx],
+                    status: data.ok ? 'done' : 'failed',
+                    summary: data.summary ?? '',
+                    detail: data.detail ?? [],
+                  };
+                }
+              }
+              return { ...m, steps };
+            })
+          );
+        };
+
+        let res;
+        try {
+          res = await backendApi.askStream(
+            userText,
+            { sessionId: chatSessionId, audience, scenario: activeScenario },
+            applyStep
+          );
+        } catch {
+          // Stream failed (proxy/network) — fall back to the plain request.
+          res = await backendApi.ask(userText, {
+            sessionId: chatSessionId,
+            audience,
+            scenario: activeScenario,
+          });
+        }
 
         if (res.sessionId) setChatSessionId(res.sessionId);
         if (res.sessionUrl) setChatSessionUrl(res.sessionUrl);

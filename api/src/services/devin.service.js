@@ -2,7 +2,13 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import env from '../config/env.js';
 import HttpError from '../utils/http-error.js';
-import { AGENT_TOOL_DECLARATIONS, executeAgentTool } from './agent-tools.js';
+import {
+  AGENT_TOOL_DECLARATIONS,
+  detailToolResult,
+  executeAgentTool,
+  formatToolArgs,
+  summarizeToolResult,
+} from './agent-tools.js';
 
 const { apiKey, apiBase, model } = env.devin;
 const gemini = env.gemini ?? {};
@@ -337,7 +343,109 @@ async function runDevinSessionPrompt(prompt, { sessionId, waitMs = 15000 } = {})
 
 const MAX_TOOL_ROUNDS = 6;
 
-async function chatWithGemini(messages, { temperature = 0.2, useTools = false } = {}) {
+function geminiUrl(method, extra = '') {
+  return `${gemini.apiBase}/v1beta/models/${encodeURIComponent(gemini.model)}:${method}?key=${encodeURIComponent(gemini.apiKey)}${extra}`;
+}
+
+async function geminiError(res) {
+  const text = await res.text();
+  let msg = `HTTP ${res.status}`;
+  try {
+    const parsed = JSON.parse(text);
+    msg = parsed?.error?.message ?? msg;
+  } catch {
+    if (text) msg = text;
+  }
+  const status = res.status === 503 || res.status === 429 ? res.status : 502;
+  throw new HttpError(status, `Gemini API error ${res.status}: ${msg}`, { body: text });
+}
+
+/**
+ * One Gemini round. When `onText` is provided it streams via
+ * streamGenerateContent (SSE) and forwards each text delta live.
+ * Returns complete content parts + usage for the round.
+ */
+async function callGeminiRound({ systemText, contents, temperature, tools, onText }) {
+  const res = await fetch(geminiUrl(onText ? 'streamGenerateContent' : 'generateContent', onText ? '&alt=sse' : ''), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ...(systemText ? { systemInstruction: { parts: [{ text: systemText }] } } : {}),
+      contents,
+      ...(tools ? { tools: [{ functionDeclarations: tools }] } : {}),
+      generationConfig: {
+        temperature,
+        maxOutputTokens: Math.max(128, Number(gemini.maxOutputTokens ?? 1024)),
+      },
+    }),
+  });
+
+  if (!res.ok) await geminiError(res);
+
+  if (!onText) {
+    const data = await res.json();
+    return {
+      parts: data.candidates?.[0]?.content?.parts ?? [],
+      usage: data.usageMetadata ?? null,
+    };
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let text = '';
+  const otherParts = [];
+  let usage = null;
+
+  const handlePayload = (data) => {
+    if (data?.error) {
+      throw new HttpError(
+        data.error.code === 503 || data.error.code === 429 ? data.error.code : 502,
+        `Gemini API error ${data.error.code}: ${data.error.message ?? 'stream error'}`
+      );
+    }
+    if (data?.usageMetadata) usage = data.usageMetadata;
+    const parts = data?.candidates?.[0]?.content?.parts ?? [];
+    for (const part of parts) {
+      if (typeof part.text === 'string' && part.text.length > 0) {
+        text += part.text;
+        onText(part.text);
+      } else if (part.functionCall) {
+        otherParts.push(part);
+      }
+    }
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    // Gemini may use CRLF line endings — normalize before splitting blocks.
+    buffer = (buffer + decoder.decode(value, { stream: true })).replace(/\r\n/g, '\n');
+    let sep;
+    while ((sep = buffer.indexOf('\n\n')) !== -1) {
+      const block = buffer.slice(0, sep);
+      buffer = buffer.slice(sep + 2);
+      const rawData = block.match(/^data: ([\s\S]+)$/m)?.[1];
+      if (!rawData || rawData.trim() === '[DONE]') continue;
+      try {
+        handlePayload(JSON.parse(rawData));
+      } catch (err) {
+        if (err instanceof HttpError) throw err;
+        // ignore malformed SSE chunks
+      }
+    }
+  }
+
+  return {
+    parts: [...(text ? [{ text }] : []), ...otherParts],
+    usage,
+  };
+}
+
+async function chatWithGemini(
+  messages,
+  { temperature = 0.2, useTools = false, onEvent = null } = {}
+) {
   const systemText = messages
     .filter((m) => m.role === 'system')
     .map((m) => m.content)
@@ -362,41 +470,15 @@ async function chatWithGemini(messages, { temperature = 0.2, useTools = false } 
       );
     }
 
-    const res = await fetch(
-      `${gemini.apiBase}/v1beta/models/${encodeURIComponent(gemini.model)}:generateContent?key=${encodeURIComponent(gemini.apiKey)}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...(systemText ? { systemInstruction: { parts: [{ text: systemText }] } } : {}),
-          contents,
-          // On the last allowed round drop the tools so the model must answer.
-          ...(useTools && round < MAX_TOOL_ROUNDS
-            ? { tools: [{ functionDeclarations: AGENT_TOOL_DECLARATIONS }] }
-            : {}),
-          generationConfig: {
-            temperature,
-            maxOutputTokens: Math.max(128, Number(gemini.maxOutputTokens ?? 1024)),
-          },
-        }),
-      }
-    );
+    const { parts, usage } = await callGeminiRound({
+      systemText,
+      contents,
+      temperature,
+      // On the last allowed round drop the tools so the model must answer.
+      tools: useTools && round < MAX_TOOL_ROUNDS ? AGENT_TOOL_DECLARATIONS : null,
+      onText: onEvent ? (chunk) => onEvent({ type: 'delta', text: chunk }) : null,
+    });
 
-    if (!res.ok) {
-      const text = await res.text();
-      let msg = `HTTP ${res.status}`;
-      try {
-        const parsed = JSON.parse(text);
-        msg = parsed?.error?.message ?? msg;
-      } catch {
-        if (text) msg = text;
-      }
-      const status = res.status === 503 || res.status === 429 ? res.status : 502;
-      throw new HttpError(status, `Gemini API error ${res.status}: ${msg}`, { body: text });
-    }
-
-    const data = await res.json();
-    const usage = data.usageMetadata ?? null;
     if (usage) {
       usageTotals.promptTokenCount += Number(usage.promptTokenCount ?? 0);
       usageTotals.candidatesTokenCount += Number(usage.candidatesTokenCount ?? 0);
@@ -406,28 +488,27 @@ async function chatWithGemini(messages, { temperature = 0.2, useTools = false } 
       );
     }
 
-    const parts = data.candidates?.[0]?.content?.parts ?? [];
     const functionCalls = useTools ? parts.filter((p) => p.functionCall) : [];
 
     if (functionCalls.length === 0 || round === MAX_TOOL_ROUNDS) {
-      content = parts
-        .map((p) => p.text ?? '')
-        .join('')
-        .trim();
+      content = (content + parts.map((p) => p.text ?? '').join('')).trim();
       rounds = round;
       break;
     }
 
+    content += parts.map((p) => p.text ?? '').join('');
     contents.push({ role: 'model', parts });
     const responseParts = [];
     for (const part of functionCalls) {
       const { name, args } = part.functionCall;
+      const argsLabel = formatToolArgs(name, args ?? {});
+      onEvent?.({ type: 'tool_call', name, argsLabel });
       const result = await executeAgentTool(name, args ?? {});
-      toolCalls.push({
-        name,
-        args: args ?? {},
-        ok: result?.error == null,
-      });
+      const summary = summarizeToolResult(name, result);
+      const detail = detailToolResult(name, result);
+      const ok = result?.error == null;
+      toolCalls.push({ name, argsLabel, summary, detail, ok });
+      onEvent?.({ type: 'tool_result', name, ok, summary, detail });
       responseParts.push({
         functionResponse: { name, response: { content: result } },
       });
@@ -462,9 +543,12 @@ async function chatWithGemini(messages, { temperature = 0.2, useTools = false } 
  * AI client — uses Google AI Studio (Gemini) when GEMINI_API_KEY is set,
  * otherwise falls back to Devin API.
  */
-async function chat(messages, { temperature = 0.2, sessionId, waitMs, useTools = false } = {}) {
+async function chat(
+  messages,
+  { temperature = 0.2, sessionId, waitMs, useTools = false, onEvent = null } = {}
+) {
   if (gemini.apiKey) {
-    return chatWithGemini(messages, { temperature, useTools });
+    return chatWithGemini(messages, { temperature, useTools, onEvent });
   }
 
   if (isDevinSessionsApi()) {
@@ -603,7 +687,7 @@ const AGENT_SYSTEM = [
 export async function answerQuestion(
   question,
   contextDocs = [],
-  { sessionId, audience = 'Engineer', scenario = null, mongoContext = null } = {}
+  { sessionId, audience = 'Engineer', scenario = null, mongoContext = null, onEvent = null } = {}
 ) {
   const activeDocs = contextDocs.length ? contextDocs : PSI_FALLBACK_DOCS;
   if (!hasAiProviderConfigured()) {
@@ -679,7 +763,7 @@ export async function answerQuestion(
         content: `${scenarioNote ? `${scenarioNote}\n\n` : ''}${mongoNote}\n\nNASA PSI Context:\n${context}\n\nUser Question: ${question}`,
       },
     ],
-    { sessionId, useTools: true }
+    { sessionId, useTools: true, onEvent }
   );
 
   return {

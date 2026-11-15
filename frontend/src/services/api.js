@@ -156,6 +156,65 @@ export const api = {
       `/chat/sessions/${encodeURIComponent(sessionId)}?baselineCount=${encodeURIComponent(baselineCount)}`
     ),
 
+  /**
+   * Streaming chat — POST /api/chat with SSE. onEvent(type, data) receives
+   * 'tool_call' / 'tool_result' events live; resolves with the 'answer' payload.
+   */
+  askStream: async (question, opts = {}, onEvent) => {
+    const res = await fetch(`${BASE}/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+      },
+      body: JSON.stringify({
+        question,
+        stream: true,
+        ...(opts.sessionId ? { sessionId: opts.sessionId } : {}),
+        ...(opts.audience ? { audience: opts.audience } : {}),
+        ...(opts.scenario ? { scenario: opts.scenario } : {}),
+      }),
+    });
+    if (!res.ok || !res.body) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.error?.message ?? `Request failed: ${res.status}`);
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let answer = null;
+    let streamError = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer = (buffer + decoder.decode(value, { stream: true })).replace(/\r\n/g, '\n');
+
+      let sep;
+      while ((sep = buffer.indexOf('\n\n')) !== -1) {
+        const block = buffer.slice(0, sep);
+        buffer = buffer.slice(sep + 2);
+        const event = block.match(/^event: (.+)$/m)?.[1]?.trim();
+        const rawData = block.match(/^data: ([\s\S]+)$/m)?.[1];
+        if (!event || rawData == null) continue;
+        let data = null;
+        try {
+          data = JSON.parse(rawData);
+        } catch {
+          continue;
+        }
+        if (event === 'answer') answer = data;
+        else if (event === 'error') streamError = data;
+        else onEvent?.(event, data);
+      }
+    }
+
+    if (answer) return answer;
+    if (streamError) throw new Error(streamError.message ?? 'Chat stream error');
+    throw new Error('Chat stream ended without an answer.');
+  },
+
   trends: (series) =>
     request('/analytics/trends', { method: 'POST', body: JSON.stringify({ series }) }),
 

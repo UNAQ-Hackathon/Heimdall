@@ -472,7 +472,84 @@ export default function CopilotChat({ inline = false }) {
                 >
                   {renderFormattedText(msg.text)}
                 </p>
-                {msg.toolCalls && msg.toolCalls.length > 0 && (
+                {msg.steps && msg.steps.length > 0 && (
+                  <div
+                    style={{
+                      marginTop: '6px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '3px',
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: '10px',
+                      borderLeft: '2px solid rgba(129, 140, 248, 0.35)',
+                      paddingLeft: '7px',
+                    }}
+                  >
+                    {msg.steps.map((s, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'baseline',
+                          gap: '5px',
+                          opacity: s.status === 'running' ? 1 : 0.82,
+                        }}
+                      >
+                        <span
+                          style={{
+                            color:
+                              s.status === 'running'
+                                ? '#93c5fd'
+                                : s.status === 'failed'
+                                  ? '#fca5a5'
+                                  : '#86efac',
+                            flexShrink: 0,
+                            animation:
+                              s.status === 'running' ? 'heimdall-pulse 1s ease-in-out infinite' : 'none',
+                          }}
+                        >
+                          {s.status === 'running' ? '◌' : s.status === 'failed' ? '✕' : '✓'}
+                        </span>
+                        <span style={{ color: '#cbd5e1' }}>
+                          {s.name}
+                          {s.argsLabel ? (
+                            <span style={{ color: '#64748b' }}>({s.argsLabel})</span>
+                          ) : null}
+                        </span>
+                        {s.summary ? (
+                          <span style={{ color: '#64748b' }}>→ {s.summary}</span>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {msg.steps?.some((s) => s.detail?.length > 0) && (
+                  <div
+                    style={{
+                      marginTop: '4px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '2px',
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: '9.5px',
+                      color: '#64748b',
+                      borderLeft: '2px solid rgba(34, 197, 94, 0.25)',
+                      paddingLeft: '7px',
+                    }}
+                  >
+                    {msg.steps
+                      .filter((s) => s.detail?.length > 0)
+                      .map((s, i) => (
+                        <div key={i}>
+                          <span style={{ color: '#475569' }}>└ {s.name}: </span>
+                          {s.detail.join('  ·  ')}
+                        </div>
+                      ))}
+                  </div>
+                )}
+                {(!msg.steps || msg.steps.length === 0) &&
+                  msg.toolCalls &&
+                  msg.toolCalls.length > 0 && (
                   <div
                     style={{
                       marginTop: '6px',
