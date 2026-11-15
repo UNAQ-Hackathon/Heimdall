@@ -9,6 +9,8 @@ export default function MissionPlanetInspection({
   body,
   onClose,
   onOpenTestbench,
+  minimized = false,
+  onToggleMinimize,
 }) {
   const sfx = useSound();
   const [zoneId, setZoneId] = useState('temperate');
@@ -38,7 +40,7 @@ export default function MissionPlanetInspection({
 
   return (
     <section
-      className="mission-inspection"
+      className={`mission-inspection${minimized ? ' mission-inspection--minimized' : ''}`}
       aria-label={`${planet.label} environment inspection`}
     >
       <PlanetAnalysisPanel
@@ -49,6 +51,8 @@ export default function MissionPlanetInspection({
         onZoneChange={setZoneId}
         onClose={onClose}
         onOpenTestbench={onOpenTestbench}
+        minimized={minimized}
+        onToggleMinimize={onToggleMinimize}
       />
     </section>
   );

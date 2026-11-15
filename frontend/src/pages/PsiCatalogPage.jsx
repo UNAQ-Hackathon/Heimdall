@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   Bar,
@@ -567,7 +567,7 @@ function FlexRunsExplorer({ runs }) {
   );
 }
 
-function StudyInspectorPanel({ study, audience, allFlexRuns }) {
+function StudyInspectorPanel({ study, audience, allFlexRuns, inspectorRef }) {
   const isStudent = audience === 'Student';
   const [vizTab, setVizTab] = useState('envelope');
   const seriesStats = useMemo(() => getStudySeriesStats(study), [study]);
@@ -635,7 +635,7 @@ function StudyInspectorPanel({ study, audience, allFlexRuns }) {
   const showRunsExplorer = !isStudent && isDropletStudy && /flex/i.test(String(study.acronym ?? ''));
 
   return (
-    <article className="psi-inspector" aria-label={`Detailed telemetry for ${study.acronym}`}>
+    <article ref={inspectorRef} className="psi-inspector" aria-label={`Detailed telemetry for ${study.acronym}`}>
       <header className="psi-inspector-head">
         <div>
           <div className="psi-inspector-kicker">
@@ -940,6 +940,7 @@ export default function PsiCatalogPage() {
   const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [overviewMode, setOverviewMode] = useState('summary');
   const [selectedKey, setSelectedKey] = useState(null);
+  const inspectorRef = useRef(null);
 
   const allFlexRuns = useMemo(() => getAllFlexRuns(), []);
 
@@ -1369,7 +1370,12 @@ export default function PsiCatalogPage() {
                       role="option"
                       aria-selected={selected}
                       className={`psi-dir-item ${selected ? 'psi-dir-item--selected' : ''}`}
-                      onClick={() => setSelectedKey(key)}
+                      onClick={() => {
+                        setSelectedKey(key);
+                        if (typeof window !== 'undefined' && window.innerWidth <= 1024) {
+                          inspectorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                      }}
                     >
                       <div className="psi-dir-top">
                         <span className="psi-dir-acronym">{inv.acronym}</span>
@@ -1405,6 +1411,7 @@ export default function PsiCatalogPage() {
               study={selectedStudy}
               audience={audience}
               allFlexRuns={allFlexRuns}
+              inspectorRef={inspectorRef}
             />
           </section>
         )}

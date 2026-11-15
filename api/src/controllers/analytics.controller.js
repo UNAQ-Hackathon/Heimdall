@@ -238,7 +238,15 @@ export async function firehazrInterpret(req, res) {
       usage: null,
     });
   }
-  return res.json(await interpretFirehazrResult({ conditions, result, study }));
+  const output = await interpretFirehazrResult({ conditions, result, study });
+  if (output?.unavailable) {
+    return res.status(503).json({
+      error: {
+        message: output.reason ?? 'AI interpretation is not configured on this server.',
+      },
+    });
+  }
+  return res.json(output);
 }
 
 export async function trends(req, res) {

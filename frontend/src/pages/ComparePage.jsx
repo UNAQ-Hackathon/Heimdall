@@ -630,7 +630,8 @@ export default function ComparePage() {
                     background: '#080d1a',
                     color: '#f8fafc',
                     fontSize: '12px',
-                    minWidth: '210px',
+                    minWidth: 'min(100%, 210px)',
+                    flex: '1 1 210px',
                   }}
                 />
                 <button

@@ -787,7 +787,7 @@ export async function interpretFirehazrResult({ conditions, result, study = null
     return {
       interpretation: null,
       unavailable: true,
-      reason: 'AI interpretation unavailable offline (no GEMINI_API_KEY or DEVIN_API_KEY configured).',
+      reason: 'AI provider not configured on the server — set GEMINI_API_KEY or DEVIN_API_KEY to enable interpretations.',
       model: null,
       provider: 'offline',
       usage: null,

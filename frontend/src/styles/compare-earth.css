@@ -204,7 +204,7 @@
 
 .compare-slots {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
   gap: 10px;
 }
 
@@ -242,6 +242,7 @@
 .compare-table-wrap {
   width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   border-radius: 10px;
   border: 1px solid #1c2640;
   background: #080d1a;
@@ -314,7 +315,7 @@
 
 .compare-digest-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr));
   gap: 12px;
 }
 
@@ -373,7 +374,37 @@
     padding: 14px 12px 28px;
   }
 
+  .compare-hero {
+    padding: 14px;
+  }
+
+  .compare-hero h1 {
+    font-size: 19px;
+  }
+
+  .compare-tabs {
+    width: 100%;
+  }
+
+  .compare-tab {
+    flex: 1 1 auto;
+    text-align: center;
+    min-height: 36px;
+  }
+
   .compare-section {
     padding: 14px;
+  }
+
+  .compare-align-table tbody th {
+    width: 112px;
+    font-size: 10px;
+    padding: 10px;
+  }
+
+  .compare-align-table th,
+  .compare-align-table td {
+    padding: 10px;
+    font-size: 12px;
   }
 }

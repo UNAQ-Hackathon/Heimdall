@@ -1146,7 +1146,10 @@ function CameraController({
   const prevFocusRef = useRef(null);
   const prevPanelCollapsedRef = useRef(panelCollapsed);
   const isTransitioningRef = useRef(false);
+  const hasUserInteractedRef = useRef(false);
+  const portraitFittedRef = useRef(false);
   const targetCamPosRef = useRef(new THREE.Vector3());
+  const responsiveOverviewRef = useRef(new THREE.Vector3(0, 18, 32));
   const viewOffsetStateRef = useRef({
     offsetX: 0,
     appliedOffsetX: -1,
@@ -1160,6 +1163,7 @@ function CameraController({
     if (!controls) return;
 
     const handleStart = () => {
+      hasUserInteractedRef.current = true;
       isTransitioningRef.current = false;
     };
 
@@ -1228,10 +1232,13 @@ function CameraController({
       targetOffsetX = computeInspectorCenterOffsetX(state.size.width, occludedRight);
     }
 
-    // Preserve visual continuity without a sudden jump when collapsing/expanding the left sidebar
+    // Preserve visual continuity without a sudden jump when collapsing/expanding the left sidebar (desktop only)
+    const isDesktop = typeof window === 'undefined' || window.innerWidth > 900;
     const expLeft = expRect?.left ?? 0;
     const sizeChanged = vs.width !== state.size.width || vs.height !== state.size.height;
-    if (vs.width > 0 && expRect && (vs.width !== state.size.width || Math.abs(vs.expLeft - expLeft) > 1)) {
+    if (!isDesktop) {
+      vs.offsetX = 0;
+    } else if (vs.width > 0 && expRect && (vs.width !== state.size.width || Math.abs(vs.expLeft - expLeft) > 1)) {
       const prevScreenX = vs.expLeft + (vs.width * 0.5 - vs.offsetX);
       vs.offsetX = THREE.MathUtils.clamp(
         expLeft + state.size.width * 0.5 - prevScreenX,
@@ -1287,6 +1294,21 @@ function CameraController({
       return;
     }
 
+    const aspect =
+      state.size.width > 0 && state.size.height > 0
+        ? state.size.width / state.size.height
+        : 1.4;
+    const portraitScale =
+      aspect < 1 ? Math.min(1.8, Math.max(1, 1.02 / Math.max(aspect, 0.52))) : 1;
+    responsiveOverviewRef.current.copy(overviewPosition).multiplyScalar(portraitScale);
+
+    if (!portraitFittedRef.current && state.size.width > 0 && state.size.height > 0) {
+      portraitFittedRef.current = true;
+      if (!focusPlanet && !hasUserInteractedRef.current && portraitScale > 1.02) {
+        state.camera.position.copy(responsiveOverviewRef.current);
+      }
+    }
+
     const dampFactor = Math.min(1, 1 - Math.exp(-3.6 * delta));
 
     if (focusPlanet && planetObjectsRef.current[focusPlanet]) {
@@ -1296,7 +1318,8 @@ function CameraController({
 
       const planetData = ALL_NAV_BODIES.find((p) => p.name === focusPlanet);
       const size = planetData?.size || 0.6;
-      const zoomDist = focusPlanet === 'ISS' ? Math.max(0.85, size * 3.5) : Math.max(0.95, size * 3.2);
+      const baseZoomDist = focusPlanet === 'ISS' ? Math.max(0.85, size * 3.5) : Math.max(0.95, size * 3.2);
+      const zoomDist = aspect < 0.85 ? baseZoomDist * 1.25 : baseZoomDist;
 
       targetCamPosRef.current.set(
         worldPos.x + zoomDist * 0.72,
@@ -1318,12 +1341,13 @@ function CameraController({
         controls.target.copy(worldPos);
       }
     } else if (isTransitioningRef.current) {
+      const targetOverview = responsiveOverviewRef.current;
       controls.target.lerp(overviewTarget, dampFactor);
-      state.camera.position.lerp(overviewPosition, dampFactor);
+      state.camera.position.lerp(targetOverview, dampFactor);
 
       if (
         controls.target.distanceTo(overviewTarget) < 0.05 &&
-        state.camera.position.distanceTo(overviewPosition) < 0.1
+        state.camera.position.distanceTo(targetOverview) < 0.1
       ) {
         isTransitioningRef.current = false;
       }
@@ -1668,7 +1692,7 @@ export default function SolarSystemScene({
 }) {
   const sfx = useSound();
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <div style={{ width: '100%', height: '100%', position: 'relative', touchAction: 'none' }}>
       <Canvas
         camera={{ position: [0, 18, 32], fov: 44, far: 400 }}
         gl={{ antialias: true, alpha: false }}

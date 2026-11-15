@@ -14,6 +14,8 @@ export default function PlanetAnalysisPanel({
   onClose,
   onSelectPlanet,
   onOpenTestbench,
+  minimized = false,
+  onToggleMinimize,
 }) {
   const titleRef = useRef(null);
   const appCtx = useApp();
@@ -104,25 +106,40 @@ export default function PlanetAnalysisPanel({
           </span>
         </div>
 
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close panel and return to global view"
-          style={{
-            background: 'rgba(15, 23, 42, 0.8)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: '6px',
-            color: '#94a3b8',
-            fontSize: '11px',
-            padding: '3px 8px',
-            cursor: 'pointer',
-          }}
-        >
-          ✕
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {onToggleMinimize && (
+            <button
+              type="button"
+              className="mission-inspection__mobile-toggle"
+              onClick={onToggleMinimize}
+              aria-expanded={!minimized}
+              aria-label={minimized ? 'Expand inspection panel' : 'Minimize inspection panel to view 3D planet'}
+            >
+              {minimized ? 'Panel ▴' : '3D ▾'}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close panel and return to global view"
+            style={{
+              background: 'rgba(15, 23, 42, 0.8)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: '6px',
+              color: '#94a3b8',
+              fontSize: '11px',
+              padding: '3px 8px',
+              cursor: 'pointer',
+            }}
+          >
+            ✕
+          </button>
+        </div>
       </div>
 
-      {/* Title */}
+      {!minimized && (
+        <>
+          {/* Title */}
       <div>
         <h2
           id="planet-analysis-title"
@@ -219,7 +236,7 @@ export default function PlanetAnalysisPanel({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
+          gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
           gap: '8px',
         }}
       >
@@ -415,6 +432,8 @@ export default function PlanetAnalysisPanel({
                   marginBottom: '4px',
                   display: 'flex',
                   justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '4px 8px',
                 }}
               >
                 <span>{activeScenario.label}</span>
@@ -452,6 +471,8 @@ export default function PlanetAnalysisPanel({
             </button>
           )}
         </div>
+      )}
+        </>
       )}
     </aside>
   );

@@ -111,40 +111,6 @@ export default function CopilotChat({ inline = false }) {
   if (!inline && !chatOpen) return null;
   if (inline && chatOpen) return null;
 
-  const containerStyle = inline
-    ? {
-        position: 'absolute',
-        bottom: '20px',
-        right: '20px',
-        width: '340px',
-        maxHeight: '340px',
-        background: 'rgba(13, 19, 33, 0.94)',
-        backdropFilter: 'blur(12px)',
-        border: '1px solid #1c2640',
-        borderRadius: '10px',
-        display: 'flex',
-        flexDirection: 'column',
-        boxShadow: '0 12px 36px rgba(0,0,0,0.6)',
-        zIndex: 30,
-        overflow: 'hidden',
-      }
-    : {
-        position: 'fixed',
-        bottom: '36px',
-        right: '24px',
-        width: '380px',
-        maxHeight: '480px',
-        background: 'rgba(13, 19, 33, 0.96)',
-        backdropFilter: 'blur(16px)',
-        border: '1px solid #2a3654',
-        borderRadius: '12px',
-        display: 'flex',
-        flexDirection: 'column',
-        boxShadow: '0 16px 48px rgba(0,0,0,0.7)',
-        zIndex: 200,
-        overflow: 'hidden',
-      };
-
   const renderFormattedText = (text = '') => {
     const parts = String(text).split(/(\*\*[^*]+\*\*)/g);
     return parts.map((part, i) =>
@@ -159,7 +125,7 @@ export default function CopilotChat({ inline = false }) {
   };
 
   return (
-    <div className="tri-card" style={containerStyle}>
+    <div className={`tri-card copilot-chat ${inline ? 'copilot-chat--inline' : 'copilot-chat--modal'}`}>
       {/* Header */}
       <div
         className="lowpoly-surface"
@@ -206,14 +172,21 @@ export default function CopilotChat({ inline = false }) {
           </span>
           {!inline && (
             <button
+              type="button"
+              aria-label="Close AI Copilot"
               onClick={() => setChatOpen(false)}
               style={{
                 background: 'transparent',
                 border: 'none',
                 color: '#8892a8',
                 cursor: 'pointer',
-                fontSize: '14px',
-                padding: '0 4px',
+                fontSize: '15px',
+                minWidth: '28px',
+                minHeight: '28px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '2px 4px',
               }}
             >
               ✕
@@ -634,6 +607,7 @@ export default function CopilotChat({ inline = false }) {
       >
         <input
           type="text"
+          className="copilot-chat__input"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           disabled={chatLoading || limitReached}
@@ -644,28 +618,12 @@ export default function CopilotChat({ inline = false }) {
                 ? 'Ask Gemini: parameters, extinction limits...'
                 : 'Ask Gemini about space fire safety...'
           }
-          style={{
-            flex: 1,
-            background: '#111827',
-            border: '1px solid #1c2640',
-            borderRadius: '4px',
-            color: '#e2e8f0',
-            fontSize: '11px',
-            padding: '6px 8px',
-            outline: 'none',
-          }}
         />
         <button
           type="submit"
+          className="copilot-chat__send"
           disabled={chatLoading || limitReached || !input.trim()}
           style={{
-            background: '#4f8ef7',
-            border: 'none',
-            borderRadius: '4px',
-            color: '#ffffff',
-            padding: '0 10px',
-            fontSize: '11px',
-            fontWeight: 600,
             cursor: chatLoading || !input.trim() ? 'not-allowed' : 'pointer',
             opacity: chatLoading || !input.trim() ? 0.6 : 1,
           }}
