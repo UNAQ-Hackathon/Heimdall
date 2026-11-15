@@ -423,6 +423,8 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
         }));
   const activePreset = availablePresets.find((p) => p.id === selectedPresetId) ?? null;
   const aiUnconfigured = aiStatus?.quotaStatus === 'unconfigured';
+  const aiLabel =
+    aiStatus?.providerLabel ?? (aiStatus?.provider === 'gemini' ? 'Gemini' : 'AI');
 
   const resetResultsState = () => {
     setResponse(null);
@@ -495,7 +497,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
             detail:
               interp?.reason === 'out_of_range'
                 ? 'Conditions are outside FLEX experimental bounds.'
-                : (interp?.reason ?? 'Gemini did not return an interpretation for this result.'),
+                : (interp?.reason ?? 'The AI provider did not return an interpretation for this result.'),
           });
           return;
         }
@@ -504,21 +506,21 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
       })
       .catch((err) => {
         setInterpretation(null);
-        const rawMsg = err?.message ?? 'Gemini service unavailable.';
+        const rawMsg = err?.message ?? 'AI service unavailable.';
         const isHighDemand = /503|high demand|UNAVAILABLE|overloaded/i.test(rawMsg);
         const isQuota = /429|quota|RESOURCE_EXHAUSTED|budget limit/i.test(rawMsg);
         setInterpretError({
           isHighDemand,
           isQuota,
           title: isHighDemand
-            ? 'Gemini temporarily busy (503)'
+            ? `${aiLabel} temporarily busy (503)`
             : isQuota
-              ? 'Gemini rate / quota limit (429)'
+              ? `${aiLabel} rate / quota limit (429)`
               : 'AI interpretation unavailable',
           detail: isHighDemand
-            ? `Google AI Studio is experiencing high demand (${rawMsg}). Your FireHazR result above is valid.`
+            ? `The AI provider is experiencing high demand (${rawMsg}). Your FireHazR result above is valid.`
             : isQuota
-              ? `${rawMsg} Wait a few seconds if you hit Google per-minute RPM/TPM limits; your deterministic readout above stays active.`
+              ? `${rawMsg} Wait a few seconds if you hit per-minute RPM/TPM limits; your deterministic readout above stays active.`
               : rawMsg,
         });
       })
@@ -705,6 +707,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
       {/* 3D Astronaut Suit & Flame Test Chamber with One-Click Suit Presets */}
       <div
         className="tri-card"
+        data-tour={!compact ? 'flame-lab-view' : undefined}
         style={{
           padding: '12px 14px',
           marginBottom: '16px',
@@ -1556,15 +1559,15 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
                         }}
                       >
                         {aiUnconfigured
-                          ? '✦ Gemini AI offline'
+                          ? `✦ ${aiLabel} AI offline`
                           : interpretError
-                            ? '↻ Retry Gemini AI'
-                            : '✦ Explain with Gemini AI'}
+                            ? `↻ Retry ${aiLabel} AI`
+                            : `✦ Explain with ${aiLabel} AI`}
                       </button>
                     )}
                     <span className="firehazr-gemini-badge">
                       {interpretation?.usage?.totalTokenCount
-                        ? `Gemini · ${interpretation.usage.totalTokenCount} tok`
+                        ? `${aiLabel} · ${interpretation.usage.totalTokenCount} tok`
                         : aiUnconfigured
                           ? 'AI offline'
                           : '0 tokens used'}
@@ -1602,7 +1605,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
                   )}
                 {result.aceptado && interpreting && (
                   <p style={{ margin: 0, color: '#94a3b8', fontStyle: 'italic', fontSize: '12px' }}>
-                    Analyzing test parameters &amp; NASA PSI context with Gemini…
+                    Analyzing test parameters &amp; NASA PSI context with {aiLabel}…
                   </p>
                 )}
                 {result.aceptado && !interpreting && interpretation?.interpretation && (
@@ -1614,7 +1617,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
                     }}
                   >
                     <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#7dd3fc', marginBottom: '4px' }}>
-                      GEMINI AI BRIEF
+                      {aiLabel.toUpperCase()} AI BRIEF
                     </div>
                     <p style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: '12.5px', lineHeight: 1.5 }}>
                       {interpretation.interpretation}

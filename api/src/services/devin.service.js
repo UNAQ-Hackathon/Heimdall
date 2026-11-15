@@ -12,20 +12,29 @@ import {
 
 const { apiKey, apiBase, model } = env.devin;
 const gemini = env.gemini ?? {};
+const openaiCompat = env.openaiCompat ?? {};
 
-const geminiBudget = {
-  limit: Math.max(1000, Number(gemini.tokenLimit ?? 120000)),
-  usedTokens: 0,
-  promptTokens: 0,
-  outputTokens: 0,
-  requests: 0,
+function makeBudget(limit) {
+  return {
+    limit: Math.max(1000, Number(limit ?? 60000)),
+    usedTokens: 0,
+    promptTokens: 0,
+    outputTokens: 0,
+    requests: 0,
+  };
+}
+
+const aiBudgets = {
+  gemini: makeBudget(gemini.tokenLimit),
+  openai: makeBudget(openaiCompat.tokenLimit),
 };
 
-export function getGeminiTokenBudget() {
-  const remainingTokens = Math.max(0, geminiBudget.limit - geminiBudget.usedTokens);
+export function getTokenBudget(provider = 'gemini') {
+  const budget = aiBudgets[provider] ?? aiBudgets.gemini;
+  const remainingTokens = Math.max(0, budget.limit - budget.usedTokens);
   const percentUsed =
-    geminiBudget.limit > 0
-      ? Number(Math.min(100, (geminiBudget.usedTokens / geminiBudget.limit) * 100).toFixed(1))
+    budget.limit > 0
+      ? Number(Math.min(100, (budget.usedTokens / budget.limit) * 100).toFixed(1))
       : 0;
   const alertLevel =
     percentUsed >= 100
@@ -36,15 +45,61 @@ export function getGeminiTokenBudget() {
           ? 'warning'
           : 'ok';
   return {
-    limit: geminiBudget.limit,
-    usedTokens: geminiBudget.usedTokens,
-    promptTokens: geminiBudget.promptTokens,
-    outputTokens: geminiBudget.outputTokens,
+    provider,
+    limit: budget.limit,
+    usedTokens: budget.usedTokens,
+    promptTokens: budget.promptTokens,
+    outputTokens: budget.outputTokens,
     remainingTokens,
     percentUsed,
-    requests: geminiBudget.requests,
+    requests: budget.requests,
     alertLevel,
   };
+}
+
+// Backwards-compatible alias
+export function getGeminiTokenBudget() {
+  return getTokenBudget('gemini');
+}
+
+/**
+ * Provider resolution order. AI_PROVIDER forces one provider; 'auto' prefers
+ * Gemini, then any OpenAI-compatible endpoint, then the Devin API.
+ */
+export function resolveAiProviders() {
+  const pref = String(env.ai?.provider ?? 'auto').toLowerCase();
+  const available = [];
+  if (gemini.apiKey) available.push('gemini');
+  if (openaiCompat.apiKey) available.push('openai');
+  if (env.devin?.apiKey) available.push('devin');
+  if (pref === 'auto') return available;
+  const alias = { google: 'gemini', groq: 'openai', openrouter: 'openai', ollama: 'openai', 'openai-compat': 'openai', compat: 'openai' };
+  const wanted = alias[pref] ?? pref;
+  return available.includes(wanted) ? [wanted] : [];
+}
+
+export function activeAiProvider() {
+  return resolveAiProviders()[0] ?? 'none';
+}
+
+function providerLabel(provider) {
+  if (provider === 'openai') {
+    const base = String(openaiCompat.apiBase ?? '');
+    try {
+      const host = new URL(base).hostname;
+      if (host.includes('groq')) return 'Groq';
+      if (host.includes('openrouter')) return 'OpenRouter';
+      if (host.includes('cerebras')) return 'Cerebras';
+      if (host.includes('together')) return 'Together';
+      if (host === 'localhost' || host === '127.0.0.1') return 'Local LLM';
+      return `OpenAI-compatible (${host})`;
+    } catch {
+      return 'OpenAI-compatible';
+    }
+  }
+  if (provider === 'gemini') return 'Gemini';
+  if (provider === 'devin') return 'Devin';
+  return 'none';
 }
 
 function toSlugKey(value) {
@@ -169,7 +224,35 @@ function parseDevinError(text, fallback) {
 }
 
 export async function getDevinAccountStatus() {
-  if (gemini.apiKey) {
+  const providers = resolveAiProviders();
+  const active = providers[0] ?? 'none';
+  if (active === 'openai') {
+    const res = await fetch(`${openaiCompat.apiBase}/models`, {
+      headers: { Authorization: `Bearer ${openaiCompat.apiKey}` },
+    }).catch(() => null);
+    if (!res || !res.ok) {
+      return {
+        connected: false,
+        provider: 'openai',
+        providerLabel: providerLabel('openai'),
+        model: openaiCompat.model,
+        quotaStatus: res ? `error_${res.status}` : 'offline',
+        tokenBudget: getTokenBudget('openai'),
+        fallbackProviders: providers.slice(1),
+      };
+    }
+    return {
+      connected: true,
+      provider: 'openai',
+      providerLabel: providerLabel('openai'),
+      model: openaiCompat.model,
+      displayName: providerLabel('openai'),
+      tokenBudget: getTokenBudget('openai'),
+      quotaStatus: getTokenBudget('openai').alertLevel === 'exhausted' ? 'budget_exhausted' : 'connected',
+      fallbackProviders: providers.slice(1),
+    };
+  }
+  if (active === 'gemini') {
     const res = await fetch(
       `${gemini.apiBase}/v1beta/models/${encodeURIComponent(gemini.model)}?key=${encodeURIComponent(gemini.apiKey)}`
     ).catch(() => null);
@@ -177,25 +260,31 @@ export async function getDevinAccountStatus() {
       return {
         connected: false,
         provider: 'gemini',
+        providerLabel: 'Gemini',
         model: gemini.model,
         quotaStatus: res ? `error_${res.status}` : 'offline',
+        tokenBudget: getTokenBudget('gemini'),
+        fallbackProviders: providers.slice(1),
       };
     }
     const info = await res.json().catch(() => ({}));
     return {
       connected: true,
       provider: 'gemini',
+      providerLabel: 'Gemini',
       model: gemini.model,
       displayName: info.displayName ?? 'Gemini',
       inputTokenLimit: info.inputTokenLimit ?? null,
       outputTokenLimit: info.outputTokenLimit ?? null,
-      tokenBudget: getGeminiTokenBudget(),
-      quotaStatus: getGeminiTokenBudget().alertLevel === 'exhausted' ? 'budget_exhausted' : 'connected',
+      tokenBudget: getTokenBudget('gemini'),
+      quotaStatus: getTokenBudget('gemini').alertLevel === 'exhausted' ? 'budget_exhausted' : 'connected',
+      fallbackProviders: providers.slice(1),
     };
   }
-  if (!apiKey) {
+  if (!apiKey || providers.length === 0) {
     return {
       connected: false,
+      provider: 'none',
       model,
       sessionsUsed: null,
       activeSessions: null,
@@ -343,6 +432,11 @@ async function runDevinSessionPrompt(prompt, { sessionId, waitMs = 15000 } = {})
 
 const MAX_TOOL_ROUNDS = 6;
 
+const OPENAI_TOOL_SPECS = AGENT_TOOL_DECLARATIONS.map((t) => ({
+  type: 'function',
+  function: { name: t.name, description: t.description, parameters: t.parameters },
+}));
+
 function geminiUrl(method, extra = '') {
   return `${gemini.apiBase}/v1beta/models/${encodeURIComponent(gemini.model)}:${method}?key=${encodeURIComponent(gemini.apiKey)}${extra}`;
 }
@@ -365,7 +459,7 @@ async function geminiError(res) {
  * streamGenerateContent (SSE) and forwards each text delta live.
  * Returns complete content parts + usage for the round.
  */
-async function callGeminiRound({ systemText, contents, temperature, tools, onText }) {
+async function callGeminiRound({ systemText, contents, temperature, tools, onText, maxOutputTokens, thinkingBudget }) {
   const res = await fetch(geminiUrl(onText ? 'streamGenerateContent' : 'generateContent', onText ? '&alt=sse' : ''), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -375,7 +469,9 @@ async function callGeminiRound({ systemText, contents, temperature, tools, onTex
       ...(tools ? { tools: [{ functionDeclarations: tools }] } : {}),
       generationConfig: {
         temperature,
-        maxOutputTokens: Math.max(128, Number(gemini.maxOutputTokens ?? 1024)),
+        maxOutputTokens: Math.max(128, Number(maxOutputTokens ?? gemini.maxOutputTokens ?? 512)),
+        // Flash burns output tokens on hidden thinking — 0 disables it for cheap calls.
+        ...(thinkingBudget != null ? { thinkingConfig: { thinkingBudget } } : {}),
       },
     }),
   });
@@ -442,9 +538,28 @@ async function callGeminiRound({ systemText, contents, temperature, tools, onTex
   };
 }
 
+function budgetGuard(provider, label) {
+  const budget = aiBudgets[provider];
+  if (budget && budget.usedTokens >= budget.limit) {
+    throw new HttpError(
+      429,
+      `${label} token budget limit reached (${budget.usedTokens.toLocaleString()}/${budget.limit.toLocaleString()} tokens).`
+    );
+  }
+}
+
+function accumulateUsage(provider, totals) {
+  const budget = aiBudgets[provider];
+  if (!budget || !totals || totals.totalTokenCount <= 0) return;
+  budget.promptTokens += totals.promptTokenCount;
+  budget.outputTokens += totals.candidatesTokenCount;
+  budget.usedTokens += totals.totalTokenCount;
+  budget.requests += 1;
+}
+
 async function chatWithGemini(
   messages,
-  { temperature = 0.2, useTools = false, onEvent = null } = {}
+  { temperature = 0.2, useTools = false, onEvent = null, maxOutputTokens, thinkingBudget } = {}
 ) {
   const systemText = messages
     .filter((m) => m.role === 'system')
@@ -463,12 +578,7 @@ async function chatWithGemini(
   let content = '';
 
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round += 1) {
-    if (geminiBudget.usedTokens >= geminiBudget.limit) {
-      throw new HttpError(
-        429,
-        `Gemini API token budget limit reached (${geminiBudget.usedTokens.toLocaleString()}/${geminiBudget.limit.toLocaleString()} tokens).`
-      );
-    }
+    budgetGuard('gemini', 'Gemini API');
 
     const { parts, usage } = await callGeminiRound({
       systemText,
@@ -477,6 +587,8 @@ async function chatWithGemini(
       // On the last allowed round drop the tools so the model must answer.
       tools: useTools && round < MAX_TOOL_ROUNDS ? AGENT_TOOL_DECLARATIONS : null,
       onText: onEvent ? (chunk) => onEvent({ type: 'delta', text: chunk }) : null,
+      maxOutputTokens,
+      thinkingBudget,
     });
 
     if (usage) {
@@ -516,12 +628,7 @@ async function chatWithGemini(
     contents.push({ role: 'user', parts: responseParts });
   }
 
-  if (usageTotals.totalTokenCount > 0) {
-    geminiBudget.promptTokens += usageTotals.promptTokenCount;
-    geminiBudget.outputTokens += usageTotals.candidatesTokenCount;
-    geminiBudget.usedTokens += usageTotals.totalTokenCount;
-    geminiBudget.requests += 1;
-  }
+  accumulateUsage('gemini', usageTotals);
 
   return {
     content,
@@ -531,26 +638,234 @@ async function chatWithGemini(
     sessionStatus: 'completed',
     baselineCount: 0,
     usage: usageTotals.totalTokenCount > 0 ? usageTotals : null,
-    tokenBudget: getGeminiTokenBudget(),
+    tokenBudget: getTokenBudget('gemini'),
     model: gemini.model,
     provider: 'gemini',
+    providerLabel: 'Gemini',
     toolCalls,
     toolRounds: rounds,
   };
 }
 
+async function openaiCompatError(res) {
+  const text = await res.text();
+  let msg = `HTTP ${res.status}`;
+  try {
+    const parsed = JSON.parse(text);
+    msg = parsed?.error?.message ?? parsed?.message ?? msg;
+  } catch {
+    if (text) msg = text;
+  }
+  const status = res.status === 503 || res.status === 429 ? res.status : 502;
+  throw new HttpError(status, `AI provider error ${res.status}: ${msg}`, { body: text });
+}
+
 /**
- * AI client — uses Google AI Studio (Gemini) when GEMINI_API_KEY is set,
- * otherwise falls back to Devin API.
+ * One OpenAI-compatible round (Groq / OpenRouter / Cerebras / Ollama / vLLM…).
+ * Same contract as callGeminiRound but with the chat.completions shape:
+ * tools as {type:'function'}, tool replies as role:'tool' messages.
+ * With onText it streams SSE deltas + accumulates streamed tool_calls.
  */
-async function chat(
-  messages,
-  { temperature = 0.2, sessionId, waitMs, useTools = false, onEvent = null } = {}
-) {
-  if (gemini.apiKey) {
-    return chatWithGemini(messages, { temperature, useTools, onEvent });
+async function callOpenAICompatRound({ messages, temperature, tools, onText, maxOutputTokens }) {
+  const res = await fetch(`${openaiCompat.apiBase}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(openaiCompat.apiKey ? { Authorization: `Bearer ${openaiCompat.apiKey}` } : {}),
+    },
+    body: JSON.stringify({
+      model: openaiCompat.model,
+      messages,
+      temperature,
+      max_tokens: Math.max(128, Number(maxOutputTokens ?? openaiCompat.maxOutputTokens ?? 512)),
+      ...(openaiCompat.reasoningEffort ? { reasoning_effort: openaiCompat.reasoningEffort } : {}),
+      ...(tools ? { tools } : {}),
+      ...(onText ? { stream: true, stream_options: { include_usage: true } } : {}),
+    }),
+  });
+
+  if (!res.ok) await openaiCompatError(res);
+
+  if (!onText) {
+    const data = await res.json();
+    const msg = data.choices?.[0]?.message ?? {};
+    const u = data.usage ?? null;
+    return {
+      content: msg.content ?? '',
+      toolCalls: Array.isArray(msg.tool_calls) ? msg.tool_calls : [],
+      usage: u
+        ? {
+            promptTokenCount: Number(u.prompt_tokens ?? 0),
+            candidatesTokenCount: Number(u.completion_tokens ?? 0),
+            totalTokenCount: Number(u.total_tokens ?? (u.prompt_tokens ?? 0) + (u.completion_tokens ?? 0)),
+          }
+        : null,
+    };
   }
 
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let text = '';
+  const streamedCalls = new Map(); // index -> {id, function:{name, arguments}}
+  let usage = null;
+
+  const handlePayload = (data) => {
+    if (data?.error) {
+      throw new HttpError(
+        data.error.code === 503 || data.error.code === 429 ? data.error.code : 502,
+        `AI provider error ${data.error.code}: ${data.error.message ?? 'stream error'}`
+      );
+    }
+    if (data?.usage) {
+      const u = data.usage;
+      usage = {
+        promptTokenCount: Number(u.prompt_tokens ?? 0),
+        candidatesTokenCount: Number(u.completion_tokens ?? 0),
+        totalTokenCount: Number(u.total_tokens ?? (u.prompt_tokens ?? 0) + (u.completion_tokens ?? 0)),
+      };
+    }
+    const delta = data?.choices?.[0]?.delta ?? {};
+    if (typeof delta.content === 'string' && delta.content.length > 0) {
+      text += delta.content;
+      onText(delta.content);
+    }
+    for (const tc of delta.tool_calls ?? []) {
+      const idx = tc.index ?? 0;
+      const acc = streamedCalls.get(idx) ?? {
+        id: tc.id ?? `call_${idx}`,
+        type: 'function',
+        function: { name: '', arguments: '' },
+      };
+      if (tc.id) acc.id = tc.id;
+      if (tc.function?.name) acc.function.name += tc.function.name;
+      if (tc.function?.arguments) acc.function.arguments += tc.function.arguments;
+      streamedCalls.set(idx, acc);
+    }
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    // OpenAI SSE may use CRLF — normalize before splitting blocks.
+    buffer = (buffer + decoder.decode(value, { stream: true })).replace(/\r\n/g, '\n');
+    let sep;
+    while ((sep = buffer.indexOf('\n\n')) !== -1) {
+      const block = buffer.slice(0, sep);
+      buffer = buffer.slice(sep + 2);
+      const rawData = block.match(/^data: ([\s\S]+)$/m)?.[1];
+      if (!rawData || rawData.trim() === '[DONE]') continue;
+      try {
+        handlePayload(JSON.parse(rawData));
+      } catch (err) {
+        if (err instanceof HttpError) throw err;
+        // ignore malformed SSE chunks
+      }
+    }
+  }
+
+  return {
+    content: text,
+    toolCalls: [...streamedCalls.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([, call]) => call),
+    usage,
+  };
+}
+
+/**
+ * Agentic tool-calling loop over any OpenAI-compatible endpoint.
+ * Mirrors chatWithGemini: same tools, same trace events, same usage shape.
+ */
+async function chatWithOpenAI(
+  messages,
+  { temperature = 0.2, useTools = false, onEvent = null, maxOutputTokens } = {}
+) {
+  const apiMessages = messages.map((m) => ({
+    role: m.role === 'model' ? 'assistant' : m.role,
+    content: m.content,
+  }));
+
+  const toolCalls = [];
+  const usageTotals = { promptTokenCount: 0, candidatesTokenCount: 0, totalTokenCount: 0 };
+  let rounds = 0;
+  let content = '';
+  const label = providerLabel('openai');
+
+  for (let round = 0; round <= MAX_TOOL_ROUNDS; round += 1) {
+    budgetGuard('openai', label);
+
+    const { content: roundText, toolCalls: roundCalls, usage } = await callOpenAICompatRound({
+      messages: apiMessages,
+      temperature,
+      tools: useTools && round < MAX_TOOL_ROUNDS ? OPENAI_TOOL_SPECS : null,
+      onText: onEvent ? (chunk) => onEvent({ type: 'delta', text: chunk }) : null,
+      maxOutputTokens,
+    });
+
+    if (usage) {
+      usageTotals.promptTokenCount += usage.promptTokenCount;
+      usageTotals.candidatesTokenCount += usage.candidatesTokenCount;
+      usageTotals.totalTokenCount += usage.totalTokenCount;
+    }
+
+    const calls = useTools ? roundCalls : [];
+
+    if (calls.length === 0 || round === MAX_TOOL_ROUNDS) {
+      content = (content + roundText).trim();
+      rounds = round;
+      break;
+    }
+
+    content += roundText;
+    apiMessages.push({ role: 'assistant', content: roundText || '', tool_calls: roundCalls });
+    for (const call of roundCalls) {
+      const name = call.function?.name;
+      let args = {};
+      try {
+        args = JSON.parse(call.function?.arguments || '{}');
+      } catch {
+        args = {};
+      }
+      const argsLabel = formatToolArgs(name, args);
+      onEvent?.({ type: 'tool_call', name, argsLabel });
+      const result = await executeAgentTool(name, args);
+      const summary = summarizeToolResult(name, result);
+      const detail = detailToolResult(name, result);
+      const ok = result?.error == null;
+      toolCalls.push({ name, argsLabel, summary, detail, ok });
+      onEvent?.({ type: 'tool_result', name, ok, summary, detail });
+      apiMessages.push({
+        role: 'tool',
+        tool_call_id: call.id,
+        content: JSON.stringify(result),
+      });
+    }
+  }
+
+  accumulateUsage('openai', usageTotals);
+
+  return {
+    content,
+    status: 'completed',
+    sessionId: null,
+    sessionUrl: null,
+    sessionStatus: 'completed',
+    baselineCount: 0,
+    usage: usageTotals.totalTokenCount > 0 ? usageTotals : null,
+    tokenBudget: getTokenBudget('openai'),
+    model: openaiCompat.model,
+    provider: 'openai',
+    providerLabel: label,
+    toolCalls,
+    toolRounds: rounds,
+  };
+}
+
+async function chatWithDevin(
+  messages,
+  { temperature = 0.2, sessionId, waitMs } = {}
+) {
   if (isDevinSessionsApi()) {
     const prompt = messages
       .map((m) => `[${m.role.toUpperCase()}]\n${m.content}`)
@@ -577,7 +892,48 @@ async function chat(
     sessionUrl: null,
     sessionStatus: 'completed',
     baselineCount: 0,
+    provider: 'devin',
+    providerLabel: 'Devin',
   };
+}
+
+/**
+ * AI dispatcher — tries each configured provider in resolveAiProviders()
+ * order. A provider that fails with a retryable error (429/5xx, network)
+ * falls through to the next one so demos don't break on a single quota wall.
+ * Failover is skipped once any output was already streamed to the client.
+ */
+async function chat(
+  messages,
+  { temperature = 0.2, sessionId, waitMs, useTools = false, onEvent = null, maxOutputTokens, thinkingBudget } = {}
+) {
+  const providers = resolveAiProviders();
+  let lastErr = null;
+
+  for (const provider of providers) {
+    let emitted = false;
+    const guardedEvent = onEvent
+      ? (evt) => {
+          emitted = true;
+          onEvent(evt);
+        }
+      : null;
+    try {
+      if (provider === 'gemini') {
+        return await chatWithGemini(messages, { temperature, useTools, onEvent: guardedEvent, maxOutputTokens, thinkingBudget });
+      }
+      if (provider === 'openai') {
+        return await chatWithOpenAI(messages, { temperature, useTools, onEvent: guardedEvent, maxOutputTokens });
+      }
+      return await chatWithDevin(messages, { temperature, sessionId, waitMs });
+    } catch (err) {
+      lastErr = err;
+      if (emitted) throw err; // partial output already reached the client — don't duplicate
+      console.warn(`[ai] provider '${provider}' failed (${err.status ?? 'network'}: ${err.message}); trying next provider`);
+    }
+  }
+
+  throw lastErr ?? new HttpError(503, 'No AI provider configured on the server.');
 }
 
 const SUMMARY_SYSTEM = [
@@ -588,7 +944,7 @@ const SUMMARY_SYSTEM = [
 ].join(' ');
 
 function hasAiProviderConfigured() {
-  return Boolean(gemini.apiKey || apiKey);
+  return resolveAiProviders().length > 0;
 }
 
 function buildStructuredOfflineBrief(inv, audience = 'Engineer') {
@@ -665,7 +1021,8 @@ export async function summarizeInvestigation(investigation, { audience = 'Engine
     status: res.status,
     sessionId: res.sessionId,
     sessionUrl: res.sessionUrl,
-    provider: res.provider ?? (gemini.apiKey ? 'gemini' : 'devin'),
+    provider: res.provider ?? activeAiProvider(),
+    providerLabel: res.providerLabel ?? null,
     model: res.model ?? model,
   };
 }
@@ -721,7 +1078,10 @@ export async function answerQuestion(
       tokenBudget: null,
     };
   }
-  const context = activeDocs
+  // Only the top relevant docs go into the prompt — the agent's tools fetch
+  // everything else on demand. Keeps requests inside tight free-tier TPM caps.
+  const promptDocs = selectRelevantFallbackDocs(activeDocs, question, 5);
+  const context = promptDocs
     .map(
       (d, i) =>
         `[${i + 1}] ${d.acronym ?? d.name ?? d.title}: ${d.title ?? d.family ?? ''}\nObjective: ${d.objective ?? ''}\nDetails: ${d.aiSummary ?? ''}`
@@ -752,11 +1112,12 @@ export async function answerQuestion(
       ? 'Audience: Student (explain clearly in accessible terms while keeping real numbers accurate).'
       : 'Audience: Spacecraft Fire Safety Engineer (be technical, concise, and cite O2 %, pressure, and flow regimes).';
 
+  const toolsCapable = resolveAiProviders().some((p) => p === 'gemini' || p === 'openai');
   const res = await chat(
     [
       {
         role: 'system',
-        content: `${RAG_SYSTEM}${gemini.apiKey ? ` ${AGENT_SYSTEM}` : ''} ${audienceNote}`,
+        content: `${RAG_SYSTEM}${toolsCapable ? ` ${AGENT_SYSTEM}` : ''} ${audienceNote}`,
       },
       {
         role: 'user',
@@ -775,9 +1136,10 @@ export async function answerQuestion(
     baselineCount: res.baselineCount,
     citations: extractCitations(activeDocs, res.content ?? question),
     model: res.model ?? model,
-    provider: res.provider ?? (gemini.apiKey ? 'gemini' : 'devin'),
+    provider: res.provider ?? activeAiProvider(),
+    providerLabel: res.providerLabel ?? null,
     usage: res.usage ?? null,
-    tokenBudget: res.tokenBudget ?? (gemini.apiKey ? getGeminiTokenBudget() : null),
+    tokenBudget: res.tokenBudget ?? null,
     toolCalls: res.toolCalls ?? [],
   };
 }
@@ -787,7 +1149,7 @@ export async function interpretFirehazrResult({ conditions, result, study = null
     return {
       interpretation: null,
       unavailable: true,
-      reason: 'AI provider not configured on the server — set GEMINI_API_KEY or DEVIN_API_KEY to enable interpretations.',
+      reason: 'AI provider not configured on the server — set GEMINI_API_KEY, OPENAI_COMPAT_API_KEY, or DEVIN_API_KEY to enable interpretations.',
       model: null,
       provider: 'offline',
       usage: null,
@@ -802,19 +1164,35 @@ export async function interpretFirehazrResult({ conditions, result, study = null
     'STRICT RULE: Never invent numbers or claim fire probability/safety ratings. Only cite numbers present in the JSON.',
   ].join(' ');
 
-  const res = await chat([
-    { role: 'system', content: system },
-    {
-      role: 'user',
-      content: JSON.stringify({ conditions, result, linkedPsiStudy: study }, null, 2),
-    },
-  ]);
+  const res = await chat(
+    [
+      { role: 'system', content: system },
+      {
+        role: 'user',
+        content: JSON.stringify({ conditions, result: compactFirehazrResult(result), linkedPsiStudy: study }, null, 2),
+      },
+    ],
+    { maxOutputTokens: env.ai?.interpretMaxTokens ?? 320, thinkingBudget: 0 }
+  );
 
   return {
     interpretation: res.content,
     model: res.model ?? model,
-    provider: res.provider ?? (gemini.apiKey ? 'gemini' : 'devin'),
+    provider: res.provider ?? activeAiProvider(),
+    providerLabel: res.providerLabel ?? null,
     usage: res.usage ?? null,
-    tokenBudget: res.tokenBudget ?? (gemini.apiKey ? getGeminiTokenBudget() : null),
+    tokenBudget: res.tokenBudget ?? null,
+  };
+}
+
+/**
+ * Trims the FireHazR result before sending it to the LLM — neighbors beyond
+ * the top 3 only burn prompt tokens without changing the brief.
+ */
+function compactFirehazrResult(result) {
+  if (!result || typeof result !== 'object') return result;
+  return {
+    ...result,
+    vecinos: Array.isArray(result.vecinos) ? result.vecinos.slice(0, 3) : result.vecinos,
   };
 }

@@ -23,9 +23,16 @@ export function slugifyInvestigationKey(value) {
 }
 
 export async function loadProcessedInvestigations() {
-  if (cachedProcessed) return cachedProcessed;
-  const raw = await readFile(PROCESSED_FILE, 'utf8');
-  cachedProcessed = JSON.parse(raw);
+  if (cachedProcessed !== null) return cachedProcessed;
+  try {
+    const raw = await readFile(PROCESSED_FILE, 'utf8');
+    cachedProcessed = JSON.parse(raw);
+  } catch (err) {
+    console.warn(
+      `[dataset] Could not load processed PSI archive at ${PROCESSED_FILE} (${err.code ?? err.message}); continuing without it.`
+    );
+    cachedProcessed = [];
+  }
   return cachedProcessed;
 }
 

@@ -9,6 +9,7 @@ import { useSound } from '../context/SoundContext.jsx';
 import { api } from '../services/api.js';
 import { rankLocalInvestigations } from '../services/ranking.js';
 import { PLANETS, ISS_DESTINATION } from '../services/mockData.js';
+import { TOUR_STEPS } from '../utils/onboarding-storage.js';
 import '../styles/mission-hub.css';
 
 const PLANET_TO_SCENARIO = {
@@ -53,6 +54,8 @@ export default function MissionHub() {
     setShipFile,
     chatOpen,
     setChatOpen,
+    tourOpen,
+    tourStep,
   } = useApp();
 
   const sfx = useSound();
@@ -124,9 +127,20 @@ export default function MissionHub() {
     setInspectionMinimized(false);
   }, [focusPlanet]);
 
+  useEffect(() => {
+    if (!tourOpen) return;
+    const step = TOUR_STEPS[tourStep];
+    if (!step) return;
+    if (step.mobileTab === 'lab') {
+      setPanelCollapsed(false);
+    } else if (typeof window !== 'undefined' && window.innerWidth <= 900) {
+      setPanelCollapsed(true);
+    }
+  }, [tourOpen, tourStep]);
+
   return (
     <div className="mission-hub">
-      {/* Mobile-only top switcher between 3D Solar System and the Algorithm lab */}
+      {/* Mobile-only top switcher between 3D Solar System and the Fire Lab & PSI panel */}
       <div className="mission-hub__mobile-switcher" role="group" aria-label="Mission Hub view">
         <button
           type="button"
@@ -142,13 +156,13 @@ export default function MissionHub() {
           aria-pressed={!panelCollapsed}
           onClick={() => setPanelCollapsed(false)}
         >
-          Algorithm Lab
+          Fire Lab & PSI
         </button>
       </div>
 
       {/* Left Minimalist Analytical Panel */}
       {!panelCollapsed && (
-        <aside className="mission-hub__sidebar">
+        <aside className="mission-hub__sidebar" data-tour="fire-lab">
           {/* Audience-Specific Top Context: Quantitative PSI Ranking (Engineer) vs Guided Fire Lesson (Student) */}
           {audience === 'Student' ? (
             <div
@@ -357,9 +371,16 @@ export default function MissionHub() {
           {/* Minimalist Top Bar Over 3D Scene */}
           <div className="mission-hub__top-overlay">
             {/* Left: Spacecraft Selector */}
-            <div style={{ pointerEvents: 'auto' }}>
+            <div style={{ pointerEvents: 'auto' }} data-tour="craft-selector">
               <SpacecraftSelector shipFile={shipFile} onSelect={setShipFile} />
             </div>
+
+            {!focusPlanet && !tourOpen && (
+              <div className="mission-hub__stage-hint" aria-hidden="true">
+                <span className="mission-hub__stage-hint-full">Drag to orbit · Scroll to zoom · Tap any planet to fly</span>
+                <span className="mission-hub__stage-hint-compact">Drag to orbit · Tap a planet</span>
+              </div>
+            )}
           </div>
 
           {/* 3D Solar System Canvas */}
@@ -392,7 +413,9 @@ export default function MissionHub() {
           tabIndex={-1}
           aria-label="Planet to explore"
           className="mission-hub__planet-dock"
+          data-tour="planet-dock"
         >
+          <span className="mission-hub__dock-label" aria-hidden="true">Fly to</span>
           <button
             type="button"
             className="mission-hub__planet-chip"

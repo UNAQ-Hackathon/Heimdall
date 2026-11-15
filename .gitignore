@@ -20,6 +20,9 @@ data/raw/*
 !data/raw/.gitkeep
 !data/raw/psi-investigations.json
 
+# Deploy-time copy of data/processed bundled into the API artifact (CI only)
+api/data/
+
 # Blender
 *.blend1
 *.blend2

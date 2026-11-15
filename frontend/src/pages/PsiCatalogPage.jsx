@@ -1208,7 +1208,7 @@ export default function PsiCatalogPage() {
         </section>
 
         {/* Simplified Filter Bar */}
-        <section className="psi-filter-bar" aria-label="Filter studies simply">
+        <section className="psi-filter-bar" aria-label="Filter studies simply" data-tour="psi-catalog-controls">
           <div className="psi-filter-main-row">
             <div className="psi-search-wrap">
               <input

@@ -77,7 +77,12 @@ export default function CopilotChat({ inline = false }) {
     0
   );
   const serverBudget = devinStatus?.tokenBudget;
-  const tokenLimit = serverBudget?.limit ?? 120000;
+  const tokenLimit = serverBudget?.limit ?? 60000;
+  const providerName = (
+    devinStatus?.providerLabel ??
+    (devinStatus?.provider === 'openai' ? 'AI' : devinStatus?.provider) ??
+    'GEMINI'
+  ).toUpperCase();
   const usedTokens = Math.max(serverBudget?.usedTokens ?? 0, sessionTotalTokens);
   const promptTokens = Math.max(serverBudget?.promptTokens ?? 0, sessionPromptTokens);
   const outputTokens = Math.max(serverBudget?.outputTokens ?? 0, sessionOutputTokens);
@@ -165,10 +170,10 @@ export default function CopilotChat({ inline = false }) {
           >
             <GeminiLogo size={10} />
             {chatLoading
-              ? 'GEMINI · THINKING…'
+              ? `${providerName} · THINKING…`
               : hasQuotaError
-                ? 'GEMINI · QUOTA LIMIT'
-                : 'POWERED BY GEMINI'}
+                ? `${providerName} · QUOTA LIMIT`
+                : `POWERED BY ${providerName}`}
           </span>
           {!inline && (
             <button

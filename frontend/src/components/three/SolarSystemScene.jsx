@@ -783,9 +783,14 @@ function SpacecraftNavigator({
       aheadPos: new THREE.Vector3(),
       tangent: new THREE.Vector3(),
       diff: new THREE.Vector3(),
+      prevDir: new THREE.Vector3(),
+      curDir: new THREE.Vector3(),
+      crossVec: new THREE.Vector3(),
       up: new THREE.Vector3(0, 1, 0),
+      bankAxis: new THREE.Vector3(0, 0, 1),
       mat4: new THREE.Matrix4(),
       targetQuat: new THREE.Quaternion(),
+      bankQuat: new THREE.Quaternion(),
       obstacles: ALL_NAV_BODIES.map((p) => ({
         name: p.name,
         pos: new THREE.Vector3(),
@@ -814,6 +819,7 @@ function SpacecraftNavigator({
     startPos: new THREE.Vector3(10.2, 0.8, 0),
     lastPos: new THREE.Vector3(10.2, 0.8, 0),
     orbitAngle: 0,
+    bankAngle: -0.14,
     initialized: false,
   });
 
@@ -865,9 +871,14 @@ function SpacecraftNavigator({
       aheadPos,
       tangent,
       diff,
+      prevDir,
+      curDir,
+      crossVec,
       up,
+      bankAxis,
       mat4,
       targetQuat,
+      bankQuat,
       obstacles,
     } = scratch;
 
@@ -1018,12 +1029,22 @@ function SpacecraftNavigator({
       evalTransferCurve(nextT, aheadPos);
 
       if (aheadPos.distanceToSquared(currentPos) > 1e-6) {
+        curDir.subVectors(aheadPos, currentPos).normalize();
+        let targetBank = 0;
+        if (st.lastPos.distanceToSquared(currentPos) > 1e-8) {
+          prevDir.subVectors(currentPos, st.lastPos).normalize();
+          crossVec.crossVectors(prevDir, curDir);
+          targetBank = THREE.MathUtils.clamp(-crossVec.y * 10, -0.45, 0.45);
+        }
+        st.bankAngle += (targetBank - st.bankAngle) * Math.min(1, 1 - Math.exp(-delta * 6.5));
         mat4.lookAt(ship.position, aheadPos, up);
         targetQuat.setFromRotationMatrix(mat4);
-        ship.quaternion.slerp(targetQuat, 1 - Math.exp(-delta * 6.0));
+        bankQuat.setFromAxisAngle(bankAxis, st.bankAngle);
+        targetQuat.multiply(bankQuat);
+        ship.quaternion.slerp(targetQuat, Math.min(1, 1 - Math.exp(-delta * 7.2)));
       }
 
-      ship.position.lerp(currentPos, 1 - Math.exp(-delta * 9.0));
+      ship.position.lerp(currentPos, Math.min(1, 1 - Math.exp(-delta * 10.5)));
       st.lastPos.copy(ship.position);
 
       if (shipTransitRef) {
@@ -1058,6 +1079,9 @@ function SpacecraftNavigator({
       trajectoryLine.visible = false;
       ship.position.lerp(destPos, 1 - Math.exp(-delta * (isDockingTarget ? 12 : 8)));
 
+      const idleBank = isDockingTarget ? 0 : -0.14;
+      st.bankAngle += (idleBank - st.bankAngle) * Math.min(1, 1 - Math.exp(-delta * 4.5));
+
       if (isDockingTarget) {
         // Hold steady alongside the ISS docking berth with nose oriented toward the station
         mat4.lookAt(ship.position, planetWorldPos, up);
@@ -1068,6 +1092,8 @@ function SpacecraftNavigator({
         aheadPos.copy(ship.position).add(tangent);
         mat4.lookAt(ship.position, aheadPos, up);
         targetQuat.setFromRotationMatrix(mat4);
+        bankQuat.setFromAxisAngle(bankAxis, st.bankAngle);
+        targetQuat.multiply(bankQuat);
         ship.quaternion.slerp(targetQuat, 1 - Math.exp(-delta * 8));
       }
 
@@ -1150,6 +1176,11 @@ function CameraController({
   const portraitFittedRef = useRef(false);
   const targetCamPosRef = useRef(new THREE.Vector3());
   const responsiveOverviewRef = useRef(new THREE.Vector3(0, 18, 32));
+  const worldPosRef = useRef(new THREE.Vector3());
+  const chaseOffsetRef = useRef(new THREE.Vector3());
+  const desiredCamRef = useRef(new THREE.Vector3());
+  const focusTargetRef = useRef(new THREE.Vector3());
+  const transitTimeRef = useRef(0);
   const viewOffsetStateRef = useRef({
     offsetX: 0,
     appliedOffsetX: -1,
@@ -1247,7 +1278,7 @@ function CameraController({
       );
     }
 
-    vs.offsetX += (targetOffsetX - vs.offsetX) * Math.min(1, 1 - Math.exp(-3.4 * delta));
+    vs.offsetX += (targetOffsetX - vs.offsetX) * Math.min(1, 1 - Math.exp(-4.5 * delta));
     if (sizeChanged || Math.abs(vs.offsetX - vs.appliedOffsetX) > 0.05) {
       if (targetOffsetX === 0 && Math.abs(vs.offsetX) < 0.35) {
         vs.offsetX = 0;
@@ -1270,30 +1301,6 @@ function CameraController({
       vs.expLeft = expLeft;
     }
 
-    const transit = shipTransitRef?.current;
-
-    if (transit?.inTransit) {
-      const shipPos = transit.shipPos;
-      const startPos = transit.startPos;
-      const destPos = transit.destPos;
-      const p = transit.progress ?? 0.5;
-
-      const followRate = Math.min(1, 1 - Math.exp(-8.0 * delta));
-      controls.target.lerp(shipPos, followRate);
-
-      const chordDist = Math.max(2, startPos.distanceTo(destPos));
-      const wideFactor = Math.sin(Math.PI * p);
-      const distOut = 0.9 + wideFactor * Math.min(4.8, chordDist * 0.24);
-      const heightUp = 0.65 + wideFactor * Math.min(3.2, chordDist * 0.16);
-
-      const chaseOffset = new THREE.Vector3(distOut * 0.65, heightUp, distOut);
-      const desiredCam = shipPos.clone().add(chaseOffset);
-      state.camera.position.lerp(desiredCam, Math.min(1, 1 - Math.exp(-6.0 * delta)));
-      isTransitioningRef.current = true;
-      controls.update();
-      return;
-    }
-
     const aspect =
       state.size.width > 0 && state.size.height > 0
         ? state.size.width / state.size.height
@@ -1302,6 +1309,59 @@ function CameraController({
       aspect < 1 ? Math.min(1.8, Math.max(1, 1.02 / Math.max(aspect, 0.52))) : 1;
     responsiveOverviewRef.current.copy(overviewPosition).multiplyScalar(portraitScale);
 
+    const transit = shipTransitRef?.current;
+
+    if (transit?.inTransit) {
+      transitTimeRef.current += delta;
+      const shipPos = transit.shipPos;
+      const startPos = transit.startPos;
+      const destPos = transit.destPos;
+      const p = transit.progress ?? 0.5;
+
+      const takeoffRamp = THREE.MathUtils.smoothstep(transitTimeRef.current, 0, 0.55);
+      const followHz = THREE.MathUtils.lerp(3.2, 7.8, takeoffRamp);
+      const followRate = Math.min(1, 1 - Math.exp(-followHz * delta));
+      const arrivalBlend = THREE.MathUtils.smoothstep(p, 0.72, 1.0);
+
+      const focusObj = focusPlanet ? planetObjectsRef.current[focusPlanet] : null;
+      if (focusObj && arrivalBlend > 0) {
+        focusObj.getWorldPosition(worldPosRef.current);
+        focusTargetRef.current.copy(shipPos).lerp(worldPosRef.current, arrivalBlend);
+        controls.target.lerp(focusTargetRef.current, followRate);
+      } else {
+        controls.target.lerp(shipPos, followRate);
+      }
+
+      const chordDist = Math.max(2, startPos.distanceTo(destPos));
+      const wideFactor = Math.sin(Math.PI * p);
+      const distOut = 0.9 + wideFactor * Math.min(4.8, chordDist * 0.24);
+      const heightUp = 0.65 + wideFactor * Math.min(3.2, chordDist * 0.16);
+
+      chaseOffsetRef.current.set(distOut * 0.65, heightUp, distOut);
+      desiredCamRef.current.copy(shipPos).add(chaseOffsetRef.current);
+
+      if (focusObj && arrivalBlend > 0) {
+        const planetData = ALL_NAV_BODIES.find((b) => b.name === focusPlanet);
+        const size = planetData?.size || 0.6;
+        const baseZoomDist = focusPlanet === 'ISS' ? Math.max(0.85, size * 3.5) : Math.max(0.95, size * 3.2);
+        const zoomDist = aspect < 0.85 ? baseZoomDist * 1.25 : baseZoomDist;
+        targetCamPosRef.current.set(
+          worldPosRef.current.x + zoomDist * 0.72,
+          worldPosRef.current.y + zoomDist * 0.48,
+          worldPosRef.current.z + zoomDist * 0.85
+        );
+        desiredCamRef.current.lerp(targetCamPosRef.current, arrivalBlend);
+      }
+
+      const camFollowRate = Math.min(1, 1 - Math.exp(-THREE.MathUtils.lerp(2.6, 5.8, takeoffRamp) * delta));
+      state.camera.position.lerp(desiredCamRef.current, camFollowRate);
+      isTransitioningRef.current = true;
+      controls.update();
+      return;
+    }
+
+    transitTimeRef.current = 0;
+
     if (!portraitFittedRef.current && state.size.width > 0 && state.size.height > 0) {
       portraitFittedRef.current = true;
       if (!focusPlanet && !hasUserInteractedRef.current && portraitScale > 1.02) {
@@ -1309,11 +1369,11 @@ function CameraController({
       }
     }
 
-    const dampFactor = Math.min(1, 1 - Math.exp(-3.6 * delta));
+    const dampFactor = Math.min(1, 1 - Math.exp(-4.6 * delta));
 
     if (focusPlanet && planetObjectsRef.current[focusPlanet]) {
       const obj = planetObjectsRef.current[focusPlanet];
-      const worldPos = new THREE.Vector3();
+      const worldPos = worldPosRef.current;
       obj.getWorldPosition(worldPos);
 
       const planetData = ALL_NAV_BODIES.find((p) => p.name === focusPlanet);
@@ -1332,13 +1392,13 @@ function CameraController({
         state.camera.position.lerp(targetCamPosRef.current, dampFactor);
 
         if (
-          controls.target.distanceTo(worldPos) < 0.05 &&
-          state.camera.position.distanceTo(targetCamPosRef.current) < 0.1
+          controls.target.distanceTo(worldPos) < 0.025 &&
+          state.camera.position.distanceTo(targetCamPosRef.current) < 0.05
         ) {
           isTransitioningRef.current = false;
         }
       } else {
-        controls.target.copy(worldPos);
+        controls.target.lerp(worldPos, Math.min(1, 1 - Math.exp(-16 * delta)));
       }
     } else if (isTransitioningRef.current) {
       const targetOverview = responsiveOverviewRef.current;
@@ -1346,8 +1406,8 @@ function CameraController({
       state.camera.position.lerp(targetOverview, dampFactor);
 
       if (
-        controls.target.distanceTo(overviewTarget) < 0.05 &&
-        state.camera.position.distanceTo(targetOverview) < 0.1
+        controls.target.distanceTo(overviewTarget) < 0.03 &&
+        state.camera.position.distanceTo(targetOverview) < 0.06
       ) {
         isTransitioningRef.current = false;
       }
@@ -1609,7 +1669,7 @@ function SceneContent({ paused, panelCollapsed = false, shipFile = 'naveAzulNuev
         maxDistance={150}
         maxPolarAngle={Math.PI / 2 + 0.18}
         enableDamping
-        dampingFactor={0.05}
+        dampingFactor={0.07}
       />
 
       <CameraController
