@@ -2,6 +2,8 @@
 
 AI-powered dashboard for NASA PSI combustion-science investigations (spacecraft fire safety).
 
+Full technical documentation lives in [`docs/`](docs/README.md): challenge mapping, architecture, data pipeline, API, analytics/FireHazR, frontend, AI copilot, deployment, and testing.
+
 ## Layout
 
 | Dir | What runs there |
