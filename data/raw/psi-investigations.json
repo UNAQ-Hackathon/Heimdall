@@ -78,7 +78,7 @@
       "Improvement of NASA-STD-6001 material flammability testing",
       "Firefighter thermal protective textile char and heat-flux modeling"
     ],
-    "sourceUrl": "https://psi.nasa.gov/",
+    "sourceUrl": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-25",
     "tags": [
       "solid-fuel",
       "suppression",
@@ -122,7 +122,7 @@
     "earthApplications": [
       "Large-scale enclosure fire modeling for mines, tunnels, and submarines"
     ],
-    "sourceUrl": "https://psi.nasa.gov/",
+    "sourceUrl": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-98",
     "tags": [
       "solid-fuel",
       "large-scale",
@@ -164,7 +164,7 @@
     "earthApplications": [
       "Calibration of terrestrial upward-flammability screening tests (NASA-STD-6001 Test 1)"
     ],
-    "sourceUrl": "https://psi.nasa.gov/",
+    "sourceUrl": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-99",
     "tags": [
       "solid-fuel",
       "material-screening",
@@ -292,7 +292,7 @@
     "earthApplications": [
       "False-alarm-resistant smoke detection algorithms for commercial buildings and aircraft cargo bays"
     ],
-    "sourceUrl": "https://psi.nasa.gov/",
+    "sourceUrl": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-101",
     "tags": [
       "smoke-detection",
       "aerosol",

@@ -4,7 +4,7 @@ from pydantic import BaseModel
 class FlammabilityPoint(BaseModel):
     oxygen_pct: float
     flow_velocity: float
-    flammable: bool
+    flammable: bool = True
     weight: float = 1.0
 
 
@@ -31,4 +31,4 @@ class Cell(BaseModel):
 
 class FlammabilityResponse(BaseModel):
     cells: list[Cell]
-    note: str = "Partial-gravity data is not available in PSI; values are bounds, not predictions."
+    note: str = "Partial-gravity data is not available in PSI; Delaunay hull cells mark tested parameter-space bounds, never unmeasured predictions."

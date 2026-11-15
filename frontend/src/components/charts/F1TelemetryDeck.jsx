@@ -51,13 +51,21 @@ function getStudyEmpiricalSeries(study) {
   const totalPoints = seriesList.reduce((acc, s) => acc + s.points.length, 0);
   if (!totalPoints) return null;
 
+  const first = seriesList[0];
+  const xLabel = first.xLabel ?? 'X';
+  const unitMatch = /\(([^)]+)\)/.exec(xLabel);
+  const xUnit = unitMatch ? ` ${unitMatch[1]}` : '';
+  const yLabel = first.name?.includes('burn_duration') ? 'Burn duration' : first.label;
+
   return {
     seriesList,
     totalPoints,
-    xLabel: seriesList[0].xLabel,
-    yUnit: seriesList[0].unit,
-    seriesSource: study?.seriesSource ?? seriesList[0].seriesSource,
-    sourceUrl: study?.sourceUrl ?? seriesList[0].sourceUrl,
+    xLabel,
+    xUnit,
+    yLabel,
+    yUnit: first.unit,
+    seriesSource: study?.seriesSource ?? first.seriesSource,
+    sourceUrl: study?.sourceUrl ?? first.sourceUrl,
   };
 }
 
@@ -620,7 +628,7 @@ export default function F1TelemetryDeck({
             </div>
             <div className="f1-channel-sub">
               {empiricalSeries
-                ? `X: ${empiricalSeries.xLabel} · Y: Burn duration (${empiricalSeries.yUnit})${empiricalSeries.seriesSource ? ` · ${empiricalSeries.seriesSource}` : ''}`
+                ? `X: ${empiricalSeries.xLabel} · Y: ${empiricalSeries.yLabel} (${empiricalSeries.yUnit})${empiricalSeries.seriesSource ? ` · ${empiricalSeries.seriesSource}` : ''}`
                 : measuredTimeSeries
                   ? `Recorded channels: ${study?.variables?.join(', ') || 'TC / Flux'}`
                   : showSchematicFallback
@@ -663,12 +671,12 @@ export default function F1TelemetryDeck({
                       name={empiricalSeries.xLabel}
                       stroke="#64748b"
                       tick={{ fontSize: 10.5, fontFamily: 'var(--font-mono)' }}
-                      unit=" mm"
+                      unit={empiricalSeries.xUnit}
                     />
                     <YAxis
                       type="number"
                       dataKey="y"
-                      name="Burn duration"
+                      name={empiricalSeries.yLabel}
                       stroke="#64748b"
                       tick={{ fontSize: 10.5, fontFamily: 'var(--font-mono)' }}
                       unit={` ${empiricalSeries.yUnit}`}
@@ -692,9 +700,9 @@ export default function F1TelemetryDeck({
                         color: '#f8fafc',
                       }}
                       formatter={(val, name) =>
-                        name === 'Burn duration'
-                          ? [`${val} ${empiricalSeries.yUnit}`, 'Burn duration']
-                          : [`${val} mm`, empiricalSeries.xLabel]
+                        name === empiricalSeries.yLabel
+                          ? [`${val} ${empiricalSeries.yUnit}`, empiricalSeries.yLabel]
+                          : [`${val}${empiricalSeries.xUnit}`, empiricalSeries.xLabel]
                       }
                     />
                     {empiricalSeries.seriesList
@@ -795,14 +803,14 @@ export default function F1TelemetryDeck({
           )}
         </section>
 
-        <section className="f1-channel-card" aria-label="Flammability Envelope">
+        <section className="f1-channel-card" aria-label="PSI Operating Regime Coverage">
           <div className="f1-channel-head">
             <div className="f1-channel-title">
               <span className="f1-channel-bar" style={{ background: theme.secondary }} />
-              ILLUSTRATIVE FLAMMABILITY ENVELOPE (O₂ VS FLOW)
+              PSI OPERATING REGIME COVERAGE (O₂ VS FLOW)
             </div>
             <div className="f1-channel-sub">
-              Schematic 0g vs 1g boundary · Not study-specific measurements
+              Delaunay convex hull over tested PSI (O₂, flow) coordinates · Null outside coverage
             </div>
           </div>
           <FlammabilityChart />
