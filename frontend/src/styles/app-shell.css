@@ -108,6 +108,22 @@
   white-space: nowrap;
   transition: background-color 150ms ease, border-color 150ms ease;
 }
+.app-header__sound {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  min-height: 38px;
+  padding: 8px;
+  border: 1px solid var(--audience-border);
+  border-radius: 9px;
+  background: var(--audience-tint);
+  color: #edf4ff;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+.app-header__sound:hover { background: #1b2f50; border-color: #3e5f91; }
+.app-header__sound[aria-pressed="false"] { color: #8896ad; }
 .app-header__copilot:hover, .app-header__copilot[aria-pressed="true"] {
   background: #1b2f50;
   border-color: #3e5f91;

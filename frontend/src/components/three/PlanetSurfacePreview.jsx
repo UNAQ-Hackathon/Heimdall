@@ -1,5 +1,6 @@
 import {
   Suspense,
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -23,6 +24,7 @@ import {
   prepareAnimatableAstronaut,
   applyAstronautPose,
 } from './astronaut-limb-anim.js';
+import { useSound } from '../../context/SoundContext.jsx';
 
 const landerUrlMap = import.meta.glob('../../../../assets3d/nuevasNaves/landerNuevo.glb', {
   query: '?url',
@@ -227,7 +229,7 @@ function Terrain({ scene, clearCenter, emissive = false }) {
 /**
  * 3D Planetary Landing Sequence + Astronaut Exit & Friendly Wave Animation
  */
-function PlanetaryLandingSequence({ planetId, zoneId, scene, view, replayKey }) {
+function PlanetaryLandingSequence({ planetId, zoneId, scene, view, replayKey, sfx }) {
   if (!LANDER_URL || !ASTRO_NORMAL_URL) return null;
 
   const { scene: landerScene } = useGLTF(LANDER_URL, false, false);
@@ -272,9 +274,11 @@ function PlanetaryLandingSequence({ planetId, zoneId, scene, view, replayKey }) 
   const smokePuffsRef = useRef(null);
   const astroGroupRef = useRef(null);
   const startTimeRef = useRef(null);
+  const soundStageRef = useRef(0);
 
   useEffect(() => {
     startTimeRef.current = null;
+    soundStageRef.current = 0;
   }, [planetId, zoneId, replayKey]);
 
   const placement = useMemo(() => {
@@ -332,6 +336,22 @@ function PlanetaryLandingSequence({ planetId, zoneId, scene, view, replayKey }) 
     const descentDuration = 2.6;
     const walkStart = 2.75;
     const walkDuration = 1.25;
+
+    // Landing audio cues: retro-rocket burn, touchdown dust thump, hatch servo
+    if (sfx) {
+      if (soundStageRef.current === 0) {
+        sfx.play('retro-burn');
+        soundStageRef.current = 1;
+      }
+      if (elapsed >= descentDuration && soundStageRef.current === 1) {
+        sfx.play('touchdown');
+        soundStageRef.current = 2;
+      }
+      if (elapsed >= walkStart && soundStageRef.current === 2) {
+        sfx.play('suit-servo');
+        soundStageRef.current = 3;
+      }
+    }
 
     // 1. Lander Descent & Retro-Rocket Exhaust Animation
     const p = Math.min(1, elapsed / descentDuration);
@@ -534,8 +554,22 @@ function PlanetaryLandingSequence({ planetId, zoneId, scene, view, replayKey }) 
 }
 
 export function IssInteriorPreviewStage({ showCaption = false }) {
+  const sfx = useSound();
   const [replayKey, setReplayKey] = useState(0);
   const [issPhase, setIssPhase] = useState('pressurize');
+  const handlePhase = useCallback(
+    (phase) => {
+      setIssPhase(phase);
+      sfx?.play(
+        phase === 'ingress'
+          ? 'airlock-door'
+          : phase === 'sealed'
+            ? 'airlock-seal'
+            : 'airlock-pressurize'
+      );
+    },
+    [sfx]
+  );
   const phaseLabel =
     ISS_INTERIOR_PHASE_LABELS[issPhase] ?? ISS_INTERIOR_PHASE_LABELS.pressurize;
   const phaseColor =
@@ -547,7 +581,7 @@ export function IssInteriorPreviewStage({ showCaption = false }) {
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      <StationInteriorPreview replayKey={replayKey} onPhaseChange={setIssPhase} />
+      <StationInteriorPreview replayKey={replayKey} onPhaseChange={handlePhase} />
 
       <div
         aria-live="polite"
@@ -619,6 +653,7 @@ export function IssInteriorPreviewStage({ showCaption = false }) {
 }
 
 function PlanetarySurfacePreviewStage({ zoneId, planetId }) {
+  const sfx = useSound();
   const [replayKey, setReplayKey] = useState(0);
 
   const rawScene = useMemo(() => createSurfacePreview(zoneId, planetId), [planetId, zoneId]);
@@ -690,6 +725,7 @@ function PlanetarySurfacePreviewStage({ zoneId, planetId }) {
               scene={scene}
               view={view}
               replayKey={replayKey}
+              sfx={sfx}
             />
           )}
         </Suspense>

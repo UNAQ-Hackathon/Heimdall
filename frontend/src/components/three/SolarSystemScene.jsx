@@ -18,6 +18,7 @@ import {
 } from './solar-system-model.js';
 import { ISS_DESTINATION, PLANETS } from '../../services/mockData.js';
 import { useApp } from '../../context/AppContext.jsx';
+import { useSound } from '../../context/SoundContext.jsx';
 
 const ALL_NAV_BODIES = [...PLANETS, ISS_DESTINATION];
 
@@ -839,6 +840,7 @@ function SpacecraftNavigator({
         shipTransitRef.current.inTransit = true;
         shipTransitRef.current.progress = 0;
         shipTransitRef.current.startPos.copy(st.startPos);
+        shipTransitRef.current.target = targetBodyName;
       }
     }
   }, [targetBodyName, planetObjectsRef, shipTransitRef]);
@@ -1029,6 +1031,7 @@ function SpacecraftNavigator({
         shipTransitRef.current.progress = ease;
         shipTransitRef.current.shipPos.copy(ship.position);
         shipTransitRef.current.destPos.copy(planetWorldPos);
+        shipTransitRef.current.trailScale = st.trailScale;
       }
 
       const posAttr = trajectoryLine.geometry.attributes.position;
@@ -1332,6 +1335,54 @@ function CameraController({
   return null;
 }
 
+/** Engine loop per ship class: UFO keeps the ion hum, the Falcon growls, the
+ *  nave* rockets burn chemical propellant. */
+function getEngineLoopName(shipFile = '') {
+  const file = shipFile.toLowerCase();
+  if (file.includes('ovni')) return 'engine';
+  if (file.includes('millenium')) return 'engine-falcon';
+  return 'engine-rocket';
+}
+
+/**
+ * Drives the spacecraft audio bed from `shipTransitRef`: engine spool + looped
+ * thrust while cruising between bodies (loudest mid-flight), then a retro burn /
+ * touchdown rumble on arrival — or a docking clank when berthing with the ISS.
+ */
+function ShipSoundDriver({ shipTransitRef, shipFile, sfx }) {
+  const prevRef = useRef({ inTransit: false });
+  const loopNameRef = useRef(getEngineLoopName(shipFile));
+  const stopLoopRef = useRef(sfx.stopLoop);
+  stopLoopRef.current = sfx.stopLoop;
+
+  useFrame(() => {
+    const tr = shipTransitRef.current;
+    const prev = prevRef.current;
+    if (!tr) return;
+
+    if (tr.inTransit && !prev.inTransit) {
+      loopNameRef.current = getEngineLoopName(shipFile);
+      sfx.play('ship-launch');
+      sfx.startLoop(loopNameRef.current, 0.35);
+    } else if (!tr.inTransit && prev.inTransit) {
+      sfx.stopLoop(loopNameRef.current);
+      sfx.play(tr.target === 'ISS' ? 'dock' : 'ship-arrive');
+    }
+
+    if (tr.inTransit) {
+      const p = Math.min(1, Math.max(0, tr.progress ?? 0));
+      const thrust = 0.3 + Math.sin(Math.PI * p) * 0.7;
+      sfx.setLoopLevel(loopNameRef.current, thrust);
+    }
+
+    prev.inTransit = tr.inTransit;
+  });
+
+  useEffect(() => () => stopLoopRef.current(loopNameRef.current), []);
+
+  return null;
+}
+
 function OrbitalStationMesh({
   stationData,
   isSelected,
@@ -1483,7 +1534,7 @@ function EarthMoonSystem({
   );
 }
 
-function SceneContent({ paused, panelCollapsed = false, shipFile = 'naveAzulNuevo.glb' }) {
+function SceneContent({ paused, panelCollapsed = false, shipFile = 'naveAzulNuevo.glb', sfx }) {
   const { focusPlanet, setFocusPlanet, scenarioKey } = useApp();
   const controlsRef = useRef();
   const planetObjectsRef = useRef({});
@@ -1493,6 +1544,8 @@ function SceneContent({ paused, panelCollapsed = false, shipFile = 'naveAzulNuev
     shipPos: new THREE.Vector3(10.2, 0.8, 0),
     startPos: new THREE.Vector3(10.2, 0.8, 0),
     destPos: new THREE.Vector3(10.2, 0, 0),
+    target: null,
+    trailScale: 0.3,
   });
 
   const registerPlanet = useCallback((name, mesh) => {
@@ -1542,6 +1595,8 @@ function SceneContent({ paused, panelCollapsed = false, shipFile = 'naveAzulNuev
         controlsRef={controlsRef}
         panelCollapsed={panelCollapsed}
       />
+
+      {sfx && <ShipSoundDriver shipTransitRef={shipTransitRef} shipFile={shipFile} sfx={sfx} />}
 
       {/* Low-Poly Octahedral Starfield */}
       <LowPolyStarfield />
@@ -1611,6 +1666,7 @@ export default function SolarSystemScene({
   panelCollapsed = false,
   shipFile = 'naveAzulNuevo.glb',
 }) {
+  const sfx = useSound();
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       <Canvas
@@ -1622,6 +1678,7 @@ export default function SolarSystemScene({
           paused={paused}
           panelCollapsed={panelCollapsed}
           shipFile={shipFile}
+          sfx={sfx}
         />
       </Canvas>
     </div>

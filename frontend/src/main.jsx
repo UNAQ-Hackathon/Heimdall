@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 
 import App from './App.jsx';
 import { AppProvider } from './context/AppContext.jsx';
+import { SoundProvider } from './context/SoundContext.jsx';
 import '@fontsource/manrope/latin-500.css';
 import '@fontsource/manrope/latin-600.css';
 import '@fontsource/manrope/latin-700.css';
@@ -16,9 +17,11 @@ document.getElementById('app-icon').href = nasaLogo;
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
-      <AppProvider>
-        <App />
-      </AppProvider>
+      <SoundProvider>
+        <AppProvider>
+          <App />
+        </AppProvider>
+      </SoundProvider>
     </BrowserRouter>
   </StrictMode>
 );

@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { api as backendApi } from '../services/api.js';
 import { SCENARIOS, DEFAULT_WEIGHTS, resolveScenarioKey } from './ScenarioContext.jsx';
+import { useSound } from './SoundContext.jsx';
 import { loadSavedShipFile, saveShipFile } from '../utils/spacecraft-storage.js';
 
 export { SCENARIOS, DEFAULT_WEIGHTS, resolveScenarioKey };
@@ -10,6 +11,7 @@ export const AUDIENCES = ['Student', 'Engineer'];
 const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
+  const sfx = useSound();
   const [scenarioKey, setScenarioKeyState] = useState('moon');
   const [audience, setAudience] = useState('Engineer');
   const [category, setCategory] = useState('all');
@@ -55,6 +57,7 @@ export function AppProvider({ children }) {
 
           if (statusRes.status === 'completed' && statusRes.answer) {
             stopPolling();
+            sfx?.play('chat-receive');
             setChatLoading(false);
             setChatMessages((prev) =>
               prev.map((m) =>
@@ -86,13 +89,14 @@ export function AppProvider({ children }) {
         }
       }, 3500);
     },
-    [stopPolling]
+    [stopPolling, sfx]
   );
 
   const sendChatMessage = useCallback(
     async (rawText) => {
       const userText = rawText?.trim();
       if (!userText || chatLoading) return;
+      sfx?.play('chat-send');
 
       const activeScenario = SCENARIOS[scenarioKey] ?? SCENARIOS.moon;
       const pendingMsgId = `ai-${Date.now()}`;
@@ -164,6 +168,7 @@ export function AppProvider({ children }) {
         if (res.sessionStatus) setChatSessionStatus(res.sessionStatus);
 
         if ((res.status === 'completed' || res.status === 'unavailable') && res.answer) {
+          sfx?.play('chat-receive');
           setChatLoading(false);
           setChatMessages((prev) =>
             prev.map((m) =>
@@ -221,7 +226,7 @@ export function AppProvider({ children }) {
         );
       }
     },
-    [audience, chatLoading, chatSessionId, scenarioKey, startPolling]
+    [audience, chatLoading, chatSessionId, scenarioKey, startPolling, sfx]
   );
 
   const resetChatSession = useCallback(() => {

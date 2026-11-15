@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import FireHazrResultChart from '../components/charts/FireHazrResultChart.jsx';
 import FlameVisualization, { TEST_SUBJECT_OPTIONS } from '../components/three/FlameVisualization.jsx';
 import FlexCoverageMap from '../components/ui/FlexCoverageMap.jsx';
 import { useApp } from '../context/AppContext.jsx';
+import { useSound } from '../context/SoundContext.jsx';
 import { api } from '../services/api.js';
 import { FLAME_COMPARISON } from '../services/mockData.js';
 import {
@@ -360,6 +361,7 @@ function MeterSlider({
 
 export default function FireHazRPage({ compact = false, embedded = false }) {
   const { scenario, focusPlanet, audience } = useApp();
+  const sfx = useSound();
   const isStudent = audience === 'Student';
   const [form, setForm] = useState(EXAMPLE);
   const [mixtureMode, setMixtureMode] = useState(() => inferMixture(EXAMPLE));
@@ -503,6 +505,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
     event.preventDefault();
     const validationError = validateFireHazRForm(form);
     if (validationError) {
+      sfx?.play('ui-deny');
       setError(validationError);
       setResponse(null);
       setInterpretation(null);
@@ -510,6 +513,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
       return;
     }
     setLoading(true);
+    sfx?.play('predict-start');
     setError('');
     setResponse(null);
     setInterpretation(null);
@@ -524,7 +528,9 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
     try {
       const resData = await api.predictFirehazr(conditions);
       setResponse(resData);
+      sfx?.play(resData?.result?.aceptado ? 'predict-success' : 'predict-abstain');
     } catch (err) {
+      sfx?.play('predict-error');
       setError(err.message);
     } finally {
       setLoading(false);
@@ -567,6 +573,31 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
       : effectiveSuitState === 'flames'
         ? { label: `GROWING FLAMES (${o2Pct}% O₂)`, color: '#f59e0b' }
         : { label: `NOMINAL (<25% O₂)`, color: '#10b981' };
+
+  // Chamber audio: ignition whoosh into a looping fire crackle that scales with
+  // O2, a flashover rumble + alarm tone on burn-out, silence when nominal.
+  const prevHazardRef = useRef(effectiveSuitState);
+  useEffect(() => {
+    if (!sfx) return;
+    const prev = prevHazardRef.current;
+    prevHazardRef.current = effectiveSuitState;
+    if (effectiveSuitState === 'flames') {
+      if (prev !== 'flames') sfx.play('fire-ignition');
+      sfx.startLoop('fire', Math.min(1, 0.3 + (o2Pct / 100) * 0.85));
+    } else if (effectiveSuitState === 'burned') {
+      if (prev !== 'burned') {
+        sfx.play('flashover');
+        sfx.play('alarm');
+      }
+      sfx.startLoop('fire', 1);
+    } else {
+      sfx.stopLoop('fire');
+    }
+  }, [effectiveSuitState, o2Pct, sfx]);
+
+  const stopLoopRef = useRef(sfx?.stopLoop);
+  stopLoopRef.current = sfx?.stopLoop;
+  useEffect(() => () => stopLoopRef.current?.('fire'), []);
 
   return (
     <section

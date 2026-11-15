@@ -6,6 +6,7 @@ import FireHazrPredictor from '../components/ui/FireHazrPredictor.jsx';
 import SpacecraftSelector from '../components/ui/SpacecraftSelector.jsx';
 import SolarSystemScene from '../components/three/SolarSystemScene.jsx';
 import { useApp } from '../context/AppContext.jsx';
+import { useSound } from '../context/SoundContext.jsx';
 import { api } from '../services/api.js';
 import { rankLocalInvestigations } from '../services/ranking.js';
 import { PLANETS, ISS_DESTINATION } from '../services/mockData.js';
@@ -55,6 +56,7 @@ export default function MissionHub() {
     setChatOpen,
   } = useApp();
 
+  const sfx = useSound();
   const [searchParams] = useSearchParams();
   const [paused, setPaused] = useState(false);
   const [panelCollapsed, setPanelCollapsed] = useState(false);
@@ -73,9 +75,10 @@ export default function MissionHub() {
   }, [searchParams, setFocusPlanet, setScenarioKey]);
 
   const closeInspection = useCallback(() => {
+    sfx?.play('panel-close');
     setFocusPlanet(null);
     targetRef.current?.focus({ preventScroll: true });
-  }, [setFocusPlanet]);
+  }, [setFocusPlanet, sfx]);
 
   const localRanked = useMemo(
     () => rankLocalInvestigations({ ...scenario, category }, weights),

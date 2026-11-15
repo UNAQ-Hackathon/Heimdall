@@ -1,6 +1,7 @@
 import { useEffect, useReducer, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../../context/AppContext.jsx';
+import { useSound } from '../../context/SoundContext.jsx';
 import { api } from '../../services/api.js';
 import {
   initialPredictionState,
@@ -62,6 +63,7 @@ const STUDENT_DROPLET_SIZES = [1.8, 2.8, 3.5];
 
 export default function FireHazrPredictor() {
   const { scenario, focusPlanet, audience } = useApp();
+  const sfx = useSound();
   const isStudent = audience === 'Student';
   const [state, dispatch] = useReducer(predictionReducer, initialPredictionState);
   const controllerRef = useRef(null);
@@ -71,6 +73,20 @@ export default function FireHazrPredictor() {
   const running = phase === 'running';
 
   useEffect(() => () => controllerRef.current?.abort(), []);
+
+  // Prediction run audio: start blips, then success / abstain / error feedback.
+  const prevPhaseRef = useRef(phase);
+  useEffect(() => {
+    const prev = prevPhaseRef.current;
+    prevPhaseRef.current = phase;
+    if (phase === 'running') {
+      sfx?.play('predict-start');
+    } else if (prev === 'running' && phase === 'complete') {
+      sfx?.play(result?.aceptado ? 'predict-success' : 'predict-abstain');
+    } else if (prev === 'running' && phase === 'error') {
+      sfx?.play('predict-error');
+    }
+  }, [phase, result, sfx]);
 
   const change = (type, patch) => {
     controllerRef.current?.abort();
