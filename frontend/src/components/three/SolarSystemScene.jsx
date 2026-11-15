@@ -84,12 +84,6 @@ export const SHIP_CATALOG = [
     role: 'Experimental Ion-Plasma Disc',
     accent: '#c084fc',
   },
-  {
-    id: 'landerNuevo.glb',
-    label: 'Planetary Lander',
-    role: 'Surface Descent Module',
-    accent: '#fbbf24',
-  },
 ].filter(
   (s) =>
     newShipUrlMap[`../../../../assets3d/nuevasNaves/${s.id}`] ||
