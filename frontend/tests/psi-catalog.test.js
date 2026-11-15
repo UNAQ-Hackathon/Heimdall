@@ -8,7 +8,11 @@ import {
   CATALOG_HARDWARE_FILTERS,
   filterPsiInvestigations,
   getHardwareFamily,
+  getStudyOxygenBounds,
+  getStudySeriesStats,
+  getStudyTelemetryTier,
   summarizeCatalogMetrics,
+  summarizeCatalogOverview,
   summarizeInvestigationDifferences,
 } from '../src/services/psi-catalog.js';
 
@@ -81,4 +85,34 @@ test('buildPsiDatasetCsv and summarizeInvestigationDifferences extract verified 
   const digest = summarizeInvestigationDifferences([flex, cfiG, luci]);
   assert.ok(digest.differences.some((d) => d.includes('Different fuel phases')));
   assert.ok(digest.differences.some((d) => d.includes('LUCI')));
+});
+
+test('summarizeCatalogOverview and study telemetry helpers report exact counts without inventing curves', () => {
+  const overview = summarizeCatalogOverview(processedInvestigations);
+  assert.equal(overview.total, 23);
+  assert.equal(overview.byCategory.prevention + overview.byCategory.detection + overview.byCategory.suppression, 23);
+  assert.equal(overview.telemetryCounts.empiricalStudies, 1);
+  assert.equal(overview.telemetryCounts.empiricalSamples, 258);
+  assert.equal(overview.telemetryCounts.publishedStudies, 21);
+  assert.equal(overview.telemetryCounts.upcomingStudies, 2);
+  assert.equal(overview.oxygenSpan.minPct, 13.5);
+  assert.equal(overview.oxygenSpan.maxPct, 85);
+
+  const flex = processedInvestigations.find((i) => i.acronym === 'FLEX');
+  const luci = processedInvestigations.find((i) => i.acronym === 'LUCI');
+  const bass = processedInvestigations.find((i) => i.acronym === 'BASS');
+
+  assert.equal(getStudyTelemetryTier(flex), 'empirical');
+  assert.equal(getStudyTelemetryTier(luci), 'upcoming');
+  assert.equal(getStudyTelemetryTier(bass), 'published');
+
+  const flexStats = getStudySeriesStats(flex);
+  assert.equal(flexStats.seriesCount, 6);
+  assert.equal(flexStats.sampleCount, 258);
+  assert.ok(flexStats.seriesSummaries.every((s) => Number.isFinite(s.minY) && Number.isFinite(s.maxY)));
+
+  const luciO2 = getStudyOxygenBounds(luci);
+  assert.equal(luciO2.minPct, null);
+  assert.equal(luciO2.maxPct, null);
+  assert.equal(luciO2.label, 'Pending publication');
 });
