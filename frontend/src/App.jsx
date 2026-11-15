@@ -21,10 +21,13 @@ export default function App() {
         {/* Main split-screen view */}
         <Route index element={<MissionHub />} />
 
-        {/* PSI Investigation Catalog & Study Detail */}
+        {/* PSI Investigation Catalog & F1 Study Telemetry */}
         <Route path="studies" element={<PsiCatalogPage />} />
         <Route path="investigations" element={<PsiCatalogPage />} />
+        <Route path="study" element={<StudyDetailPage />} />
         <Route path="study/:id" element={<StudyDetailPage />} />
+        <Route path="telemetry" element={<StudyDetailPage />} />
+        <Route path="telemetry/:id" element={<StudyDetailPage />} />
 
         {/* 3D Flame comparative morphology */}
         <Route path="flame-3d" element={<Flame3DPage />} />

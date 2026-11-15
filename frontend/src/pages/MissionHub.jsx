@@ -281,36 +281,41 @@ export default function MissionHub() {
                 </button>
               </div>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                {rankedItems.slice(0, 3).map((item, idx) => (
-                  <button
-                    key={item._id ?? item.studyId ?? idx}
-                    type="button"
-                    onClick={() => navigate(`/study/${item.studyId ?? item._id}`)}
-                    style={{
-                      flex: '1 1 90px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: '6px',
-                      padding: '5px 8px',
-                      borderRadius: '6px',
-                      background: '#0b1322',
-                      border: '1px solid #263449',
-                      color: '#e2e8f0',
-                      fontSize: '11px',
-                      fontFamily: 'var(--font-mono)',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                    }}
-                  >
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      #{idx + 1} {item.acronym}
-                    </span>
-                    <strong style={{ color: '#60a5fa', fontSize: '10.5px' }}>
-                      {Math.round(item.ranking?.score ?? 0)}
-                    </strong>
-                  </button>
-                ))}
+                {rankedItems.slice(0, 3).map((item, idx) => {
+                  const inv = item.investigation ?? item;
+                  const targetId = inv.id ?? inv.slug ?? inv.psiId ?? item.studyId ?? item._id;
+                  const pctScore = Math.round((item.score ?? item.ranking?.score ?? 0) * 100);
+                  return (
+                    <button
+                      key={inv.psiId ?? targetId ?? idx}
+                      type="button"
+                      onClick={() => navigate(`/study/${targetId}`)}
+                      style={{
+                        flex: '1 1 90px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '6px',
+                        padding: '5px 8px',
+                        borderRadius: '6px',
+                        background: '#0b1322',
+                        border: '1px solid #263449',
+                        color: '#e2e8f0',
+                        fontSize: '11px',
+                        fontFamily: 'var(--font-mono)',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                      }}
+                    >
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        #{idx + 1} {inv.acronym ?? inv.name ?? targetId}
+                      </span>
+                      <strong style={{ color: '#60a5fa', fontSize: '10.5px' }}>
+                        {pctScore}
+                      </strong>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}

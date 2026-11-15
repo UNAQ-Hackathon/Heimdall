@@ -7,9 +7,8 @@ import '../../styles/app-shell.css';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Mission Hub', matchPaths: ['/'] },
-  { to: '/studies', label: 'PSI Catalog', matchPaths: ['/studies', '/investigations', '/study/'] },
-  { to: '/flame', label: 'FireHazR Lab', matchPaths: ['/flame', '/firehazr'] },
-  { to: '/flame-3d', label: 'Flame 3D', matchPaths: ['/flame-3d'] },
+  { to: '/studies', label: 'PSI Catalog', matchPaths: ['/studies', '/investigations', '/study', '/telemetry'] },
+  { to: '/flame', label: 'FireHazR Lab', matchPaths: ['/flame', '/firehazr', '/flame-3d'] },
   { to: '/compare', label: 'Compare & Earth', matchPaths: ['/compare'] },
 ];
 

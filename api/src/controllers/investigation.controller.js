@@ -1,7 +1,13 @@
 import mongoose from 'mongoose';
 import Investigation from '../models/Investigation.js';
 import HttpError from '../utils/http-error.js';
-import { getAllInvestigations } from '../utils/processed-dataset.js';
+import {
+  findInvestigationById,
+  getAllInvestigations,
+  getInvestigationTelemetry,
+  loadProcessedInvestigations,
+  normalizeInvestigationDoc,
+} from '../utils/processed-dataset.js';
 
 export async function list(req, res) {
   const { q, acronym, gravity, category, fuelType, page = 1, limit = 50 } = req.query;
@@ -16,7 +22,8 @@ export async function list(req, res) {
         doc.title?.toLowerCase().includes(lower) ||
         doc.acronym?.toLowerCase().includes(lower) ||
         doc.objective?.toLowerCase().includes(lower) ||
-        doc.fuel?.toLowerCase().includes(lower)
+        doc.fuel?.toLowerCase().includes(lower) ||
+        doc.slug?.toLowerCase().includes(lower)
     );
   }
   if (acronym) {
@@ -41,26 +48,21 @@ export async function getById(req, res, next) {
   const { id } = req.params;
   if (mongoose.connection.readyState === 1 && mongoose.Types.ObjectId.isValid(id)) {
     const doc = await Investigation.findById(id).lean();
-    if (doc) return res.json(doc);
+    if (doc) {
+      const processed = await loadProcessedInvestigations();
+      return res.json(normalizeInvestigationDoc(doc, processed));
+    }
   }
-  const all = await getAllInvestigations();
-  const lower = String(id).toLowerCase();
-  const slugify = (value) =>
-    String(value ?? '')
-      .toLowerCase()
-      .replace(/^psi-/, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
-  const found = all.find(
-    (doc) =>
-      String(doc._id ?? '').toLowerCase() === lower ||
-      String(doc.psiId ?? '').toLowerCase() === lower ||
-      String(doc.acronym ?? '').toLowerCase() === lower ||
-      slugify(doc.psiId ?? doc.acronym ?? doc.title) === lower ||
-      String(doc.acronym ?? '')
-        .toLowerCase()
-        .replace(/\s+/g, '-') === lower
-  );
+  const found = await findInvestigationById(id);
   if (!found) return next(new HttpError(404, 'Investigation not found'));
   res.json(found);
+}
+
+export async function getTelemetry(req, res, next) {
+  const { id } = req.params;
+  const payload = await getInvestigationTelemetry(id ?? null);
+  if (id && !payload) {
+    return next(new HttpError(404, 'Investigation telemetry not found'));
+  }
+  res.json(payload);
 }

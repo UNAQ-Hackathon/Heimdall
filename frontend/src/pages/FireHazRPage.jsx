@@ -38,7 +38,7 @@ const ELEVATED_FLEX_FLAMES = {
 const SUIT_PRESETS = [
   {
     id: 'normal',
-    label: 'Preset: Nominal Suit (21% O₂)',
+    label: 'Preset: Nominal (21% O₂)',
     color: '#10b981',
     suitState: 'normal',
     form: {
@@ -53,14 +53,14 @@ const SUIT_PRESETS = [
   },
   {
     id: 'flames',
-    label: 'Preset: Suit in Flames (30% O₂ · FLEX)',
+    label: 'Preset: In Flames (30% O₂ · FLEX)',
     color: '#f59e0b',
     suitState: 'flames',
     form: ELEVATED_FLEX_FLAMES,
   },
   {
     id: 'burned',
-    label: 'Preset: Burned Suit / Flashover (85% O₂)',
+    label: 'Preset: Burned / Flashover (85% O₂)',
     color: '#ef4444',
     suitState: 'burned',
     form: {
@@ -73,6 +73,13 @@ const SUIT_PRESETS = [
       diameter_mm: 2.4,
     },
   },
+];
+
+const CONDITION_STATES = [
+  { id: 'auto', label: 'Auto (O₂%)', color: '#38bdf8' },
+  { id: 'normal', label: 'Nominal', color: '#10b981' },
+  { id: 'flames', label: 'In Flames', color: '#f59e0b' },
+  { id: 'burned', label: 'Burned', color: '#ef4444' },
 ];
 
 const FIELDS = [
@@ -628,7 +635,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
                 color: '#f8fafc',
               }}
             >
-              3D EVA SUIT & FLAME CHAMBER
+              3D MATERIAL &amp; VEHICLE FLAMMABILITY CHAMBER
             </span>
             <span
               style={{
@@ -645,41 +652,85 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
             </span>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '10px', color: '#94a3b8' }}>
-              <span>3D Test Model</span>
-              <select
-                aria-label="3D chamber view"
-                value={viewerMode}
-                onChange={(e) => setViewerMode(e.target.value)}
-                style={{ padding: '4px 8px', fontSize: '11px', minWidth: '165px' }}
-              >
-                {TEST_SUBJECT_OPTIONS.map((opt) => (
-                  <option key={opt.id} value={opt.id}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
+            {/* One-Click Test Subject Selector Pills */}
+            <div
+              role="group"
+              aria-label="3D test subject model"
+              style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}
+            >
+              {TEST_SUBJECT_OPTIONS.map((opt) => {
+                const active = viewerMode === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setViewerMode(opt.id)}
+                    style={{
+                      fontSize: '10px',
+                      fontFamily: 'var(--font-mono)',
+                      fontWeight: active ? 700 : 500,
+                      padding: '4px 8px',
+                      borderRadius: '5px',
+                      border: active ? '1px solid #38bdf8' : '1px solid #1c2640',
+                      background: active ? 'rgba(56, 189, 248, 0.16)' : '#080f1c',
+                      color: active ? '#e0f2fe' : '#94a3b8',
+                      cursor: 'pointer',
+                    }}
+                  >
                     {opt.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '10px', color: '#94a3b8' }}>
-              <span>Test State</span>
-              <select
-                aria-label="Astronaut suit condition"
-                value={suitState}
-                onChange={(e) => {
-                  setSuitState(e.target.value);
-                  if (viewerMode === 'spherical' || viewerMode === 'teardrop') {
-                    setViewerMode('astronaut');
-                  }
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* One-Click Status Selector Pills (Nominal / In Flames / Burned / Auto) */}
+            <div
+              role="group"
+              aria-label="Test subject condition state"
+              style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', alignItems: 'center' }}
+            >
+              <span
+                style={{
+                  fontSize: '9.5px',
+                  fontFamily: 'var(--font-mono)',
+                  color: '#64748b',
+                  marginRight: '2px',
                 }}
-                style={{ padding: '4px 8px', fontSize: '11px', minWidth: '145px' }}
               >
-                <option value="auto">Auto (O₂% / burn ≥15s)</option>
-                <option value="normal">Nominal (&lt;25% O₂)</option>
-                <option value="flames">Growing Flames (25–31% O₂)</option>
-                <option value="burned">Burned / Charred (≥32% O₂ or ≥15s)</option>
-              </select>
-            </label>
+                Status:
+              </span>
+              {CONDITION_STATES.map((st) => {
+                const active = suitState === st.id;
+                return (
+                  <button
+                    key={st.id}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => {
+                      setSuitState(st.id);
+                      if (viewerMode === 'spherical' || viewerMode === 'teardrop') {
+                        setViewerMode('spacecraft-blue');
+                      }
+                    }}
+                    style={{
+                      fontSize: '10px',
+                      fontFamily: 'var(--font-mono)',
+                      fontWeight: active ? 700 : 500,
+                      padding: '3px 8px',
+                      borderRadius: '5px',
+                      border: active ? `1px solid ${st.color}` : '1px solid #1c2640',
+                      background: active ? `${st.color}22` : '#080f1c',
+                      color: active ? st.color : '#94a3b8',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {st.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 

@@ -421,7 +421,13 @@ export default function PsiCatalogPage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
                     <button
                       type="button"
-                      onClick={() => navigate(`/study/${inv.id}`)}
+                      onClick={() =>
+                        navigate(
+                          `/study/${encodeURIComponent(
+                            inv.id || inv.slug || inv.psiId || inv.acronym || 'bass'
+                          )}`
+                        )
+                      }
                       style={{
                         flex: 1,
                         padding: '8px 12px',

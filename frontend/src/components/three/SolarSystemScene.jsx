@@ -12,7 +12,10 @@ import { OrbitControls, useGLTF, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import SolarSystemPlanet from './SolarSystemPlanet.jsx';
 import { normalizeModel } from './normalize-model.js';
-import { computeInspectorCenterOffsetX } from './solar-system-model.js';
+import {
+  computeInspectorCenterOffsetX,
+  computeTrailScale,
+} from './solar-system-model.js';
 import { ISS_DESTINATION, PLANETS } from '../../services/mockData.js';
 import { useApp } from '../../context/AppContext.jsx';
 
@@ -493,14 +496,18 @@ function SpacecraftExhaustFX({ isUfo, isLander, isFalcon, inTransitRef }) {
       exhaustGroupRef.current.visible = !isParked;
     }
     if (isParked) return;
-    const thrustPower = inTransit ? 1.0 : 0.42;
+
+    const trailScale = Math.max(0.12, Math.min(1, inTransitRef.current?.trailScale ?? (inTransit ? 0.85 : 0.3)));
+    const thrustPower = 0.14 + trailScale * 0.86;
+    const wakeSpeed = 0.45 + trailScale * 0.9;
 
     if (!isUfo && isFalcon) {
-      // Wide movie-style sublight ribbon glow across the Falcon's entire rear engine arc
+      // Wide movie-style sublight ribbon glow across the Falcon's entire rear engine arc,
+      // with trail length scaled by orbital acceleration
       const f1 = 0.96 + Math.sin(t * 30) * 0.06;
       const f2 = 0.98 + Math.cos(t * 24) * 0.08;
       const f3 = 0.97 + Math.sin(t * 18 + 1.0) * 0.09;
-      const lengthBoost = inTransit ? 1.18 : 0.5;
+      const lengthBoost = 0.18 + trailScale * 1.05;
 
       if (yellowFlameRef.current) {
         yellowFlameRef.current.scale.set(f1, f1, (0.9 + f1 * 0.25) * lengthBoost);
@@ -516,21 +523,21 @@ function SpacecraftExhaustFX({ isUfo, isLander, isFalcon, inTransitRef }) {
         for (let i = 0; i < children.length; i += 1) {
           const streak = children[i];
           const s = puffSeeds[i];
-          const cycle = (t * s.speed * (inTransit ? 1.55 : 0.85) + s.phase) % 1;
-          const zDist = 0.35 + cycle * (inTransit ? 4.2 : 1.55);
+          const cycle = (t * s.speed * wakeSpeed + s.phase) % 1;
+          const zDist = 0.22 + cycle * (0.55 + trailScale * 3.6);
           streak.position.set(
-            s.spreadX * (1 + cycle * 0.4),
-            s.spreadY * (1 + cycle * 0.5),
+            s.spreadX * (1 + cycle * 0.35),
+            s.spreadY * (1 + cycle * 0.45),
             zDist
           );
-          const wScale = (0.72 + Math.sin(Math.PI * cycle) * 0.42) * (1 - cycle * 0.32);
+          const wScale = (0.68 + Math.sin(Math.PI * cycle) * 0.38) * (1 - cycle * 0.32);
           streak.scale.set(
             Math.max(0.15, wScale),
-            Math.max(0.3, (1 - cycle * 0.65) * (inTransit ? 1.15 : 0.7)),
-            Math.max(0.3, (0.85 + cycle * 0.9) * (inTransit ? 1.3 : 0.65))
+            Math.max(0.25, (1 - cycle * 0.65) * (0.45 + trailScale * 0.7)),
+            Math.max(0.18, (0.45 + cycle * 0.7) * (0.28 + trailScale * 1.05))
           );
           if (streak.material) {
-            streak.material.opacity = Math.max(0, (1 - cycle) * (inTransit ? 0.62 : 0.34));
+            streak.material.opacity = Math.max(0, (1 - cycle) * (0.22 + trailScale * 0.42));
           }
         }
       }
@@ -543,7 +550,7 @@ function SpacecraftExhaustFX({ isUfo, isLander, isFalcon, inTransitRef }) {
       if (yellowFlameRef.current) {
         yellowFlameRef.current.scale.set(
           f1 * thrustPower,
-          (0.85 + f1 * 0.4) * thrustPower,
+          (0.65 + f1 * 0.4) * thrustPower,
           f1 * thrustPower
         );
         yellowFlameRef.current.rotation.y = t * 8;
@@ -551,7 +558,7 @@ function SpacecraftExhaustFX({ isUfo, isLander, isFalcon, inTransitRef }) {
       if (orangeFlameRef.current) {
         orangeFlameRef.current.scale.set(
           f2 * thrustPower,
-          (0.95 + f2 * 0.45) * thrustPower,
+          (0.72 + f2 * 0.45) * thrustPower,
           f2 * thrustPower
         );
         orangeFlameRef.current.rotation.y = -t * 6;
@@ -559,7 +566,7 @@ function SpacecraftExhaustFX({ isUfo, isLander, isFalcon, inTransitRef }) {
       if (redFlameRef.current) {
         redFlameRef.current.scale.set(
           f3 * thrustPower,
-          (1.0 + f3 * 0.5) * thrustPower,
+          (0.78 + f3 * 0.5) * thrustPower,
           f3 * thrustPower
         );
         redFlameRef.current.rotation.y = t * 4.5;
@@ -569,33 +576,40 @@ function SpacecraftExhaustFX({ isUfo, isLander, isFalcon, inTransitRef }) {
         for (let i = 0; i < children.length; i += 1) {
           const puff = children[i];
           const s = puffSeeds[i];
-          const cycle = (t * s.speed * (inTransit ? 1.25 : 0.72) + s.phase) % 1;
-          const zDist = 0.52 + cycle * (inTransit ? 3.8 : 1.35);
+          const cycle = (t * s.speed * wakeSpeed + s.phase) % 1;
+          const zDist = 0.28 + cycle * (0.55 + trailScale * 3.2);
           const billow = Math.sin(Math.PI * Math.min(1, cycle * 0.95 + 0.05));
-          const size = (0.14 + billow * 0.36) * thrustPower;
-          const swirl = 1 + cycle * 2.2;
+          const size = (0.09 + billow * 0.34) * thrustPower;
+          const swirl = 0.7 + cycle * (1.2 + trailScale * 1.1);
           puff.position.set(
-            s.spreadX * swirl + Math.sin(t * 4.5 + i * 1.3) * 0.11 * cycle,
-            s.spreadY * swirl + Math.cos(t * 3.9 + i * 1.1) * 0.11 * cycle,
+            s.spreadX * swirl + Math.sin(t * 4.5 + i * 1.3) * 0.09 * cycle,
+            s.spreadY * swirl + Math.cos(t * 3.9 + i * 1.1) * 0.09 * cycle,
             zDist
           );
-          puff.scale.setScalar(Math.max(0.015, size));
+          puff.scale.setScalar(Math.max(0.012, size));
           puff.rotation.set(t * s.spinRate + i, t * s.spinRate * 0.8, i * 0.7);
           if (puff.material) {
-            puff.material.opacity = Math.max(0, (1 - cycle) * (inTransit ? 0.78 : 0.45));
+            puff.material.opacity = Math.max(0, (1 - cycle) * (0.28 + trailScale * 0.52));
           }
         }
       }
     } else if (ufoRingsRef.current) {
-      // Alien UFO Plasma Ring & Ion Wake Animation (no fire or smoke)
+      // Alien UFO Plasma Ring & Ion Wake Animation scaled to orbital acceleration
       const children = ufoRingsRef.current.children;
       for (let i = 0; i < children.length; i += 1) {
         const ring = children[i];
-        const cycle = (t * (inTransit ? 1.8 : 0.85) + i / children.length) % 1;
-        ring.position.set(0, -0.08 - cycle * 0.18, 0.95 + cycle * (inTransit ? 3.0 : 1.1));
-        const rScale = (0.4 + cycle * 0.85) * (inTransit ? 1.1 : 0.65);
+        const cycle = (t * (0.65 + trailScale * 1.25) + i / children.length) % 1;
+        ring.position.set(
+          0,
+          -0.06 - cycle * (0.08 + trailScale * 0.12),
+          0.75 + cycle * (0.45 + trailScale * 2.55)
+        );
+        const rScale = (0.28 + cycle * 0.65) * (0.35 + trailScale * 0.75);
         ring.scale.set(rScale, rScale, rScale);
         ring.rotation.z = t * 3 * (i % 2 === 0 ? 1 : -1);
+        if (ring.material) {
+          ring.material.opacity = Math.max(0.12, (1 - cycle * 0.75) * (0.35 + trailScale * 0.5));
+        }
       }
     }
   });
@@ -780,8 +794,10 @@ function SpacecraftNavigator({
             : p.name === 'Saturn'
               ? p.size * 1.62 + 0.12
               : p.name === 'ISS'
-                ? p.size * 1.35 + 0.12
-                : p.size * 1.22 + 0.10,
+                ? p.size * 2.1 + 0.24
+                : p.name === 'Earth'
+                  ? p.size * 1.12 + 0.06
+                  : p.size * 1.22 + 0.10,
       })),
     }),
     []
@@ -792,6 +808,8 @@ function SpacecraftNavigator({
     inTransit: false,
     progress: 1,
     duration: 4.0,
+    tripDist: 10,
+    trailScale: 0.3,
     startPos: new THREE.Vector3(10.2, 0.8, 0),
     lastPos: new THREE.Vector3(10.2, 0.8, 0),
     orbitAngle: 0,
@@ -811,6 +829,7 @@ function SpacecraftNavigator({
         destObj.getWorldPosition(destWorld);
         tripDist = st.startPos.distanceTo(destWorld);
       }
+      st.tripDist = tripDist;
       st.duration = Math.min(7.5, Math.max(3.2, 2.5 + tripDist * 0.18));
       st.currentTarget = targetBodyName;
       st.inTransit = true;
@@ -861,7 +880,17 @@ function SpacecraftNavigator({
           ? bodySize * 1.32 + 0.16
           : st.currentTarget === 'ISS'
             ? bodySize * 1.55 + 0.14
-            : bodySize * 1.28 + 0.14;
+            : st.currentTarget === 'Earth'
+              ? bodySize * 1.15 + 0.08
+              : bodySize * 1.28 + 0.14;
+
+    const targetTrailScale = computeTrailScale({
+      orbitRadius: localOrbitRadius,
+      inTransit: st.inTransit,
+      tripDist: st.tripDist,
+      progress: st.progress,
+    });
+    st.trailScale += (targetTrailScale - st.trailScale) * Math.min(1, 1 - Math.exp(-5 * delta));
 
     let activeObstacles = 0;
     for (let i = 0; i < obstacles.length; i += 1) {
@@ -878,22 +907,22 @@ function SpacecraftNavigator({
 
     const pushOutsideObstacles = (pt) => {
       if (activeObstacles === 0) return pt;
-      for (let pass = 0; pass < 2; pass += 1) {
+      for (let pass = 0; pass < 3; pass += 1) {
         for (let i = 0; i < obstacles.length; i += 1) {
           const obs = obstacles[i];
           if (!obs.active) continue;
           if (st.currentTarget === 'ISS' && obs.name === 'Earth') {
             diff.subVectors(pt, obs.pos);
             const earthDist = diff.length();
-            if (earthDist < 0.9) {
+            if (earthDist < 0.88) {
               diff.normalize();
-              pt.copy(obs.pos).addScaledVector(diff, 0.9);
+              pt.copy(obs.pos).addScaledVector(diff, 0.88);
             }
             continue;
           }
           diff.subVectors(pt, obs.pos);
           const dist = diff.length();
-          const influenceR = obs.safeR * 1.45;
+          const influenceR = obs.name === 'ISS' ? obs.safeR * 1.25 : obs.safeR * 1.45;
           if (dist < influenceR) {
             const s = Math.min(1, Math.max(0, (influenceR - dist) / (influenceR - obs.safeR)));
             const falloff = s * s * (3 - 2 * s);
@@ -927,9 +956,13 @@ function SpacecraftNavigator({
     if (isDockingTarget && dockObj) {
       dockObj.getWorldPosition(destPos);
     } else {
+      const earthOrbitY =
+        st.currentTarget === 'Earth'
+          ? -0.07 + Math.sin(st.orbitAngle * 2) * 0.03
+          : Math.sin(st.orbitAngle * 2) * 0.015;
       destPos.set(
         planetWorldPos.x + Math.cos(st.orbitAngle) * localOrbitRadius,
-        planetWorldPos.y + Math.sin(st.orbitAngle * 2) * 0.015,
+        planetWorldPos.y + earthOrbitY,
         planetWorldPos.z + Math.sin(st.orbitAngle) * localOrbitRadius
       );
       pushOutsideObstacles(destPos);
@@ -1116,6 +1149,7 @@ function CameraController({
     appliedOffsetX: -1,
     width: 0,
     height: 0,
+    expLeft: 0,
   });
 
   useEffect(() => {
@@ -1171,29 +1205,41 @@ function CameraController({
     const controls = controlsRef.current;
     if (!controls) return;
 
-    // Keep focused planet/station centered horizontally between the left sidebar
+    // Keep focused planet/station smoothly centered horizontally between the left sidebar
     // (or viewport left edge when collapsed) and the floating right planet panel.
     const vs = viewOffsetStateRef.current;
     const explorer = state.gl.domElement.closest('.mission-hub__explorer');
     const inspectionEl = explorer?.querySelector('.mission-inspection');
+    const expRect = explorer?.getBoundingClientRect();
     let targetOffsetX = 0;
+
     if (
       focusPlanet &&
-      explorer &&
+      expRect &&
       inspectionEl &&
       typeof window !== 'undefined' &&
       window.innerWidth > 900
     ) {
-      const expRect = explorer.getBoundingClientRect();
       const inspRect = inspectionEl.getBoundingClientRect();
       const occludedRight = Math.max(0, expRect.right - inspRect.left);
       targetOffsetX = computeInspectorCenterOffsetX(state.size.width, occludedRight);
     }
 
-    vs.offsetX += (targetOffsetX - vs.offsetX) * Math.min(1, 1 - Math.exp(-9 * delta));
+    // Preserve visual continuity without a sudden jump when collapsing/expanding the left sidebar
+    const expLeft = expRect?.left ?? 0;
     const sizeChanged = vs.width !== state.size.width || vs.height !== state.size.height;
-    if (sizeChanged || Math.abs(vs.offsetX - vs.appliedOffsetX) > 0.25) {
-      if (targetOffsetX === 0 && vs.offsetX < 0.35) {
+    if (vs.width > 0 && expRect && (vs.width !== state.size.width || Math.abs(vs.expLeft - expLeft) > 1)) {
+      const prevScreenX = vs.expLeft + (vs.width * 0.5 - vs.offsetX);
+      vs.offsetX = THREE.MathUtils.clamp(
+        expLeft + state.size.width * 0.5 - prevScreenX,
+        -state.size.width * 0.42,
+        state.size.width * 0.45
+      );
+    }
+
+    vs.offsetX += (targetOffsetX - vs.offsetX) * Math.min(1, 1 - Math.exp(-3.4 * delta));
+    if (sizeChanged || Math.abs(vs.offsetX - vs.appliedOffsetX) > 0.05) {
+      if (targetOffsetX === 0 && Math.abs(vs.offsetX) < 0.35) {
         vs.offsetX = 0;
         if (state.camera.view?.enabled) {
           state.camera.clearViewOffset();
@@ -1211,6 +1257,7 @@ function CameraController({
       vs.appliedOffsetX = vs.offsetX;
       vs.width = state.size.width;
       vs.height = state.size.height;
+      vs.expLeft = expLeft;
     }
 
     const transit = shipTransitRef?.current;
@@ -1237,7 +1284,7 @@ function CameraController({
       return;
     }
 
-    const dampFactor = Math.min(1, 1 - Math.exp(-4.5 * delta));
+    const dampFactor = Math.min(1, 1 - Math.exp(-3.6 * delta));
 
     if (focusPlanet && planetObjectsRef.current[focusPlanet]) {
       const obj = planetObjectsRef.current[focusPlanet];

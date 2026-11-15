@@ -7,18 +7,64 @@ import {
 
 export { FACTORS, FACTOR_LABELS, processedInvestigations };
 
+function slugifyPsiKey(value) {
+  return String(value ?? '')
+    .toLowerCase()
+    .replace(/^psi-/, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
+function findProcessedInvestigation(raw) {
+  const keys = [
+    raw?.slug,
+    raw?.id,
+    raw?.psiId,
+    raw?.sources?.psiId,
+    raw?.acronym,
+    raw?.name,
+    raw?.title,
+  ]
+    .filter(Boolean)
+    .map(slugifyPsiKey);
+
+  if (!keys.length) return null;
+
+  return (
+    processedInvestigations.find((item) => {
+      const itemKeys = [item.psiId, item.acronym, item.title]
+        .filter(Boolean)
+        .map(slugifyPsiKey);
+      return keys.some((k) => itemKeys.includes(k));
+    }) ?? null
+  );
+}
+
 /**
  * Format a processed PSI investigation document with UI-friendly display fields
  * while preserving all raw schema fields (`psiId`, `acronym`, `title`, `objective`,
  * `fuel`, `fuelType`, `hardware`, `category`, `gravityLevel`, `conditions`,
  * `variables`, `sensors`, `earthApplications`, `sourceUrl`, `tags`).
  */
-export function enrichInvestigationForUI(inv, rankItem = null) {
-  const slug = String(inv.psiId ?? inv.acronym ?? inv.title ?? '')
-    .toLowerCase()
-    .replace(/^psi-/, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '');
+export function enrichInvestigationForUI(rawInv, rankItem = null) {
+  const matched = findProcessedInvestigation(rawInv);
+  const inv = matched ? { ...matched, ...rawInv } : { ...rawInv };
+  if (!inv.acronym && rawInv?.name) inv.acronym = rawInv.name;
+  if (!inv.title && (matched?.title || rawInv?.name)) inv.title = matched?.title ?? rawInv.name;
+  if (!inv.psiId && (rawInv?.sources?.psiId || matched?.psiId)) {
+    inv.psiId = rawInv?.sources?.psiId ?? matched?.psiId;
+  }
+  if (!inv.hardware && (matched?.hardware || rawInv?.family)) {
+    inv.hardware = matched?.hardware ?? rawInv.family;
+  }
+  if (!inv.category && (matched?.category || rawInv?.researchType)) {
+    inv.category = matched?.category ?? rawInv.researchType;
+  }
+
+  const slug =
+    slugifyPsiKey(
+      inv.slug ?? inv.id ?? inv.psiId ?? inv.acronym ?? inv.title ?? inv._id
+    ) || 'study';
 
   const cond = inv.conditions ?? {};
   const minO2 = cond.oxygenMinPct ?? cond.oxygenPct;

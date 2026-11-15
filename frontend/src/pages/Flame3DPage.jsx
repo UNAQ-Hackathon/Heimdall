@@ -8,7 +8,7 @@ const SUBJECT_3D_OPTIONS = TEST_SUBJECT_OPTIONS.filter((item) => item.kind !== '
 const CHAMBER_PRESETS = [
   {
     id: 'normal',
-    label: 'Preset: Nominal Suit (21% O₂)',
+    label: 'Preset: Nominal (21% O₂)',
     oxygen: 21.0,
     airflow: 0.05,
     gravityIndex: 0,
@@ -17,7 +17,7 @@ const CHAMBER_PRESETS = [
   },
   {
     id: 'flames',
-    label: 'Preset: Suit in Flames (35% O₂)',
+    label: 'Preset: In Flames (35% O₂)',
     oxygen: 35.0,
     airflow: 0.14,
     gravityIndex: 1,
@@ -26,7 +26,7 @@ const CHAMBER_PRESETS = [
   },
   {
     id: 'burned',
-    label: 'Preset: Burned Suit / Flashover (85% O₂)',
+    label: 'Preset: Burned / Flashover (85% O₂)',
     oxygen: 85.0,
     airflow: 0.25,
     gravityIndex: 0,
@@ -146,7 +146,7 @@ export default function Flame3DPage() {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '15px', fontWeight: 700, color: '#f8fafc' }}>
-                  3D EVA Astronaut Suit Test
+                  3D {activeSubject.label} Test
                 </span>
                 <span
                   style={{
@@ -172,7 +172,7 @@ export default function Flame3DPage() {
                     ? 'BURNED / CHARRED'
                     : resolvedSuitState === 'flames'
                       ? 'ACTIVE FLAMES'
-                      : 'NOMINAL SUIT'}
+                      : 'NOMINAL'}
                 </span>
               </div>
               <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#64748b', marginTop: '2px' }}>

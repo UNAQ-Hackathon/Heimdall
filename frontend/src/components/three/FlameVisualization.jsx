@@ -37,6 +37,8 @@ const ASTRO_FLAMES_URL = suitUrlMap['../../../../assets3d/trajesEspaciales/astro
 const ASTRO_BURNED_URL = suitUrlMap['../../../../assets3d/trajesEspaciales/astronautaQuemado.glb'];
 const LANDER_URL = shipUrlMap['../../../../assets3d/nuevasNaves/landerNuevo.glb'];
 const BLUE_SHIP_URL = shipUrlMap['../../../../assets3d/nuevasNaves/naveAzulNuevo.glb'];
+const BLUE_SHIP_FLAMES_URL = shipUrlMap['../../../../assets3d/nuevasNaves/naveAzulLlamas.glb'];
+const BLUE_SHIP_BURNED_URL = shipUrlMap['../../../../assets3d/nuevasNaves/naveAzulQuemada.glb'];
 const SMOKE_COL_URL = fxUrlMap['../../../../assets3d/FX/humo_despegue_columna_chico.glb'];
 const SPACE_HEX_URL = spaceTexUrlMap['../../../../assets3d/texturaMapaEspacio/espacio_hex.png'];
 
@@ -51,6 +53,8 @@ export const TEST_SUBJECT_OPTIONS = [
 const VEHICLE_TEST_CONFIG = {
   lander: {
     url: LANDER_URL,
+    flamesUrl: null,
+    burnedUrl: null,
     scale: 1.05,
     y: -0.18,
     pitch: 0.14,
@@ -63,19 +67,25 @@ const VEHICLE_TEST_CONFIG = {
   },
   'spacecraft-blue': {
     url: BLUE_SHIP_URL,
+    flamesUrl: BLUE_SHIP_FLAMES_URL,
+    burnedUrl: BLUE_SHIP_BURNED_URL,
     scale: 1.08,
     y: -0.05,
     pitch: 0.34,
     smokePos: [0, 0.36, 0.04],
-    flameAnchors: [
-      { pos: [0, 0.08, -0.12], rot: [0, 0, 0.1] },
-      { pos: [-0.28, -0.02, 0.08], rot: [0, 0, 0.24] },
-      { pos: [0.28, -0.02, 0.08], rot: [0, 0, -0.24] },
-    ],
+    flameAnchors: [],
   },
 };
 
-[ASTRO_NORMAL_URL, ASTRO_FLAMES_URL, ASTRO_BURNED_URL, SMOKE_COL_URL]
+[
+  ASTRO_NORMAL_URL,
+  ASTRO_FLAMES_URL,
+  ASTRO_BURNED_URL,
+  BLUE_SHIP_URL,
+  BLUE_SHIP_FLAMES_URL,
+  BLUE_SHIP_BURNED_URL,
+  SMOKE_COL_URL,
+]
   .filter(Boolean)
   .forEach((url) => useGLTF.preload(url));
 
@@ -201,20 +211,11 @@ function RisingLowPolyEmbers({ count = 18, color = '#fbbf24', isSpherical = fals
   );
 }
 
-/**
- * Prepares `astronautaLlamas.glb` so that its built-in flame primitives (`Mat_Llama_*`)
- * can dynamically grow and flicker from tiny sparks to roaring flames as `oxygen` increases!
- */
-function prepareFlamesAstronaut(scene) {
-  const root = scene.clone(true);
+function extractFlameMeshParts(root, isFlameMesh) {
   const flameParts = [];
 
   root.traverse((node) => {
-    if (
-      node.isMesh &&
-      node.geometry?.attributes?.position &&
-      node.material?.name?.startsWith('Mat_Llama_')
-    ) {
+    if (node.isMesh && node.geometry?.attributes?.position && isFlameMesh(node)) {
       node.geometry = node.geometry.clone();
       const posAttr = node.geometry.attributes.position;
       const basePos = Float32Array.from(posAttr.array);
@@ -238,6 +239,74 @@ function prepareFlamesAstronaut(scene) {
     }
   });
 
+  return flameParts;
+}
+
+function animateFlameMeshParts(flameParts, t, flameGrowth) {
+  for (let p = 0; p < flameParts.length; p += 1) {
+    const { mesh, basePos, minY, spanY, cx, cz } = flameParts[p];
+    const posAttr = mesh.geometry.attributes.position;
+    const arr = posAttr.array;
+
+    for (let i = 0; i < arr.length; i += 3) {
+      const bx = basePos[i];
+      const by = basePos[i + 1];
+      const bz = basePos[i + 2];
+      const u = Math.max(0, (by - minY) / spanY);
+
+      const flicker = 1 + Math.sin(t * 16 + bx * 12 + p) * 0.18 * u;
+      const swayX = Math.sin(t * 11 + by * 8 + p) * 0.028 * u * flameGrowth;
+      const swayZ = Math.cos(t * 9 + bx * 8 + p) * 0.028 * u * flameGrowth;
+      const radialGrow = 0.45 + flameGrowth * 0.55;
+      const verticalGrow = 0.35 + flameGrowth * 0.85 * flicker;
+
+      arr[i] = cx + (bx - cx) * radialGrow + swayX;
+      arr[i + 1] = minY + (by - minY) * verticalGrow;
+      arr[i + 2] = cz + (bz - cz) * radialGrow + swayZ;
+    }
+    posAttr.needsUpdate = true;
+  }
+}
+
+/**
+ * Prepares `astronautaLlamas.glb` so that its built-in flame primitives (`Mat_Llama_*`)
+ * can dynamically grow and flicker from tiny sparks to roaring flames as `oxygen` increases!
+ */
+function prepareFlamesAstronaut(scene) {
+  const root = scene.clone(true);
+  const flameParts = extractFlameMeshParts(
+    root,
+    (node) => node.material?.name?.startsWith('Mat_Llama_') ?? false
+  );
+  return { root, flameParts };
+}
+
+/**
+ * Normalizes `naveAzulLlamas.glb` using the intact ship hull bounds so flames and smoke
+ * extend outward cleanly without shrinking the ship itself, and extracts animatable flames.
+ */
+function prepareFlamesVehicle(flamesScene, hullReferenceScene) {
+  const refBox = new THREE.Box3().setFromObject(hullReferenceScene);
+  const refCenter = refBox.getCenter(new THREE.Vector3());
+  const refSize = refBox.getSize(new THREE.Vector3());
+  const scale = 2 / Math.max(refSize.x, refSize.y, refSize.z, 1e-4);
+
+  const root = new THREE.Group();
+  const clone = flamesScene.clone(true);
+  clone.scale.setScalar(scale);
+  clone.position.set(
+    -refCenter.x * scale,
+    -refCenter.y * scale,
+    -refCenter.z * scale
+  );
+  root.add(clone);
+
+  const flameParts = extractFlameMeshParts(
+    clone,
+    (node) =>
+      /^Llama_/i.test(node.name ?? '') ||
+      (node.material?.name?.startsWith('LP_Fuego_') ?? false)
+  );
   return { root, flameParts };
 }
 
@@ -334,29 +403,7 @@ function AstronautSuitFireTest({ oxygen = 30, airflow = 0.05, suitState = 'auto'
 
     // 2. Suit in Flames: Dynamically grow & flicker both the GLB's own flame meshes and the 3D fire cones!
     if (resolvedState === 'flames') {
-      for (let p = 0; p < flameParts.length; p += 1) {
-        const { mesh, basePos, minY, spanY, cx, cz } = flameParts[p];
-        const posAttr = mesh.geometry.attributes.position;
-        const arr = posAttr.array;
-
-        for (let i = 0; i < arr.length; i += 3) {
-          const bx = basePos[i];
-          const by = basePos[i + 1];
-          const bz = basePos[i + 2];
-          const u = Math.max(0, (by - minY) / spanY);
-
-          const flicker = 1 + Math.sin(t * 16 + bx * 12 + p) * 0.18 * u;
-          const swayX = Math.sin(t * 11 + by * 8 + p) * 0.028 * u * flameGrowth;
-          const swayZ = Math.cos(t * 9 + bx * 8 + p) * 0.028 * u * flameGrowth;
-          const radialGrow = 0.45 + flameGrowth * 0.55;
-          const verticalGrow = 0.35 + flameGrowth * 0.85 * flicker;
-
-          arr[i] = cx + (bx - cx) * radialGrow + swayX;
-          arr[i + 1] = minY + (by - minY) * verticalGrow;
-          arr[i + 2] = cz + (bz - cz) * radialGrow + swayZ;
-        }
-        posAttr.needsUpdate = true;
-      }
+      animateFlameMeshParts(flameParts, t, flameGrowth);
 
       if (fireConesRef.current) {
         const children = fireConesRef.current.children;
@@ -550,10 +597,25 @@ function VehicleFireTest({ variant, oxygen = 30, airflow = 0.05, suitState = 'au
   const flameGrowth = 0.28 + levelProgress * 1.35 + airflow * 0.45;
 
   const { scene: rawScene } = useGLTF(cfg.url, false, false);
+  const { scene: flamesRawScene } = useGLTF(cfg.flamesUrl ?? cfg.url, false, false);
+  const { scene: burnedRawScene } = useGLTF(cfg.burnedUrl ?? cfg.url, false, false);
   const { scene: smokeScene } = useGLTF(SMOKE_COL_URL, false, false);
 
   const normalModel = useMemo(() => normalizeModel(rawScene), [rawScene]);
-  const charredModel = useMemo(() => prepareCharredVehicle(normalModel), [normalModel]);
+  const { root: flamesModel, flameParts } = useMemo(
+    () =>
+      cfg.flamesUrl
+        ? prepareFlamesVehicle(flamesRawScene, rawScene)
+        : { root: normalModel, flameParts: [] },
+    [cfg.flamesUrl, flamesRawScene, rawScene, normalModel]
+  );
+  const charredModel = useMemo(
+    () =>
+      cfg.burnedUrl
+        ? normalizeModel(burnedRawScene)
+        : prepareCharredVehicle(normalModel),
+    [cfg.burnedUrl, burnedRawScene, normalModel]
+  );
   const smokeClone = useMemo(() => smokeScene.clone(true), [smokeScene]);
 
   const coneYellowGeo = useMemo(() => createUpwardFlameCone(0.11, 0.38, 5), []);
@@ -592,6 +654,10 @@ function VehicleFireTest({ variant, oxygen = 30, airflow = 0.05, suitState = 'au
           : Math.sin(t * 1.8) * 0.03;
       rigRef.current.position.y = cfg.y + bob;
       rigRef.current.rotation.y = t * 0.48 + 0.5;
+    }
+
+    if (resolvedState === 'flames' && flameParts.length > 0) {
+      animateFlameMeshParts(flameParts, t, flameGrowth);
     }
 
     if (fireGroupRef.current && resolvedState === 'flames') {
@@ -636,7 +702,12 @@ function VehicleFireTest({ variant, oxygen = 30, airflow = 0.05, suitState = 'au
     }
   });
 
-  const activeModel = resolvedState === 'burned' ? charredModel : normalModel;
+  const activeModel =
+    resolvedState === 'burned'
+      ? charredModel
+      : resolvedState === 'flames'
+        ? flamesModel
+        : normalModel;
   const ringColor =
     resolvedState === 'normal'
       ? '#10b981'
