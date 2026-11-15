@@ -18,7 +18,7 @@ export default function NotFoundPage() {
     >
       <span
         style={{
-          fontFamily: 'var(--font-mono)',
+          fontFamily: 'var(--font-sans)',
           fontSize: '11px',
           color: '#38bdf8',
           letterSpacing: '0.8px',
@@ -40,7 +40,7 @@ export default function NotFoundPage() {
             background: '#0d1321',
             color: '#e2e8f0',
             fontSize: '12px',
-            fontFamily: 'var(--font-mono)',
+            fontFamily: 'var(--font-sans)',
           }}
         >
           Mission Hub
@@ -54,7 +54,7 @@ export default function NotFoundPage() {
             background: 'rgba(56, 189, 248, 0.14)',
             color: '#bae6fd',
             fontSize: '12px',
-            fontFamily: 'var(--font-mono)',
+            fontFamily: 'var(--font-sans)',
           }}
         >
           PSI Catalog →
@@ -68,7 +68,7 @@ export default function NotFoundPage() {
             background: '#0d1321',
             color: '#e2e8f0',
             fontSize: '12px',
-            fontFamily: 'var(--font-mono)',
+            fontFamily: 'var(--font-sans)',
           }}
         >
           FireHazR Lab

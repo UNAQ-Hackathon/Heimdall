@@ -36,7 +36,7 @@ export default function TimeSeriesChart({ data }) {
             dataKey="time"
             stroke="#64748b"
             fontSize={10}
-            fontFamily="var(--font-mono)"
+            fontFamily="var(--font-sans)"
             tickFormatter={(v) => `${v}s`}
           />
           <YAxis
@@ -44,7 +44,7 @@ export default function TimeSeriesChart({ data }) {
             domain={[0, 950]}
             stroke="#38bdf8"
             fontSize={10}
-            fontFamily="var(--font-mono)"
+            fontFamily="var(--font-sans)"
             tickFormatter={(v) => `${v}°C`}
           />
           <YAxis
@@ -53,7 +53,7 @@ export default function TimeSeriesChart({ data }) {
             domain={[0, 50]}
             stroke="#fb7185"
             fontSize={10}
-            fontFamily="var(--font-mono)"
+            fontFamily="var(--font-sans)"
             tickFormatter={(v) => `${v} kW`}
           />
           <Tooltip
@@ -62,7 +62,7 @@ export default function TimeSeriesChart({ data }) {
               borderColor: '#1c2640',
               borderRadius: '6px',
               fontSize: '11px',
-              fontFamily: 'var(--font-mono)',
+              fontFamily: 'var(--font-sans)',
             }}
             formatter={(value, name) => [
               name === 'tc' ? `${value} °C` : `${value} kW/m²`,

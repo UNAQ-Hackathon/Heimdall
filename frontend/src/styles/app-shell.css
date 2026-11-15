@@ -25,12 +25,11 @@
   gap: 24px;
   padding: 13px 26px;
   flex-shrink: 0;
-  min-height: 76px;
-  background: linear-gradient(90deg, var(--audience-bg-glow), transparent 45%, var(--audience-bg-glow)), var(--bg-panel, #0a0f1d);
-  border-bottom: 1px solid var(--audience-border);
-  box-shadow: 0 4px 22px var(--audience-bg-glow);
+  min-height: 70px;
+  background: var(--bg-panel, #0a0f1d);
+  border-bottom: 1px solid #1c2640;
   z-index: 50;
-  transition: border-color 220ms ease, background 220ms ease, box-shadow 220ms ease;
+  transition: border-color 220ms ease, background-color 220ms ease;
 }
 .app-header__identity, .app-header__brand, .app-header__actions { display: flex; align-items: center; gap: 14px; min-width: 0; }
 .app-header__brand { gap: 11px; border-radius: 8px; }

@@ -43,8 +43,8 @@ test('every hardware filter chip matches at least one verified PSI study', () =>
 test('summarizeCatalogMetrics reports exact observed counts and O2 bounds without inventing values', () => {
   const summary = summarizeCatalogMetrics(processedInvestigations);
   assert.equal(summary.count, 23);
-  assert.equal(summary.oxygenMinPct, 13.5);
-  assert.equal(summary.oxygenMaxPct, 85);
+  assert.equal(summary.oxygenMinPct, 0.6);
+  assert.equal(summary.oxygenMaxPct, 84.998);
   assert.ok(summary.hardwareCount >= 5);
   assert.ok(summary.earthApplicationsCount >= 23);
 });
@@ -55,7 +55,7 @@ test('dataStatus filters isolate FLEX empirical series and upcoming LUCI/FM2 rec
   const seriesOnly = filterPsiInvestigations(processedInvestigations, { dataStatus: 'series' });
   assert.deepEqual(
     seriesOnly.map((item) => item.acronym),
-    ['FLEX']
+    ['BASS-II', 'Saffire-II', 'SAME', 'SAME-R', 'FLEX', 'CFI-G', 'CLD Flame', 'Flame Design', 'SPICE']
   );
 
   const upcomingOnly = filterPsiInvestigations(processedInvestigations, { dataStatus: 'upcoming' });
@@ -77,7 +77,7 @@ test('buildPsiDatasetCsv and summarizeInvestigationDifferences extract verified 
   const lines = csv.split('\n');
   assert.equal(lines.length, 3);
   assert.ok(lines[0].includes('seriesPointCount'));
-  assert.ok(lines[1].includes('"258"'));
+  assert.ok(lines[1].includes('"260"'));
   assert.ok(lines[2].includes('"false"'));
 
   assert.equal(getHardwareFamily(cfiG.hardware), 'CIR / ACME (Modular Gas Rack)');
@@ -91,12 +91,12 @@ test('summarizeCatalogOverview and study telemetry helpers report exact counts w
   const overview = summarizeCatalogOverview(processedInvestigations);
   assert.equal(overview.total, 23);
   assert.equal(overview.byCategory.prevention + overview.byCategory.detection + overview.byCategory.suppression, 23);
-  assert.equal(overview.telemetryCounts.empiricalStudies, 1);
-  assert.equal(overview.telemetryCounts.empiricalSamples, 258);
+  assert.equal(overview.telemetryCounts.empiricalStudies, 9);
+  assert.equal(overview.telemetryCounts.empiricalSamples, 1349);
   assert.equal(overview.telemetryCounts.publishedStudies, 21);
   assert.equal(overview.telemetryCounts.upcomingStudies, 2);
-  assert.equal(overview.oxygenSpan.minPct, 13.5);
-  assert.equal(overview.oxygenSpan.maxPct, 85);
+  assert.equal(overview.oxygenSpan.minPct, 0.6);
+  assert.equal(overview.oxygenSpan.maxPct, 84.998);
 
   const flex = processedInvestigations.find((i) => i.acronym === 'FLEX');
   const luci = processedInvestigations.find((i) => i.acronym === 'LUCI');
@@ -108,7 +108,7 @@ test('summarizeCatalogOverview and study telemetry helpers report exact counts w
 
   const flexStats = getStudySeriesStats(flex);
   assert.equal(flexStats.seriesCount, 6);
-  assert.equal(flexStats.sampleCount, 258);
+  assert.equal(flexStats.sampleCount, 260);
   assert.ok(flexStats.seriesSummaries.every((s) => Number.isFinite(s.minY) && Number.isFinite(s.maxY)));
 
   const luciO2 = getStudyOxygenBounds(luci);

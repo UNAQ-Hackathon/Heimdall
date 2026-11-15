@@ -28,7 +28,7 @@ test('GET /api/health and POST /api/ranking respond deterministically', async ()
     const flexDetail = await fetch(`${baseUrl}/api/investigations/flex`).then((r) => r.json());
     const flexPts = flexDetail.series?.reduce((acc, s) => acc + (s.samples?.length ?? 0), 0) ?? 0;
     assert.equal(flexDetail.series.length, 6);
-    assert.equal(flexPts, 258);
+    assert.equal(flexPts, 260);
 
     const moonScenario = { gravity: 'lunar', oxygenPct: 30, pressurePsi: 10.2, flowVelocity: 0.1 };
     const weights = { atmosphereMatch: 40, gravityMatch: 25, dataRichness: 20, documentation: 15 };

@@ -31,6 +31,7 @@ test('GET /api/telemetry and /api/investigations/:id/telemetry resolve studies r
     assert.equal(tAll.status, 200);
     const allBody = await tAll.json();
     assert.ok(Array.isArray(allBody.experiments));
+    assert.equal(typeof allBody.totalExperiments, 'number');
     assert.ok(Array.isArray(allBody.measurements));
 
     const tStudy = await fetch(`${baseUrl}/api/investigations/acme-cfi-g/telemetry`);
@@ -38,6 +39,7 @@ test('GET /api/telemetry and /api/investigations/:id/telemetry resolve studies r
     const studyBody = await tStudy.json();
     assert.equal(studyBody.investigation.acronym, 'CFI-G');
     assert.equal(studyBody.investigation.slug, 'acme-cfi-g');
+    assert.equal(typeof studyBody.totalExperiments, 'number');
 
     const byAcronym = await fetch(`${baseUrl}/api/investigations/BASS`);
     assert.equal(byAcronym.status, 200);

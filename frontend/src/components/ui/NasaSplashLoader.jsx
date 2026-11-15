@@ -9,7 +9,7 @@ export default function NasaSplashLoader() {
   useEffect(() => {
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
     const holdMs = reduced ? 250 : 1250;
-    const fadeMs = reduced ? 50 : 450;
+    const fadeMs = reduced ? 50 : 480;
 
     const fadeTimer = window.setTimeout(() => setExiting(true), holdMs);
     const doneTimer = window.setTimeout(() => setMounted(false), holdMs + fadeMs);
@@ -28,32 +28,8 @@ export default function NasaSplashLoader() {
       role="status"
       aria-label="Loading Heimdall NASA PSI Dashboard"
     >
-      <div className="nasa-splash__emblem">
-        <svg className="nasa-splash__ring" viewBox="0 0 100 100" aria-hidden="true">
-          <circle
-            cx="50"
-            cy="50"
-            r="46"
-            fill="none"
-            stroke="rgba(148, 163, 184, 0.14)"
-            strokeWidth="1.25"
-          />
-          <circle
-            cx="50"
-            cy="50"
-            r="46"
-            fill="none"
-            stroke="#60a5fa"
-            strokeWidth="1.75"
-            strokeLinecap="round"
-            strokeDasharray="72 220"
-          />
-        </svg>
-        <img className="nasa-splash__logo" src={nasaLogo} alt="NASA" width={68} height={68} />
-      </div>
-
-      <div className="nasa-splash__meta">
-        <p className="nasa-splash__title">HEIMDALL · NASA PSI</p>
+      <div className="nasa-splash__content">
+        <img className="nasa-splash__logo" src={nasaLogo} alt="NASA" width={88} height={88} />
         <div className="nasa-splash__bar" aria-hidden="true">
           <div className="nasa-splash__fill" />
         </div>

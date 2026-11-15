@@ -15,6 +15,13 @@ export default function MissionPlanetInspection({
   const sfx = useSound();
   const [zoneId, setZoneId] = useState('temperate');
   const openedRef = useRef(false);
+  const sectionRef = useRef(null);
+
+  useEffect(() => {
+    if (sectionRef.current) {
+      sectionRef.current.scrollTop = 0;
+    }
+  }, [body.name]);
 
   useEffect(() => {
     if (openedRef.current) return;
@@ -40,6 +47,7 @@ export default function MissionPlanetInspection({
 
   return (
     <section
+      ref={sectionRef}
       className={`mission-inspection${minimized ? ' mission-inspection--minimized' : ''}`}
       aria-label={`${planet.label} environment inspection`}
     >

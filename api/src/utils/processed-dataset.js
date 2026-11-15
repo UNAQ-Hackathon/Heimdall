@@ -84,7 +84,7 @@ export function normalizeInvestigationDoc(doc, processedList = []) {
     title: doc.title ?? match?.title ?? doc.name ?? merged.title,
     hardware: doc.hardware ?? match?.hardware ?? doc.family ?? merged.hardware,
     category: doc.category ?? match?.category ?? doc.researchType ?? merged.category,
-    status: doc.status ?? match?.status ?? merged.status ?? 'published',
+    status: doc.psiStatus ?? doc.status ?? match?.status ?? merged.status ?? 'published',
     dataAvailable:
       doc.dataAvailable !== undefined
         ? doc.dataAvailable
@@ -171,6 +171,7 @@ export async function getInvestigationTelemetry(id) {
   if (id && !investigation) return null;
 
   let experiments = [];
+  let totalExperiments = 0;
   let measurements = [];
   let source = 'processed-archive';
 
@@ -195,14 +196,19 @@ export async function getInvestigationTelemetry(id) {
       : {};
 
     try {
-      experiments = await db
-        .collection('experiments')
-        .find(expQuery, { projection: { _id: 0 } })
-        .limit(300)
-        .toArray();
-      if (experiments.length > 0) source = 'mongodb';
+      const expCollection = db.collection('experiments');
+      [totalExperiments, experiments] = await Promise.all([
+        expCollection.countDocuments(expQuery),
+        expCollection
+          .find(expQuery, { projection: { _id: 0, raw: 0 } })
+          .sort({ rowIndex: 1, runId: 1 })
+          .limit(id ? 500 : 300)
+          .toArray(),
+      ]);
+      if (experiments.length > 0 || totalExperiments > 0) source = 'mongodb';
     } catch {
       experiments = [];
+      totalExperiments = 0;
     }
 
     try {
@@ -231,6 +237,7 @@ export async function getInvestigationTelemetry(id) {
   return {
     investigation,
     experiments,
+    totalExperiments,
     measurements,
     source,
   };

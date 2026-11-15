@@ -22,7 +22,7 @@ function NeighborTooltip({ active, payload }) {
         border: '1px solid #263449',
         borderRadius: '8px',
         padding: '8px 11px',
-        fontFamily: 'var(--font-mono)',
+        fontFamily: 'var(--font-sans)',
         fontSize: '10.5px',
         color: '#f8fafc',
         boxShadow: '0 8px 20px rgba(0,0,0,0.55)',
@@ -80,7 +80,7 @@ export default function FireHazrResultChart({ result, conditions }) {
         gap: '12px',
         padding: '12px 14px',
         borderRadius: '10px',
-        background: 'linear-gradient(180deg, rgba(11, 19, 34, 0.9), rgba(8, 13, 26, 0.95))',
+        background: '#0a1120',
         border: '1px solid #1e293b',
       }}
     >
@@ -93,7 +93,7 @@ export default function FireHazrResultChart({ result, conditions }) {
               justifyContent: 'space-between',
               alignItems: 'center',
               fontSize: '10px',
-              fontFamily: 'var(--font-mono)',
+              fontFamily: 'var(--font-sans)',
               color: '#94a3b8',
               flexWrap: 'wrap',
               gap: '6px',
@@ -131,7 +131,7 @@ export default function FireHazrResultChart({ result, conditions }) {
               display: 'flex',
               justifyContent: 'space-between',
               fontSize: '10px',
-              fontFamily: 'var(--font-mono)',
+              fontFamily: 'var(--font-sans)',
               color: '#94a3b8',
             }}
           >
@@ -182,7 +182,7 @@ export default function FireHazrResultChart({ result, conditions }) {
               justifyContent: 'space-between',
               alignItems: 'center',
               fontSize: '10px',
-              fontFamily: 'var(--font-mono)',
+              fontFamily: 'var(--font-sans)',
               color: '#94a3b8',
               marginBottom: '6px',
               gap: '8px',
@@ -204,13 +204,13 @@ export default function FireHazrResultChart({ result, conditions }) {
                   dataKey="label"
                   stroke="#64748b"
                   fontSize={10}
-                  fontFamily="var(--font-mono)"
+                  fontFamily="var(--font-sans)"
                   tickLine={false}
                 />
                 <YAxis
                   stroke="#64748b"
                   fontSize={10}
-                  fontFamily="var(--font-mono)"
+                  fontFamily="var(--font-sans)"
                   tickLine={false}
                   tickFormatter={(v) => `${v}s`}
                 />

@@ -43,7 +43,7 @@ test('get_investigation returns full detail and real series stats', async () => 
   assert.equal(flex.acronym, 'FLEX');
   assert.ok(flex.objective.length > 10);
   const totalSamples = flex.series.reduce((n, s) => n + s.samples, 0);
-  assert.equal(totalSamples, 258);
+  assert.equal(totalSamples, 260);
   assert.ok(flex.series[0].yRange.max > flex.series[0].yRange.min);
   assert.ok(flex.seriesSource.includes('PSI-69'));
 
@@ -115,7 +115,7 @@ test('summarizeToolResult condenses real results and surfaces errors', async () 
   assert.match(summarizeToolResult('rank_investigations', rank), /^top: \S+ 0\.\d+$/);
 
   const flex = await executeAgentTool('get_investigation', { acronym: 'FLEX' });
-  assert.equal(summarizeToolResult('get_investigation', flex), 'FLEX · 258 data pts');
+  assert.equal(summarizeToolResult('get_investigation', flex), 'FLEX · 260 data pts');
 
   assert.match(
     summarizeToolResult('get_investigation', { error: 'not found' }),
@@ -135,7 +135,7 @@ test('detailToolResult exposes real data previews for the trace', async () => {
   assert.match(lines[0], /^1\. \S+ — 0\.\d+$/);
 
   const flex = await executeAgentTool('get_investigation', { acronym: 'FLEX' });
-  assert.ok(detailToolResult('get_investigation', flex).some((l) => l.includes('258')));
+  assert.ok(detailToolResult('get_investigation', flex).some((l) => l.includes('260')));
 
   assert.deepEqual(detailToolResult('get_investigation', { error: 'x' }), []);
 });

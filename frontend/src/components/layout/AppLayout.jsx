@@ -13,7 +13,7 @@ const NAV_ITEMS = [
   { to: '/', label: 'Mission Hub', hint: '3D solar system & FireHazR burn lab', matchPaths: ['/'] },
   { to: '/studies', label: 'PSI Catalog', hint: 'Browse 23 verified NASA PSI studies', matchPaths: ['/studies', '/investigations', '/study', '/telemetry'] },
   { to: '/flame', label: 'FireHazR Lab', hint: 'Microgravity droplet burn duration predictor', matchPaths: ['/flame', '/firehazr', '/flame-3d'] },
-  { to: '/compare', label: 'Compare & Earth', hint: 'Compare 0g vs 1g fire behavior', matchPaths: ['/compare'] },
+  { to: '/compare', label: 'Parametric Comparison', hint: 'Cross-study O₂ / pressure regime analysis', matchPaths: ['/compare'] },
 ];
 
 function isNavItemActive(pathname, { to, matchPaths }) {
@@ -53,7 +53,6 @@ export default function AppLayout() {
             <HeimdallLogo size={40} />
             <div className="app-header__wordmark">
               <strong>Heimdall</strong>
-              <span>Spacecraft fire research</span>
             </div>
           </Link>
         </div>

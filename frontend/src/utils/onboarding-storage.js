@@ -11,9 +11,9 @@ export const TOUR_STEPS = [
     description:
       'Heimdall links 3D spacecraft exploration, 23 verified NASA PSI studies, and the FireHazR microgravity burn predictor into one workflow.',
     highlights: [
-      'Selecting habitats updates cabin O₂/psi context & PSI study rankings',
+      'Selecting habitats updates active cabin O₂/psi context',
       'Adjusting gas, pressure & droplet meters updates FLEX coverage live',
-      'Engineer vs Student mode, Compare & Earth, and Gemini AI adapt everywhere',
+      'Engineer vs Student mode, Parametric Comparison, and Gemini AI adapt everywhere',
     ],
   },
   {
@@ -26,7 +26,7 @@ export const TOUR_STEPS = [
     description:
       'Tap a destination below—or click a planet in 3D—to fly your ship there and open its conceptual landing or ISS airlock preview.',
     changes:
-      'Earth, ISS, Moon, and Mars switch the active habitat atmosphere (O₂% & psi), recalculating the sidebar PSI ranking and engineering envelope.',
+      'Earth, ISS, Moon, and Mars switch the active habitat atmosphere (O₂% & psi) used in planetary inspection and AI mission context.',
     why:
       'Lunar and Martian habitats plan elevated O₂ (≥30%) at lower pressure, which changes which microgravity ISS baselines apply.',
   },
@@ -105,10 +105,10 @@ export const TOUR_STEPS = [
     route: '/compare',
     target: '[data-tour="compare-controls"]',
     mobileTab: '3d',
-    badge: '8 OF 9 · COMPARE & EARTH',
-    title: 'Compare & Earth: 0g vs 1g Matrix & Spin-Offs',
+    badge: '8 OF 9 · PARAMETRIC COMPARISON',
+    title: 'Parametric Comparison: Regimes, Matrix & Spin-Offs',
     description:
-      'Use presets or pick any 2–3 studies side-by-side, toggle Show Differences Only, switch tabs for the Conditions Matrix, and inspect Earth Spin-Offs.',
+      'Use presets or pick any 2–3 studies side-by-side, toggle Show Differences Only, and scroll through the Conditions Matrix, the O₂–pressure regime map, and Earth Spin-Offs.',
     changes:
       'Study selectors and Show Differences Only isolate diverging fuels, O₂ ranges, hardware, and sensors for focused CSV export.',
     why:

@@ -6,8 +6,6 @@ import SpacecraftSelector from '../components/ui/SpacecraftSelector.jsx';
 import SolarSystemScene from '../components/three/SolarSystemScene.jsx';
 import { useApp } from '../context/AppContext.jsx';
 import { useSound } from '../context/SoundContext.jsx';
-import { api } from '../services/api.js';
-import { rankLocalInvestigations } from '../services/ranking.js';
 import { PLANETS, ISS_DESTINATION } from '../services/mockData.js';
 import { TOUR_STEPS } from '../utils/onboarding-storage.js';
 import '../styles/mission-hub.css';
@@ -46,10 +44,8 @@ export default function MissionHub() {
     setScenarioKey,
     scenario,
     audience,
-    category,
     focusPlanet,
     setFocusPlanet,
-    weights,
     shipFile,
     setShipFile,
     chatOpen,
@@ -89,26 +85,6 @@ export default function MissionHub() {
     setFocusPlanet(null);
     targetRef.current?.focus({ preventScroll: true });
   }, [setFocusPlanet, sfx]);
-
-  const localRanked = useMemo(
-    () => rankLocalInvestigations({ ...scenario, category }, weights),
-    [scenario, category, weights]
-  );
-
-  const [rankedItems, setRankedItems] = useState(localRanked);
-
-  useEffect(() => {
-    setRankedItems(localRanked);
-    let cancelled = false;
-    api.rank({ ...scenario, category }, weights).then((res) => {
-      if (!cancelled && Array.isArray(res?.results)) {
-        setRankedItems(res.results);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [scenario, category, weights, localRanked]);
 
   const activePlanetObj = useMemo(
     () =>
@@ -163,8 +139,7 @@ export default function MissionHub() {
       {/* Left Minimalist Analytical Panel */}
       {!panelCollapsed && (
         <aside className="mission-hub__sidebar" data-tour="fire-lab">
-          {/* Audience-Specific Top Context: Quantitative PSI Ranking (Engineer) vs Guided Fire Lesson (Student) */}
-          {audience === 'Student' ? (
+          {audience === 'Student' && (
             <div
               style={{
                 border: '1px solid var(--audience-border, rgba(52, 211, 153, 0.45))',
@@ -182,7 +157,7 @@ export default function MissionHub() {
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   fontSize: '10px',
-                  fontFamily: 'var(--font-mono)',
+                  fontFamily: 'var(--font-sans)',
                   color: 'var(--audience-accent, #34d399)',
                   letterSpacing: '0.6px',
                 }}
@@ -196,7 +171,7 @@ export default function MissionHub() {
                     border: 'none',
                     color: '#6ee7b7',
                     fontSize: '10px',
-                    fontFamily: 'var(--font-mono)',
+                    fontFamily: 'var(--font-sans)',
                     cursor: 'pointer',
                     padding: 0,
                   }}
@@ -224,110 +199,6 @@ export default function MissionHub() {
                 ))}
               </ul>
             </div>
-          ) : (
-            <>
-              {rankedItems.length > 0 && (
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '6px',
-                    padding: '8px 10px',
-                    borderRadius: '8px',
-                    background: 'rgba(15, 23, 42, 0.45)',
-                    border: '1px solid var(--border-subtle)',
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      fontSize: '10px',
-                      fontFamily: 'var(--font-mono)',
-                      color: '#94a3b8',
-                    }}
-                  >
-                    <span>TOP PSI RANKING · {scenario.label.toUpperCase()}</span>
-                    <button
-                      type="button"
-                      onClick={() => navigate('/studies')}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: '#60a5fa',
-                        fontSize: '10px',
-                        fontFamily: 'var(--font-mono)',
-                        cursor: 'pointer',
-                        padding: 0,
-                      }}
-                    >
-                      All ({rankedItems.length}) ↗
-                    </button>
-                  </div>
-                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                    {rankedItems.slice(0, 3).map((item, idx) => {
-                      const inv = item.investigation ?? item;
-                      const targetId = inv.id ?? inv.slug ?? inv.psiId ?? item.studyId ?? item._id;
-                      const pctScore = Math.round((item.score ?? item.ranking?.score ?? 0) * 100);
-                      return (
-                        <button
-                          key={inv.psiId ?? targetId ?? idx}
-                          type="button"
-                          onClick={() => navigate(`/study/${targetId}`)}
-                          style={{
-                            flex: '1 1 90px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            gap: '6px',
-                            padding: '5px 8px',
-                            borderRadius: '6px',
-                            background: '#0b1322',
-                            border: '1px solid #263449',
-                            color: '#e2e8f0',
-                            fontSize: '11px',
-                            fontFamily: 'var(--font-mono)',
-                            cursor: 'pointer',
-                            textAlign: 'left',
-                          }}
-                        >
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            #{idx + 1} {inv.acronym ?? inv.name ?? targetId}
-                          </span>
-                          <strong style={{ color: '#60a5fa', fontSize: '10.5px' }}>
-                            {pctScore}
-                          </strong>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              <div
-                style={{
-                  border: '1px solid #263449',
-                  borderRadius: '8px',
-                  padding: '10px 12px',
-                  background: '#0b1322',
-                  fontSize: '11.5px',
-                  lineHeight: 1.5,
-                  color: '#cbd5e1',
-                }}
-              >
-                <strong style={{ display: 'block', color: '#93c5fd', marginBottom: '4px', fontSize: '12px' }}>
-                  Engineering envelope · {scenario.oxygenPct}% O₂ · {scenario.pressurePsi} psi
-                </strong>
-                <p style={{ margin: 0 }}>
-                  Microgravity removes buoyant convection, making diffusion flames spherical (<strong>BASS</strong>,{' '}
-                  <strong>Saffire</strong>, <strong>ACME</strong>, <strong>FLEX</strong>).{' '}
-                  {scenario.partialGravity
-                    ? 'No partial-g PSI datasets exist yet; 0g and 1g baselines bound lunar/Mars risk.'
-                    : 'Nominal 0g and 1g experimental references apply directly.'}
-                </p>
-              </div>
-            </>
           )}
 
           {/* Single FireHazR Algorithm lab (predictor meters + 3D flame chamber) */}
@@ -340,7 +211,7 @@ export default function MissionHub() {
               textAlign: 'center',
               fontSize: '11px',
               fontWeight: 700,
-              fontFamily: 'var(--font-mono)',
+              fontFamily: 'var(--font-sans)',
               letterSpacing: '0.08em',
               color: '#fbbf24',
             }}

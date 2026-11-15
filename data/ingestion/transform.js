@@ -47,6 +47,7 @@ export function transformInvestigation(raw) {
     sensors: Array.isArray(raw.sensors) ? raw.sensors : [],
     series: Array.isArray(raw.series) ? raw.series : [],
     seriesSource: raw.seriesSource ?? null,
+    experimentRuns: toNullableNumber(raw.experimentRuns),
     earthApplications: Array.isArray(raw.earthApplications) ? raw.earthApplications : [],
     sourceUrl: raw.sourceUrl ?? 'https://psi.nasa.gov/',
     tags: Array.isArray(raw.tags) ? raw.tags : [],

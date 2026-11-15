@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App.jsx';
 import { AppProvider } from './context/AppContext.jsx';
 import { SoundProvider } from './context/SoundContext.jsx';
+import '@fontsource/manrope/latin-400.css';
 import '@fontsource/manrope/latin-500.css';
 import '@fontsource/manrope/latin-600.css';
 import '@fontsource/manrope/latin-700.css';
