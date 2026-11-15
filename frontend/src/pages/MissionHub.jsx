@@ -9,7 +9,7 @@ import SolarSystemScene from '../components/three/SolarSystemScene.jsx';
 const PlanetSurfacePreview = lazy(() => import('../components/three/PlanetSurfacePreview.jsx'));
 import { useApp } from '../context/AppContext.jsx';
 import { api } from '../services/api.js';
-import { FACTOR_LABELS, rankLocalInvestigations } from '../services/ranking.js';
+import { FACTOR_LABELS, buildMissionBriefMarkdown, rankLocalInvestigations } from '../services/ranking.js';
 import { PLANETS, ISS_DESTINATION } from '../services/mockData.js';
 import '../styles/mission-hub.css';
 
@@ -356,27 +356,63 @@ export default function MissionHub() {
                   })}
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setWeightsOpen(!weightsOpen)}
-                  title="Adjust ranking weights"
-                  style={{
-                    padding: '4px 9px',
-                    borderRadius: '6px',
-                    background: weightsOpen
-                      ? 'rgba(59, 130, 246, 0.18)'
-                      : 'rgba(15, 23, 42, 0.6)',
-                    border: weightsOpen
-                      ? '1px solid rgba(59, 130, 246, 0.45)'
-                      : '1px solid var(--border-subtle)',
-                    color: weightsOpen ? '#60a5fa' : '#94a3b8',
-                    fontSize: '10.5px',
-                    fontFamily: 'var(--font-mono)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Weights
-                </button>
+                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const md = buildMissionBriefMarkdown({
+                        scenario,
+                        rankedItems,
+                        weights,
+                        audience,
+                        category,
+                      });
+                      const blob = new Blob([md], { type: 'text/markdown;charset=utf-8;' });
+                      const url = URL.createObjectURL(blob);
+                      const link = document.createElement('a');
+                      link.href = url;
+                      link.download = `heimdall-${scenario.id ?? 'mission'}-brief.md`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      URL.revokeObjectURL(url);
+                    }}
+                    title="Export Mission Fire Safety Brief (.md)"
+                    style={{
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      background: 'rgba(16, 185, 129, 0.12)',
+                      border: '1px solid rgba(16, 185, 129, 0.35)',
+                      color: '#34d399',
+                      fontSize: '10.5px',
+                      fontFamily: 'var(--font-mono)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Brief ↓
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setWeightsOpen(!weightsOpen)}
+                    title="Adjust ranking weights"
+                    style={{
+                      padding: '4px 9px',
+                      borderRadius: '6px',
+                      background: weightsOpen
+                        ? 'rgba(59, 130, 246, 0.18)'
+                        : 'rgba(15, 23, 42, 0.6)',
+                      border: weightsOpen
+                        ? '1px solid rgba(59, 130, 246, 0.45)'
+                        : '1px solid var(--border-subtle)',
+                      color: weightsOpen ? '#60a5fa' : '#94a3b8',
+                      fontSize: '10.5px',
+                      fontFamily: 'var(--font-mono)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Weights
+                  </button>
+                </div>
               </div>
 
               {weightsOpen && (
@@ -466,6 +502,39 @@ export default function MissionHub() {
                 </ul>
               </details>
 
+              {/* Challenge Context + Active Audience Emphasis */}
+              <div
+                style={{
+                  border: '1px solid var(--audience-border, #1e293b)',
+                  borderRadius: '8px',
+                  padding: '8px 11px',
+                  background: 'var(--audience-tint, rgba(15, 23, 42, 0.55))',
+                  fontSize: '11px',
+                  color: '#cbd5e1',
+                  lineHeight: 1.45,
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                  <strong style={{ color: 'var(--audience-accent, #38bdf8)', fontFamily: 'var(--font-mono)', fontSize: '10px' }}>
+                    {scenario.label?.toUpperCase() ?? 'SCENARIO'} · {audience === 'Student' ? 'STUDENT GUIDED MODE' : 'ENGINEER MODE'}
+                  </strong>
+                </div>
+                {audience === 'Student'
+                  ? scenario.partialGravity
+                    ? `Because ${scenario.label ?? 'this habitat'} has partial gravity and ${scenario.oxygenPct}% O₂ (vs 21% on Earth), NASA uses 0g space and 1g Earth flame tests together to stay safe.`
+                    : `In ${scenario.label ?? 'this setting'} (${scenario.oxygenPct}% O₂), flames behave very differently without gravity's upward hot-air draft.`
+                  : (
+                    <>
+                      {scenario.oxygenPct > 21
+                        ? `${scenario.oxygenPct}% O₂ (+${Math.round(((scenario.oxygenPct - 21) / 21) * 100)}% vs Earth 21%) at ${scenario.pressurePsi} psi cuts EVA pre-breathe time while raising flammability. `
+                        : `${scenario.oxygenPct}% O₂ at ${scenario.pressurePsi} psi (Earth sea-level baseline reference). `}
+                      {scenario.partialGravity
+                        ? 'No partial-gravity PSI datasets exist yet (LUCI & FM2 upcoming); 0g + 1g studies & E-FIELD Flames bound this regime.'
+                        : 'Microgravity removes buoyancy, making flames spherical and diffusion-limited.'}
+                    </>
+                  )}
+              </div>
+
               {/* Clean, Minimalist Study Cards */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {rankedItems.map(({ investigation: inv, score, breakdown }, idx) => {
@@ -521,21 +590,29 @@ export default function MissionHub() {
                             fontSize: '10.5px',
                             fontFamily: 'var(--font-mono)',
                             fontWeight: 600,
-                            color: '#34d399',
-                            background: 'rgba(16, 185, 129, 0.1)',
-                            border: '1px solid rgba(16, 185, 129, 0.22)',
+                            color: inv.dataAvailable === false ? '#fbbf24' : '#34d399',
+                            background:
+                              inv.dataAvailable === false
+                                ? 'rgba(245, 158, 11, 0.12)'
+                                : 'rgba(16, 185, 129, 0.1)',
+                            border:
+                              inv.dataAvailable === false
+                                ? '1px solid rgba(245, 158, 11, 0.28)'
+                                : '1px solid rgba(16, 185, 129, 0.22)',
                             borderRadius: '6px',
                             padding: '2px 7px',
                             whiteSpace: 'nowrap',
                           }}
                         >
-                          {scenario.partialGravity
-                            ? `${Math.max(10, pct - 7)}%–${Math.min(100, pct + 5)}%`
-                            : `${pct}%`}
+                          {inv.dataAvailable === false
+                            ? 'NO PSI DATA YET'
+                            : scenario.partialGravity
+                              ? `${Math.max(10, pct - 7)}%–${Math.min(100, pct + 5)}%`
+                              : `${pct}%`}
                         </span>
                       </div>
 
-                      {breakdown?.length > 0 && (
+                      {audience === 'Engineer' && breakdown?.length > 0 && (
                         <div className="score-bar-container" style={{ height: '4px' }}>
                           {breakdown.map((b) => (
                             <div
@@ -554,9 +631,9 @@ export default function MissionHub() {
                       <p
                         style={{
                           margin: 0,
-                          fontSize: '11.5px',
-                          color: '#94a3b8',
-                          lineHeight: 1.45,
+                          fontSize: audience === 'Student' ? '12px' : '11.5px',
+                          color: audience === 'Student' ? '#cbd5e1' : '#94a3b8',
+                          lineHeight: 1.5,
                         }}
                       >
                         {audience === 'Engineer'
@@ -575,9 +652,13 @@ export default function MissionHub() {
                         }}
                       >
                         <span>
-                          O₂ {inv.oxygenRange} · {inv.ambientPressure}
+                          {audience === 'Student'
+                            ? `${inv.category ?? 'safety'} · ${inv.gravityLevel ?? '0g'}`
+                            : `O₂ ${inv.oxygenRange} · ${inv.ambientPressure}`}
                         </span>
-                        <span style={{ color: '#60a5fa' }}>Details →</span>
+                        <span style={{ color: 'var(--audience-accent, #60a5fa)' }}>
+                          {audience === 'Student' ? 'Learn more →' : 'Details →'}
+                        </span>
                       </div>
                     </div>
                   );
@@ -650,57 +731,6 @@ export default function MissionHub() {
           {/* Left: Spacecraft Selector */}
           <div style={{ pointerEvents: 'auto' }}>
             <SpacecraftSelector shipFile={shipFile} onSelect={setShipFile} />
-          </div>
-
-          {/* Right: Dock/Board ISS Action + Pause Orbits */}
-          <div style={{ display: 'flex', gap: '8px', pointerEvents: 'auto', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={() => {
-                setScenarioKey('iss');
-                if (focusPlanet !== 'ISS') {
-                  setFocusPlanet('ISS');
-                } else {
-                  setIssAirlockModalOpen(true);
-                }
-              }}
-              style={{
-                background:
-                  focusPlanet === 'ISS'
-                    ? 'rgba(56, 189, 248, 0.24)'
-                    : 'rgba(10, 15, 29, 0.85)',
-                backdropFilter: 'blur(12px)',
-                border:
-                  focusPlanet === 'ISS'
-                    ? '1px solid rgba(56, 189, 248, 0.6)'
-                    : '1px solid rgba(56, 189, 248, 0.35)',
-                borderRadius: '9999px',
-                padding: '6px 13px',
-                color: '#e0f2fe',
-                fontSize: '11px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              {focusPlanet === 'ISS' ? 'Enter ISS Airlock' : 'Dock & Board ISS'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setPaused(!paused)}
-              style={{
-                background: 'rgba(10, 15, 29, 0.82)',
-                backdropFilter: 'blur(12px)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: '9999px',
-                padding: '6px 13px',
-                color: paused ? '#fbbf24' : '#cbd5e1',
-                fontSize: '11px',
-                fontWeight: 500,
-                cursor: 'pointer',
-              }}
-            >
-              {paused ? 'Resume Orbits' : 'Pause Orbits'}
-            </button>
           </div>
         </div>
 

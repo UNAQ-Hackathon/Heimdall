@@ -30,8 +30,18 @@ export const api = {
   listInvestigations: async (params = {}) => {
     try {
       const data = await request(`/investigations?${new URLSearchParams(params)}`);
-      const items = (data.items ?? []).map((inv) => enrichInvestigationForUI(inv));
-      return { ...data, items, total: data.total ?? items.length, source: 'api' };
+      let items = (data.items ?? []).map((inv) => enrichInvestigationForUI(inv));
+      const hasFilters = Object.values(params).some((v) => v != null && v !== '' && v !== 'all');
+      if (!hasFilters) {
+        const seenAcronyms = new Set(items.map((i) => String(i.acronym ?? '').toLowerCase()).filter(Boolean));
+        const missing = processedInvestigations
+          .map((inv) => enrichInvestigationForUI(inv))
+          .filter((inv) => !seenAcronyms.has(String(inv.acronym ?? '').toLowerCase()));
+        if (missing.length > 0) {
+          items = [...items, ...missing];
+        }
+      }
+      return { ...data, items, total: items.length, source: 'api' };
     } catch {
       const items = processedInvestigations.map((inv) => enrichInvestigationForUI(inv));
       return { items, total: items.length, source: 'local-processed-fallback' };
@@ -154,4 +164,20 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ points, grid }),
     }),
+
+  summarizeStudy: async (id, audience = 'Engineer') => {
+    try {
+      return await request(`/investigations/${encodeURIComponent(id)}/summarize`, {
+        method: 'POST',
+        body: JSON.stringify({ audience }),
+      });
+    } catch {
+      return {
+        summary: null,
+        unavailable: true,
+        status: 'unavailable',
+        reason: 'API server unreachable; displaying local PSI specification brief.',
+      };
+    }
+  },
 };

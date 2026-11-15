@@ -6,7 +6,9 @@ import { SCENARIOS } from '../src/context/scenarios.js';
 import {
   processedInvestigations,
   rankLocalInvestigations,
+  enrichInvestigationForUI,
   checkConditionCoverage,
+  buildMissionBriefMarkdown,
 } from '../src/services/ranking.js';
 
 const EXPECTED_ACRONYMS = [
@@ -30,13 +32,36 @@ const EXPECTED_ACRONYMS = [
   'SLICE',
   'DAFT',
   'DAFT-2',
+  'SoFIE',
+  'LUCI',
+  'FM2',
 ];
 
-test('processed PSI dataset includes all 20 required investigations and verified hardware', () => {
-  assert.equal(processedInvestigations.length, 20);
+test('processed PSI dataset includes all 23 required investigations and verified hardware', () => {
+  assert.equal(processedInvestigations.length, 23);
   const acronyms = processedInvestigations.map((inv) => inv.acronym);
   for (const reqAcronym of EXPECTED_ACRONYMS) {
     assert.ok(acronyms.includes(reqAcronym), `Missing PSI investigation: ${reqAcronym}`);
+  }
+
+  const flex = processedInvestigations.find((i) => i.acronym === 'FLEX');
+  assert.equal(flex.series.length, 6);
+  assert.equal(
+    flex.series.reduce((sum, s) => sum + s.samples.length, 0),
+    258
+  );
+
+  const sofie = processedInvestigations.find((i) => i.acronym === 'SoFIE');
+  assert.equal(sofie.category, 'prevention');
+  assert.equal(sofie.fuelType, 'solid');
+  assert.equal(sofie.dataAvailable, true);
+
+  for (const upcomingAcronym of ['LUCI', 'FM2']) {
+    const item = processedInvestigations.find((i) => i.acronym === upcomingAcronym);
+    assert.equal(item.status, 'upcoming');
+    assert.equal(item.gravityLevel, 'lunar-partial');
+    assert.equal(item.dataAvailable, false);
+    assert.deepEqual(item.series, []);
   }
 
   const flex2 = processedInvestigations.find((i) => i.acronym === 'FLEX-2');
@@ -145,4 +170,22 @@ test('checkConditionCoverage detects inside-envelope vs out-of-envelope conditio
   });
   assert.equal(outOfBounds.covered, false);
   assert.equal(outOfBounds.message, 'No measured data in this region');
+});
+
+test('buildMissionBriefMarkdown outputs transparent scenario, weights, and ranked PSI citations', () => {
+  const weights = { atmosphereMatch: 40, gravityMatch: 20, dataRichness: 20, documentation: 20 };
+  const ranked = rankLocalInvestigations(SCENARIOS.moon, weights).map((item) =>
+    enrichInvestigationForUI(item.investigation, item)
+  );
+  const md = buildMissionBriefMarkdown({
+    scenario: SCENARIOS.moon,
+    rankedItems: ranked,
+    weights,
+    audience: 'Student',
+    category: 'all',
+  });
+  assert.ok(md.includes('# Heimdall Mission Fire Safety Brief'));
+  assert.ok(md.includes('**Audience mode:** Student'));
+  assert.ok(md.includes('0g microgravity and 1g baselines'));
+  assert.ok(md.includes('Top Ranked NASA PSI Investigations'));
 });

@@ -5,9 +5,12 @@ const { Schema, model } = mongoose;
 const seriesSchema = new Schema(
   {
     name: String,              // e.g. "flame_spread_rate"
-    unit: String,
-    samples: [[Number]],       // [t, value] pairs
+    label: String,             // human-readable series label
+    unit: String,              // Y-axis unit
+    xLabel: String,            // X-axis label & unit (default: Time (s))
+    samples: [[Number]],       // [x, value] pairs
     sourceUrl: String,         // PSI file / dataset link
+    seriesSource: String,      // Citation / artifact provenance
   },
   { _id: false }
 );
@@ -30,7 +33,17 @@ const investigationSchema = new Schema(
       enum: ['prevention', 'detection', 'suppression'],
       default: 'prevention',
     },
-    gravityLevel: { type: String, enum: ['microgravity', 'lunar', 'martian', '1g', 'unknown'], default: 'unknown' },
+    gravityLevel: {
+      type: String,
+      enum: ['microgravity', 'lunar', 'lunar-partial', 'martian', '1g', 'unknown'],
+      default: 'unknown',
+    },
+    status: {
+      type: String,
+      enum: ['published', 'upcoming'],
+      default: 'published',
+    },
+    dataAvailable: { type: Boolean, default: true },
     conditions: {
       oxygenPct: Number,       // O2 concentration %
       oxygenMinPct: Number,    // Min tested O2 % if range is known
@@ -42,6 +55,7 @@ const investigationSchema = new Schema(
     variables: [String],
     sensors: [String],
     series: [seriesSchema],
+    seriesSource: String,
     earthApplications: [String],
     // AI-generated (Devin SWE) — always marked with provenance
     aiSummary: String,

@@ -1,24 +1,77 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Area,
   Bar,
   CartesianGrid,
   Cell,
   ComposedChart,
+  Legend,
   Line,
   ReferenceDot,
   ReferenceLine,
   ResponsiveContainer,
+  Scatter,
+  ScatterChart,
   Tooltip,
   XAxis,
   YAxis,
+  ZAxis,
 } from 'recharts';
 import FlammabilityChart from './FlammabilityChart.jsx';
 import TimeSeriesChart from './TimeSeriesChart.jsx';
 import { EARTH_BASELINE } from '../../services/telemetry-f1.js';
+import { api } from '../../services/api.js';
 
-function F1Tooltip({ active, payload, label, theme, suffixMap = {} }) {
+const EMPIRICAL_COLORS = ['#38bdf8', '#22d3ee', '#34d399', '#fbbf24', '#fb7185', '#a78bfa'];
+
+function getStudyEmpiricalSeries(study) {
+  const rawSeries = Array.isArray(study?.series) ? study.series : [];
+  const valid = rawSeries.filter(
+    (s) => Array.isArray(s?.samples) && s.samples.length > 0
+  );
+  if (!valid.length) return null;
+
+  const onlyTcOrFlux = valid.every((s) => /temp|thermocouple|flux|radiant|heat/i.test(s.name ?? ''));
+  if (onlyTcOrFlux) return null;
+
+  const seriesList = valid.map((s, idx) => ({
+    name: s.name ?? `series_${idx + 1}`,
+    label: s.label ?? s.name ?? `Series ${idx + 1}`,
+    unit: s.unit ?? 's',
+    xLabel: s.xLabel ?? 'X',
+    color: EMPIRICAL_COLORS[idx % EMPIRICAL_COLORS.length],
+    sourceUrl: s.sourceUrl ?? study?.sourceUrl ?? null,
+    seriesSource: s.seriesSource ?? study?.seriesSource ?? null,
+    points: s.samples
+      .filter((pair) => Array.isArray(pair) && pair.length >= 2)
+      .map(([x, y]) => ({ x: Number(x), y: Number(y) }))
+      .filter((pt) => Number.isFinite(pt.x) && Number.isFinite(pt.y)),
+  }));
+
+  const totalPoints = seriesList.reduce((acc, s) => acc + s.points.length, 0);
+  if (!totalPoints) return null;
+
+  const first = seriesList[0];
+  const xLabel = first.xLabel ?? 'X';
+  const unitMatch = /\(([^)]+)\)/.exec(xLabel);
+  const xUnit = unitMatch ? ` ${unitMatch[1]}` : '';
+  const yLabel = first.name?.includes('burn_duration') ? 'Burn duration' : first.label;
+
+  return {
+    seriesList,
+    totalPoints,
+    xLabel,
+    xUnit,
+    yLabel,
+    yUnit: first.unit,
+    seriesSource: study?.seriesSource ?? first.seriesSource,
+    sourceUrl: study?.sourceUrl ?? first.sourceUrl,
+  };
+}
+
+function F1Tooltip({ active, payload, label, theme, suffixMap = {}, extraFields = [] }) {
   if (!active || !payload?.length) return null;
+  const row = payload[0]?.payload;
   return (
     <div
       style={{
@@ -51,6 +104,23 @@ function F1Tooltip({ active, payload, label, theme, suffixMap = {} }) {
           </strong>
         </div>
       ))}
+      {row &&
+        extraFields.map((field) =>
+          row[field.key] != null ? (
+            <div
+              key={field.key}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: '14px',
+                color: '#94a3b8',
+              }}
+            >
+              <span>{field.label}</span>
+              <strong>{`${row[field.key]}${field.suffix ?? ''}`}</strong>
+            </div>
+          ) : null
+        )}
     </div>
   );
 }
@@ -112,9 +182,50 @@ export default function F1TelemetryDeck({
   showRunTelemetry = true,
 }) {
   const [showSchematicFallback, setShowSchematicFallback] = useState(false);
+  const [activeEmpiricalName, setActiveEmpiricalName] = useState('all');
+  const [trendState, setTrendState] = useState({ status: 'idle', events: [] });
   const measuredTimeSeries = getStudyMeasuredSeries(study, measurements);
+  const empiricalSeries = getStudyEmpiricalSeries(study);
   const hasRuns = showRunTelemetry && runSeries.length > 0;
   const gradId = `f1-o2-grad-${theme.id}`;
+
+  useEffect(() => {
+    const rawSeries = Array.isArray(study?.series)
+      ? study.series.filter((s) => Array.isArray(s?.samples) && s.samples.length >= 3)
+      : [];
+    if (!rawSeries.length) {
+      setTrendState({ status: 'idle', events: [] });
+      return;
+    }
+
+    let cancelled = false;
+    setTrendState({ status: 'loading', events: [] });
+    api
+      .trends(
+        rawSeries.map((s) => ({
+          name: s.label ?? s.name ?? 'series',
+          unit: s.unit ?? 's',
+          samples: s.samples,
+        }))
+      )
+      .then((res) => {
+        if (cancelled) return;
+        const events = (res?.results ?? []).flatMap((seriesRes) =>
+          (seriesRes?.events ?? []).map((ev) => ({
+            seriesName: seriesRes.name,
+            ...ev,
+          }))
+        );
+        setTrendState({ status: 'ready', events });
+      })
+      .catch(() => {
+        if (!cancelled) setTrendState({ status: 'unavailable', events: [] });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [study?.psiId, study?.series]);
 
   return (
     <div className="f1-charts-col">
@@ -148,18 +259,18 @@ export default function F1TelemetryDeck({
               <div className="f1-channel-head">
                 <div className="f1-channel-title">
                   <span className="f1-channel-bar" />
-                  CH-01 // OXIDIZER &amp; INERT DILUENT TRACE ({runSeries.length} RUNS)
+                  Oxygen &amp; Suppressant Mix ({runSeries.length} FLEX runs)
                 </div>
                 <div className="f1-channel-sub">
-                  Click any point to lock pit-wall cursor · Real PSI FLEX coordinates
+                  O₂ vs CO₂ and He mole percentage across runs · Click any point to inspect
                 </div>
               </div>
-              <div style={{ width: '100%', height: '215px' }}>
+              <div style={{ width: '100%', height: '235px' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart
                     data={runSeries}
                     syncId="f1-run-sync"
-                    margin={{ top: 10, right: 18, bottom: 8, left: 0 }}
+                    margin={{ top: 10, right: 18, bottom: 4, left: 0 }}
                     onClick={(state) => {
                       const idx = state?.activeTooltipIndex;
                       if (idx != null && runSeries[idx] && onSelectRun) {
@@ -177,13 +288,13 @@ export default function F1TelemetryDeck({
                     <XAxis
                       dataKey="runId"
                       stroke="#64748b"
-                      fontSize={9.5}
+                      fontSize={10}
                       fontFamily="var(--font-mono)"
-                      minTickGap={22}
+                      minTickGap={24}
                     />
                     <YAxis
                       stroke="#64748b"
-                      fontSize={10}
+                      fontSize={10.5}
                       fontFamily="var(--font-mono)"
                       domain={[0, 'auto']}
                       tickFormatter={(v) => `${v}%`}
@@ -195,6 +306,13 @@ export default function F1TelemetryDeck({
                           suffixMap={{ o2Pct: '%', co2Pct: '%', hePct: '%' }}
                         />
                       }
+                    />
+                    <Legend
+                      wrapperStyle={{
+                        fontSize: '11px',
+                        fontFamily: 'var(--font-mono)',
+                        paddingTop: '4px',
+                      }}
                     />
                     {baselineOverlay && (
                       <ReferenceLine
@@ -262,22 +380,23 @@ export default function F1TelemetryDeck({
           )}
 
           {(channels.pressure || channels.secondary) && (
-            <section className="f1-channel-card" aria-label="Channel 2 Chamber Pressure and Droplet Scale">
+            <section className="f1-channel-card" aria-label="Chamber Pressure and Droplet Size">
               <div className="f1-channel-head">
                 <div className="f1-channel-title">
                   <span className="f1-channel-bar" style={{ background: theme.channels.pressure }} />
-                  CH-02 // CHAMBER PRESSURE (PSI) &amp; DROPLET DIAMETER (MM)
+                  Chamber Pressure &amp; Droplet Size ({runSeries.length} runs)
                 </div>
                 <div className="f1-channel-sub">
-                  Synchronized pit-wall channel · {activeRun ? `Locked: ${activeRun.runId}` : 'Hover or click trace'}
+                  Pressure in psi (left axis) vs droplet diameter in mm (right axis)
+                  {activeRun ? ` · Selected: ${activeRun.runId}` : ''}
                 </div>
               </div>
-              <div style={{ width: '100%', height: '195px' }}>
+              <div style={{ width: '100%', height: '215px' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart
                     data={runSeries}
                     syncId="f1-run-sync"
-                    margin={{ top: 10, right: 18, bottom: 8, left: 0 }}
+                    margin={{ top: 10, right: 18, bottom: 4, left: 0 }}
                     onClick={(state) => {
                       const idx = state?.activeTooltipIndex;
                       if (idx != null && runSeries[idx] && onSelectRun) {
@@ -289,15 +408,15 @@ export default function F1TelemetryDeck({
                     <XAxis
                       dataKey="runId"
                       stroke="#64748b"
-                      fontSize={9.5}
+                      fontSize={10}
                       fontFamily="var(--font-mono)"
-                      minTickGap={22}
+                      minTickGap={24}
                     />
                     {channels.pressure && (
                       <YAxis
                         yAxisId="p"
                         stroke={theme.channels.pressure}
-                        fontSize={10}
+                        fontSize={10.5}
                         fontFamily="var(--font-mono)"
                         tickFormatter={(v) => `${v} psi`}
                       />
@@ -307,7 +426,7 @@ export default function F1TelemetryDeck({
                         yAxisId="d"
                         orientation="right"
                         stroke={theme.channels.flow}
-                        fontSize={10}
+                        fontSize={10.5}
                         fontFamily="var(--font-mono)"
                         domain={[0, 5.5]}
                         tickFormatter={(v) => `${v} mm`}
@@ -320,6 +439,13 @@ export default function F1TelemetryDeck({
                           suffixMap={{ pressurePsi: ' psi', diameterMm: ' mm' }}
                         />
                       }
+                    />
+                    <Legend
+                      wrapperStyle={{
+                        fontSize: '11px',
+                        fontFamily: 'var(--font-mono)',
+                        paddingTop: '4px',
+                      }}
                     />
                     {baselineOverlay && channels.pressure && (
                       <ReferenceLine
@@ -379,11 +505,11 @@ export default function F1TelemetryDeck({
         <div className="f1-channel-head">
           <div className="f1-channel-title">
             <span className="f1-channel-bar" />
-            {hasRuns ? 'CH-03' : 'CH-01'} // VERIFIED PSI ENVELOPE TELEMETRY ({envelopeSeries.length} STUDIES)
+            Peak O₂ Tested by PSI Study ({envelopeSeries.length} studies)
           </div>
           <div className="f1-channel-sub">
             {envelopeSeries.length > 0
-              ? `Click any bar/point to switch active study · Highlighted: ${study?.acronym}`
+              ? `Highest O₂ concentration tested per study · Hover for min O₂ & pressure · Active: ${study?.acronym}`
               : '0 studies match current filters'}
           </div>
         </div>
@@ -401,11 +527,11 @@ export default function F1TelemetryDeck({
             )}
           </div>
         ) : (
-        <div style={{ width: '100%', height: '215px' }}>
+        <div style={{ width: '100%', height: '225px' }}>
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart
               data={envelopeSeries}
-              margin={{ top: 10, right: 18, bottom: 8, left: 0 }}
+              margin={{ top: 14, right: 16, bottom: 8, left: 0 }}
               onClick={(state) => {
                 const idx = state?.activeTooltipIndex;
                 if (idx != null && envelopeSeries[idx] && onSelectStudy) {
@@ -417,33 +543,30 @@ export default function F1TelemetryDeck({
               <XAxis
                 dataKey="acronym"
                 stroke="#64748b"
-                fontSize={9.5}
+                fontSize={10}
                 fontFamily="var(--font-mono)"
                 interval={0}
                 angle={envelopeSeries.length > 8 ? -28 : 0}
                 textAnchor={envelopeSeries.length > 8 ? 'end' : 'middle'}
-                height={envelopeSeries.length > 8 ? 48 : 26}
+                height={envelopeSeries.length > 8 ? 52 : 28}
               />
               <YAxis
                 yAxisId="o2"
-                stroke={theme.primary}
-                fontSize={10}
+                stroke="#94a3b8"
+                fontSize={10.5}
                 fontFamily="var(--font-mono)"
+                domain={[0, 100]}
                 tickFormatter={(v) => `${v}%`}
-              />
-              <YAxis
-                yAxisId="p"
-                orientation="right"
-                stroke="#64748b"
-                fontSize={10}
-                fontFamily="var(--font-mono)"
-                tickFormatter={(v) => `${v} psi`}
               />
               <Tooltip
                 content={
                   <F1Tooltip
                     theme={theme}
-                    suffixMap={{ o2Max: '% O₂', o2Min: '% O₂', pressurePsi: ' psi' }}
+                    suffixMap={{ o2Max: '% O₂' }}
+                    extraFields={[
+                      { key: 'o2Min', label: 'Lower O₂ Bound', suffix: '% O₂' },
+                      { key: 'pressurePsi', label: 'Chamber Pressure', suffix: ' psi' },
+                    ]}
                   />
                 }
               />
@@ -453,12 +576,18 @@ export default function F1TelemetryDeck({
                   y={EARTH_BASELINE.o2Pct}
                   stroke="#94a3b8"
                   strokeDasharray="4 4"
+                  label={{
+                    value: '21% O₂ (Earth)',
+                    position: 'insideTopRight',
+                    fill: '#cbd5e1',
+                    fontSize: 10,
+                  }}
                 />
               )}
               <Bar
                 yAxisId="o2"
                 dataKey="o2Max"
-                name="Peak O₂ Envelope"
+                name="Peak O₂ Tested"
                 radius={[4, 4, 0, 0]}
                 maxBarSize={26}
                 animationDuration={320}
@@ -473,29 +602,6 @@ export default function F1TelemetryDeck({
                   />
                 ))}
               </Bar>
-              <Line
-                yAxisId="o2"
-                type="monotone"
-                dataKey="o2Min"
-                name="Lower O₂ Bound"
-                stroke={theme.accent}
-                strokeWidth={1.8}
-                dot={{ r: 2.5 }}
-                animationDuration={320}
-                animationEasing="ease-out"
-              />
-              <Line
-                yAxisId="p"
-                type="monotone"
-                dataKey="pressurePsi"
-                name="Chamber Pressure"
-                stroke="#94a3b8"
-                strokeWidth={1.5}
-                strokeDasharray="3 3"
-                dot={false}
-                animationDuration={320}
-                animationEasing="ease-out"
-              />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
@@ -514,19 +620,155 @@ export default function F1TelemetryDeck({
           <div className="f1-channel-head">
             <div className="f1-channel-title">
               <span className="f1-channel-bar" style={{ background: theme.channels.thermal }} />
-              {measuredTimeSeries
-                ? `MEASURED TIME-SERIES (${measuredTimeSeries.source.toUpperCase()})`
-                : 'TIME-SERIES WAVEFORM'}
+              {empiricalSeries
+                ? `Burn Duration vs Droplet Size (${empiricalSeries.totalPoints} recorded trials)`
+                : measuredTimeSeries
+                  ? `Measured Time-Series (${measuredTimeSeries.source.toUpperCase()})`
+                  : 'Time-Series Profile'}
             </div>
             <div className="f1-channel-sub">
-              {measuredTimeSeries
-                ? `Recorded channels: ${study?.variables?.join(', ') || 'TC / Flux'}`
-                : showSchematicFallback
-                  ? 'Illustrative schematic reference (not measured)'
-                  : 'No raw time-series samples in PSI summary'}
+              {empiricalSeries
+                ? `X: ${empiricalSeries.xLabel} · Y: ${empiricalSeries.yLabel} (${empiricalSeries.yUnit})${empiricalSeries.seriesSource ? ` · ${empiricalSeries.seriesSource}` : ''}`
+                : measuredTimeSeries
+                  ? `Recorded channels: ${study?.variables?.join(', ') || 'TC / Flux'}`
+                  : showSchematicFallback
+                    ? 'Illustrative schematic reference (not measured)'
+                    : 'No raw time-series samples in PSI summary'}
             </div>
           </div>
-          {measuredTimeSeries ? (
+          {empiricalSeries ? (
+            <div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
+                <button
+                  type="button"
+                  className="f1-pill"
+                  aria-pressed={activeEmpiricalName === 'all'}
+                  onClick={() => setActiveEmpiricalName('all')}
+                >
+                  All ({empiricalSeries.totalPoints})
+                </button>
+                {empiricalSeries.seriesList.map((s) => (
+                  <button
+                    key={s.name}
+                    type="button"
+                    className="f1-pill"
+                    aria-pressed={activeEmpiricalName === s.name}
+                    onClick={() => setActiveEmpiricalName(s.name)}
+                    style={{ borderColor: activeEmpiricalName === s.name ? s.color : undefined }}
+                  >
+                    <span style={{ color: s.color, marginRight: '5px' }}>●</span>
+                    {s.label} ({s.points.length})
+                  </button>
+                ))}
+              </div>
+              <div style={{ width: '100%', height: 255 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <ScatterChart margin={{ top: 10, right: 16, bottom: 10, left: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#182238" />
+                    <XAxis
+                      type="number"
+                      dataKey="x"
+                      name={empiricalSeries.xLabel}
+                      stroke="#64748b"
+                      tick={{ fontSize: 10.5, fontFamily: 'var(--font-mono)' }}
+                      unit={empiricalSeries.xUnit}
+                    />
+                    <YAxis
+                      type="number"
+                      dataKey="y"
+                      name={empiricalSeries.yLabel}
+                      stroke="#64748b"
+                      tick={{ fontSize: 10.5, fontFamily: 'var(--font-mono)' }}
+                      unit={` ${empiricalSeries.yUnit}`}
+                    />
+                    <ZAxis range={[38, 38]} />
+                    <Legend
+                      wrapperStyle={{
+                        fontSize: '11px',
+                        fontFamily: 'var(--font-mono)',
+                        paddingTop: '4px',
+                      }}
+                    />
+                    <Tooltip
+                      cursor={{ strokeDasharray: '3 3', stroke: theme.primary }}
+                      contentStyle={{
+                        background: 'rgba(6, 10, 20, 0.96)',
+                        border: `1px solid ${theme.border}`,
+                        borderRadius: '8px',
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: '10.5px',
+                        color: '#f8fafc',
+                      }}
+                      formatter={(val, name) =>
+                        name === empiricalSeries.yLabel
+                          ? [`${val} ${empiricalSeries.yUnit}`, empiricalSeries.yLabel]
+                          : [`${val}${empiricalSeries.xUnit}`, empiricalSeries.xLabel]
+                      }
+                    />
+                    {empiricalSeries.seriesList
+                      .filter((s) => activeEmpiricalName === 'all' || activeEmpiricalName === s.name)
+                      .map((s) => (
+                        <Scatter
+                          key={s.name}
+                          name={s.label}
+                          data={s.points}
+                          fill={s.color}
+                          fillOpacity={0.85}
+                        />
+                      ))}
+                  </ScatterChart>
+                </ResponsiveContainer>
+              </div>
+              {empiricalSeries.sourceUrl && (
+                <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '6px', fontFamily: 'var(--font-mono)' }}>
+                  Source:{' '}
+                  <a href={empiricalSeries.sourceUrl} target="_blank" rel="noreferrer" style={{ color: theme.primary }}>
+                    {empiricalSeries.sourceUrl}
+                  </a>
+                </div>
+              )}
+
+              {/* Explainable Python Trend/Peak Detection (scipy.signal.find_peaks) */}
+              <div
+                style={{
+                  marginTop: '10px',
+                  padding: '8px 10px',
+                  borderRadius: '6px',
+                  background: 'rgba(8, 13, 26, 0.85)',
+                  border: '1px solid #182238',
+                  fontSize: '10.5px',
+                  fontFamily: 'var(--font-mono)',
+                  color: '#cbd5e1',
+                }}
+              >
+                <div style={{ color: theme.primary, fontWeight: 700, marginBottom: '4px' }}>
+                  PYTHON ANALYTICS // TREND &amp; PEAK DETECTION
+                </div>
+                {trendState.status === 'loading' ? (
+                  <span style={{ color: '#64748b' }}>Running scipy.signal.find_peaks over recorded series…</span>
+                ) : trendState.status === 'unavailable' ? (
+                  <span style={{ color: '#64748b' }}>
+                    Analytics service (:8000) offline — no synthetic peak/trend events shown.
+                  </span>
+                ) : trendState.events.length === 0 ? (
+                  <span style={{ color: '#94a3b8' }}>
+                    0 anomalous peaks, drops, or shifts above 2.0σ rolling threshold across {empiricalSeries.seriesList.length} series.
+                  </span>
+                ) : (
+                  <ul style={{ margin: '4px 0 0', paddingLeft: '16px', display: 'grid', gap: '3px' }}>
+                    {trendState.events.slice(0, 6).map((ev, idx) => (
+                      <li key={`${ev.seriesName}-${ev.kind}-${ev.t}-${idx}`}>
+                        <strong style={{ color: '#f8fafc' }}>
+                          {ev.seriesName} [{ev.kind.toUpperCase()} @ x={ev.t}, y={ev.value}]
+                        </strong>
+                        : {ev.detail}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          ) : measuredTimeSeries ? (
             <TimeSeriesChart data={measuredTimeSeries} />
           ) : showSchematicFallback ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -561,14 +803,14 @@ export default function F1TelemetryDeck({
           )}
         </section>
 
-        <section className="f1-channel-card" aria-label="Flammability Envelope">
+        <section className="f1-channel-card" aria-label="PSI Operating Regime Coverage">
           <div className="f1-channel-head">
             <div className="f1-channel-title">
               <span className="f1-channel-bar" style={{ background: theme.secondary }} />
-              ILLUSTRATIVE FLAMMABILITY ENVELOPE (O₂ VS FLOW)
+              PSI OPERATING REGIME COVERAGE (O₂ VS FLOW)
             </div>
             <div className="f1-channel-sub">
-              Schematic 0g vs 1g boundary · Not study-specific measurements
+              Delaunay convex hull over tested PSI (O₂, flow) coordinates · Null outside coverage
             </div>
           </div>
           <FlammabilityChart />

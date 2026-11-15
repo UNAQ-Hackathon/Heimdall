@@ -8,6 +8,7 @@ import {
   loadProcessedInvestigations,
   normalizeInvestigationDoc,
 } from '../utils/processed-dataset.js';
+import { summarizeInvestigation } from '../services/devin.service.js';
 
 export async function list(req, res) {
   const { q, acronym, gravity, category, fuelType, page = 1, limit = 50 } = req.query;
@@ -65,4 +66,31 @@ export async function getTelemetry(req, res, next) {
     return next(new HttpError(404, 'Investigation telemetry not found'));
   }
   res.json(payload);
+}
+
+export async function summarize(req, res, next) {
+  const { id } = req.params;
+  const audience = req.body?.audience === 'Student' ? 'Student' : 'Engineer';
+
+  let found = null;
+  if (mongoose.connection.readyState === 1 && mongoose.Types.ObjectId.isValid(id)) {
+    const doc = await Investigation.findById(id).lean();
+    if (doc) {
+      const processed = await loadProcessedInvestigations();
+      found = normalizeInvestigationDoc(doc, processed);
+    }
+  }
+  if (!found) {
+    found = await findInvestigationById(id);
+  }
+  if (!found) return next(new HttpError(404, 'Investigation not found'));
+
+  const result = await summarizeInvestigation(found, { audience });
+  res.json({
+    id: found.slug ?? id,
+    psiId: found.psiId,
+    acronym: found.acronym,
+    audience,
+    ...result,
+  });
 }

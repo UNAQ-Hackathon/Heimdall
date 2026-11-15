@@ -77,6 +77,16 @@ export function normalizeInvestigationDoc(doc, processedList = []) {
     title: doc.title ?? match?.title ?? doc.name ?? merged.title,
     hardware: doc.hardware ?? match?.hardware ?? doc.family ?? merged.hardware,
     category: doc.category ?? match?.category ?? doc.researchType ?? merged.category,
+    status: doc.status ?? match?.status ?? merged.status ?? 'published',
+    dataAvailable:
+      doc.dataAvailable !== undefined
+        ? doc.dataAvailable
+        : (match?.dataAvailable ?? merged.dataAvailable ?? true),
+    series:
+      Array.isArray(doc.series) && doc.series.length > 0
+        ? doc.series
+        : (match?.series ?? merged.series ?? []),
+    seriesSource: doc.seriesSource ?? match?.seriesSource ?? merged.seriesSource ?? null,
   };
 }
 
@@ -86,7 +96,21 @@ export async function getAllInvestigations() {
     try {
       const docs = await Investigation.find().lean();
       if (docs.length > 0) {
-        return docs.map((doc) => normalizeInvestigationDoc(doc, processed));
+        const normalized = docs.map((doc) => normalizeInvestigationDoc(doc, processed));
+        const seenKeys = new Set(
+          normalized.flatMap((d) =>
+            [d.slug, d.psiId, d.acronym].filter(Boolean).map((v) => slugifyInvestigationKey(v))
+          )
+        );
+        const missing = processed
+          .map((doc) => normalizeInvestigationDoc(doc, processed))
+          .filter((doc) => {
+            const keys = [doc.slug, doc.psiId, doc.acronym]
+              .filter(Boolean)
+              .map((v) => slugifyInvestigationKey(v));
+            return !keys.some((k) => seenKeys.has(k));
+          });
+        return [...normalized, ...missing];
       }
     } catch {
       // Fall through to processed JSON file

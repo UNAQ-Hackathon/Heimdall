@@ -9,6 +9,8 @@
     "hardware": "MSG with SPICE flow duct",
     "category": "suppression",
     "gravityLevel": "microgravity",
+    "status": "published",
+    "dataAvailable": true,
     "conditions": {
       "oxygenPct": 21,
       "oxygenMinPct": 15,
@@ -30,6 +32,7 @@
       "Hot-wire anemometer"
     ],
     "series": [],
+    "seriesSource": null,
     "earthApplications": [
       "Spacecraft and terrestrial fire-resistant material screening standards",
       "Ventilation-controlled fire suppression strategies in enclosed cabins"
@@ -53,6 +56,8 @@
     "hardware": "MSG with SPICE flow duct",
     "category": "suppression",
     "gravityLevel": "microgravity",
+    "status": "published",
+    "dataAvailable": true,
     "conditions": {
       "oxygenPct": 21,
       "oxygenMinPct": 13.5,
@@ -74,11 +79,12 @@
       "Omnidirectional hot-wire anemometer"
     ],
     "series": [],
+    "seriesSource": null,
     "earthApplications": [
       "Improvement of NASA-STD-6001 material flammability testing",
       "Firefighter thermal protective textile char and heat-flux modeling"
     ],
-    "sourceUrl": "https://psi.nasa.gov/",
+    "sourceUrl": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-25",
     "tags": [
       "solid-fuel",
       "suppression",
@@ -98,6 +104,8 @@
     "hardware": "Saffire flow duct inside Cygnus OA-6 spacecraft",
     "category": "prevention",
     "gravityLevel": "microgravity",
+    "status": "published",
+    "dataAvailable": true,
     "conditions": {
       "oxygenPct": 21,
       "oxygenMinPct": 21,
@@ -119,10 +127,11 @@
       "Cabin pressure transducer"
     ],
     "series": [],
+    "seriesSource": null,
     "earthApplications": [
       "Large-scale enclosure fire modeling for mines, tunnels, and submarines"
     ],
-    "sourceUrl": "https://psi.nasa.gov/",
+    "sourceUrl": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-98",
     "tags": [
       "solid-fuel",
       "large-scale",
@@ -141,6 +150,8 @@
     "hardware": "Saffire flow duct inside Cygnus OA-7 spacecraft",
     "category": "prevention",
     "gravityLevel": "microgravity",
+    "status": "published",
+    "dataAvailable": true,
     "conditions": {
       "oxygenPct": 21,
       "oxygenMinPct": 16.5,
@@ -161,10 +172,11 @@
       "Oxygen, CO2, and pressure transducers"
     ],
     "series": [],
+    "seriesSource": null,
     "earthApplications": [
       "Calibration of terrestrial upward-flammability screening tests (NASA-STD-6001 Test 1)"
     ],
-    "sourceUrl": "https://psi.nasa.gov/",
+    "sourceUrl": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-99",
     "tags": [
       "solid-fuel",
       "material-screening",
@@ -183,6 +195,8 @@
     "hardware": "Saffire flow duct inside Cygnus OA-5 spacecraft",
     "category": "prevention",
     "gravityLevel": "microgravity",
+    "status": "published",
+    "dataAvailable": true,
     "conditions": {
       "oxygenPct": 21,
       "oxygenMinPct": 21,
@@ -204,6 +218,7 @@
       "Static pressure taps"
     ],
     "series": [],
+    "seriesSource": null,
     "earthApplications": [
       "HVAC-driven fire propagation models for aircraft cabins and sealed habitats"
     ],
@@ -226,6 +241,8 @@
     "hardware": "MSG (Microgravity Science Glovebox)",
     "category": "detection",
     "gravityLevel": "microgravity",
+    "status": "published",
+    "dataAvailable": true,
     "conditions": {
       "oxygenPct": 21,
       "oxygenMinPct": 21,
@@ -246,6 +263,7 @@
       "Thermal precipitator TEM electron microscopy samplers"
     ],
     "series": [],
+    "seriesSource": null,
     "earthApplications": [
       "Early-warning multi-wavelength laser smoke detectors for mines, tunnels, and semiconductor cleanrooms"
     ],
@@ -269,6 +287,8 @@
     "hardware": "MSG (Microgravity Science Glovebox)",
     "category": "detection",
     "gravityLevel": "microgravity",
+    "status": "published",
+    "dataAvailable": true,
     "conditions": {
       "oxygenPct": 21,
       "oxygenMinPct": 21,
@@ -289,10 +309,11 @@
       "Thermocouples"
     ],
     "series": [],
+    "seriesSource": null,
     "earthApplications": [
       "False-alarm-resistant smoke detection algorithms for commercial buildings and aircraft cargo bays"
     ],
-    "sourceUrl": "https://psi.nasa.gov/",
+    "sourceUrl": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-101",
     "tags": [
       "smoke-detection",
       "aerosol",
@@ -311,6 +332,8 @@
     "hardware": "CIR/MDCA (Combustion Integrated Rack / Multi-user Droplet Combustion Apparatus)",
     "category": "suppression",
     "gravityLevel": "microgravity",
+    "status": "published",
+    "dataAvailable": true,
     "conditions": {
       "oxygenPct": 21,
       "oxygenMinPct": 15,
@@ -331,12 +354,1106 @@
       "Narrowband and broadband radiometers",
       "Chamber pressure and gas composition transducers"
     ],
-    "series": [],
+    "series": [
+      {
+        "name": "burn_duration_methanol_o2_n2",
+        "label": "Methanol · O2/N2 (FLEX PSI-69)",
+        "unit": "s",
+        "xLabel": "Initial droplet diameter (mm)",
+        "samples": [
+          [
+            1.61,
+            3.2
+          ],
+          [
+            1.69,
+            4.3
+          ],
+          [
+            1.84,
+            6
+          ],
+          [
+            1.86,
+            5
+          ],
+          [
+            1.92,
+            6.34
+          ],
+          [
+            1.94,
+            7.8
+          ],
+          [
+            2.06,
+            7.64
+          ],
+          [
+            2.25,
+            8.4
+          ],
+          [
+            2.35,
+            10.8
+          ],
+          [
+            2.38,
+            10.7
+          ],
+          [
+            2.4,
+            7.1
+          ],
+          [
+            2.4,
+            9.3
+          ],
+          [
+            2.42,
+            6.6
+          ],
+          [
+            2.52,
+            12.9
+          ],
+          [
+            2.54,
+            9.1
+          ],
+          [
+            2.54,
+            9.6
+          ],
+          [
+            2.57,
+            10.4
+          ],
+          [
+            2.6,
+            6.9
+          ],
+          [
+            2.6,
+            10.3
+          ],
+          [
+            2.62,
+            11.4
+          ],
+          [
+            2.64,
+            9.3
+          ],
+          [
+            2.66,
+            12.9
+          ],
+          [
+            2.67,
+            15.6
+          ],
+          [
+            2.75,
+            12.8
+          ],
+          [
+            2.75,
+            16.3
+          ],
+          [
+            2.78,
+            13.1
+          ],
+          [
+            2.84,
+            7.5
+          ],
+          [
+            2.93,
+            17.7
+          ],
+          [
+            3.07,
+            9
+          ],
+          [
+            3.21,
+            8.9
+          ],
+          [
+            3.26,
+            15.6
+          ],
+          [
+            3.3,
+            19.5
+          ],
+          [
+            3.31,
+            10.7
+          ],
+          [
+            3.33,
+            8.5
+          ],
+          [
+            3.35,
+            14.1
+          ],
+          [
+            3.37,
+            20.5
+          ],
+          [
+            3.37,
+            24.3
+          ],
+          [
+            3.4,
+            17.4
+          ],
+          [
+            3.43,
+            23.2
+          ],
+          [
+            3.46,
+            9.5
+          ],
+          [
+            3.49,
+            16.6
+          ],
+          [
+            3.49,
+            17.8
+          ],
+          [
+            3.5,
+            18.2
+          ],
+          [
+            3.5,
+            26
+          ],
+          [
+            3.56,
+            29
+          ],
+          [
+            3.59,
+            15.3
+          ],
+          [
+            3.63,
+            22.2
+          ],
+          [
+            3.66,
+            23.5
+          ],
+          [
+            3.68,
+            25.7
+          ],
+          [
+            3.69,
+            29.1
+          ],
+          [
+            3.77,
+            19.2
+          ],
+          [
+            3.89,
+            27.3
+          ],
+          [
+            3.97,
+            14.4
+          ]
+        ],
+        "sourceUrl": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-69",
+        "seriesSource": "NASA PSI-69 (FLEX) experimental droplet burn trials extracted from in-repo KNN artifact modelo.json (258 runs; DOI 10.60555/mbq8-0451 / NASA/TP-2015-216046)"
+      },
+      {
+        "name": "burn_duration_methanol_co2",
+        "label": "Methanol · CO2 dilution (FLEX PSI-69)",
+        "unit": "s",
+        "xLabel": "Initial droplet diameter (mm)",
+        "samples": [
+          [
+            1.66,
+            3.4
+          ],
+          [
+            1.76,
+            5.5
+          ],
+          [
+            1.86,
+            3.4
+          ],
+          [
+            2.25,
+            2.7
+          ],
+          [
+            2.32,
+            5.9
+          ],
+          [
+            2.4,
+            10.2
+          ],
+          [
+            2.47,
+            9.2
+          ],
+          [
+            2.47,
+            11
+          ],
+          [
+            2.57,
+            11.7
+          ],
+          [
+            2.59,
+            8.9
+          ],
+          [
+            2.59,
+            10.8
+          ],
+          [
+            2.59,
+            11.6
+          ],
+          [
+            2.67,
+            2.4
+          ],
+          [
+            2.71,
+            14.9
+          ],
+          [
+            2.74,
+            14
+          ],
+          [
+            2.77,
+            14.8
+          ],
+          [
+            2.77,
+            15.6
+          ],
+          [
+            2.78,
+            15.7
+          ],
+          [
+            2.8,
+            11.7
+          ],
+          [
+            2.8,
+            12.7
+          ],
+          [
+            2.83,
+            13
+          ],
+          [
+            2.86,
+            2.3
+          ],
+          [
+            2.87,
+            2.4
+          ],
+          [
+            2.91,
+            11.5
+          ],
+          [
+            3.01,
+            14.8
+          ],
+          [
+            3.02,
+            7.8
+          ],
+          [
+            3.02,
+            14.5
+          ],
+          [
+            3.03,
+            15.6
+          ],
+          [
+            3.03,
+            16.5
+          ],
+          [
+            3.05,
+            8.5
+          ],
+          [
+            3.05,
+            16.7
+          ],
+          [
+            3.08,
+            14.1
+          ],
+          [
+            3.16,
+            16.9
+          ],
+          [
+            3.18,
+            15.1
+          ],
+          [
+            3.22,
+            3.4
+          ],
+          [
+            3.22,
+            11
+          ],
+          [
+            3.33,
+            20
+          ],
+          [
+            3.33,
+            23.2
+          ],
+          [
+            3.37,
+            16.4
+          ],
+          [
+            3.37,
+            21
+          ],
+          [
+            3.38,
+            21.8
+          ],
+          [
+            3.42,
+            15.8
+          ],
+          [
+            3.46,
+            13.9
+          ],
+          [
+            3.46,
+            21.8
+          ],
+          [
+            3.51,
+            18
+          ],
+          [
+            3.53,
+            23.6
+          ],
+          [
+            3.53,
+            23.8
+          ],
+          [
+            3.6,
+            23.2
+          ],
+          [
+            3.62,
+            20.1
+          ],
+          [
+            3.63,
+            5.7
+          ],
+          [
+            3.64,
+            22.9
+          ],
+          [
+            3.7,
+            10.1
+          ],
+          [
+            3.7,
+            11.3
+          ],
+          [
+            3.7,
+            24
+          ],
+          [
+            3.72,
+            6
+          ],
+          [
+            3.72,
+            26.2
+          ],
+          [
+            3.75,
+            24.3
+          ],
+          [
+            3.77,
+            30.5
+          ],
+          [
+            3.86,
+            13.6
+          ],
+          [
+            3.86,
+            31.3
+          ],
+          [
+            3.97,
+            22.9
+          ],
+          [
+            3.98,
+            1.3
+          ],
+          [
+            3.99,
+            25.2
+          ],
+          [
+            4.13,
+            8.7
+          ],
+          [
+            4.17,
+            30.7
+          ],
+          [
+            4.2,
+            18.2
+          ],
+          [
+            4.24,
+            7.6
+          ],
+          [
+            4.25,
+            8
+          ],
+          [
+            4.25,
+            26.5
+          ],
+          [
+            4.28,
+            33
+          ],
+          [
+            4.35,
+            39.2
+          ],
+          [
+            4.42,
+            23.1
+          ],
+          [
+            4.53,
+            38.2
+          ]
+        ],
+        "sourceUrl": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-69",
+        "seriesSource": "NASA PSI-69 (FLEX) experimental droplet burn trials extracted from in-repo KNN artifact modelo.json (258 runs; DOI 10.60555/mbq8-0451 / NASA/TP-2015-216046)"
+      },
+      {
+        "name": "burn_duration_methanol_he",
+        "label": "Methanol · He dilution (FLEX PSI-69)",
+        "unit": "s",
+        "xLabel": "Initial droplet diameter (mm)",
+        "samples": [
+          [
+            1.84,
+            2.3
+          ],
+          [
+            1.88,
+            1
+          ],
+          [
+            2.44,
+            1.5
+          ],
+          [
+            2.45,
+            8.3
+          ],
+          [
+            2.52,
+            4
+          ],
+          [
+            2.61,
+            6.3
+          ],
+          [
+            2.67,
+            7.6
+          ],
+          [
+            2.68,
+            2.9
+          ],
+          [
+            2.7,
+            5.9
+          ],
+          [
+            2.78,
+            12.5
+          ],
+          [
+            2.79,
+            4
+          ],
+          [
+            2.79,
+            8.1
+          ],
+          [
+            2.79,
+            12.5
+          ],
+          [
+            2.82,
+            11.2
+          ],
+          [
+            2.9,
+            13.1
+          ],
+          [
+            2.91,
+            14.4
+          ],
+          [
+            2.95,
+            10.6
+          ],
+          [
+            2.95,
+            11.7
+          ],
+          [
+            2.99,
+            9.1
+          ],
+          [
+            3.22,
+            10.4
+          ],
+          [
+            3.25,
+            12.1
+          ],
+          [
+            3.4,
+            7.9
+          ],
+          [
+            3.5,
+            7.8
+          ],
+          [
+            3.56,
+            0.3
+          ],
+          [
+            3.67,
+            3.6
+          ],
+          [
+            3.87,
+            17.4
+          ]
+        ],
+        "sourceUrl": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-69",
+        "seriesSource": "NASA PSI-69 (FLEX) experimental droplet burn trials extracted from in-repo KNN artifact modelo.json (258 runs; DOI 10.60555/mbq8-0451 / NASA/TP-2015-216046)"
+      },
+      {
+        "name": "burn_duration_heptane_o2_n2",
+        "label": "Heptane · O2/N2 (FLEX PSI-69)",
+        "unit": "s",
+        "xLabel": "Initial droplet diameter (mm)",
+        "samples": [
+          [
+            1.1,
+            1.3
+          ],
+          [
+            1.13,
+            2.5
+          ],
+          [
+            1.33,
+            2.3
+          ],
+          [
+            1.83,
+            3.8
+          ],
+          [
+            1.87,
+            5.3
+          ],
+          [
+            2.15,
+            9.6
+          ],
+          [
+            2.39,
+            10.6
+          ],
+          [
+            2.41,
+            8.2
+          ],
+          [
+            2.52,
+            4.5
+          ],
+          [
+            2.55,
+            3.4
+          ],
+          [
+            2.69,
+            5.5
+          ],
+          [
+            2.72,
+            11.5
+          ],
+          [
+            2.91,
+            9.9
+          ],
+          [
+            2.92,
+            1.5
+          ],
+          [
+            2.92,
+            11.3
+          ],
+          [
+            2.92,
+            12.8
+          ],
+          [
+            2.95,
+            14.8
+          ],
+          [
+            2.96,
+            17.1
+          ],
+          [
+            2.97,
+            11.4
+          ],
+          [
+            3.01,
+            13.1
+          ],
+          [
+            3.07,
+            14
+          ],
+          [
+            3.1,
+            6.8
+          ],
+          [
+            3.32,
+            17.5
+          ],
+          [
+            3.34,
+            3.4
+          ],
+          [
+            3.36,
+            17.1
+          ],
+          [
+            3.36,
+            17.3
+          ],
+          [
+            3.39,
+            4.2
+          ],
+          [
+            3.39,
+            18.4
+          ],
+          [
+            3.43,
+            4.8
+          ],
+          [
+            3.46,
+            8.6
+          ],
+          [
+            3.53,
+            18.3
+          ],
+          [
+            3.56,
+            7.9
+          ],
+          [
+            3.56,
+            23.9
+          ],
+          [
+            3.57,
+            8.4
+          ],
+          [
+            3.58,
+            24
+          ],
+          [
+            3.65,
+            9.6
+          ],
+          [
+            3.85,
+            8.9
+          ],
+          [
+            3.87,
+            23.8
+          ],
+          [
+            4.16,
+            1.6
+          ],
+          [
+            4.64,
+            1.5
+          ],
+          [
+            4.67,
+            1.6
+          ]
+        ],
+        "sourceUrl": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-69",
+        "seriesSource": "NASA PSI-69 (FLEX) experimental droplet burn trials extracted from in-repo KNN artifact modelo.json (258 runs; DOI 10.60555/mbq8-0451 / NASA/TP-2015-216046)"
+      },
+      {
+        "name": "burn_duration_heptane_co2",
+        "label": "Heptane · CO2 dilution (FLEX PSI-69)",
+        "unit": "s",
+        "xLabel": "Initial droplet diameter (mm)",
+        "samples": [
+          [
+            1.34,
+            3.2
+          ],
+          [
+            1.35,
+            3.6
+          ],
+          [
+            1.64,
+            5.1
+          ],
+          [
+            1.72,
+            4.9
+          ],
+          [
+            1.75,
+            5.4
+          ],
+          [
+            1.96,
+            3.9
+          ],
+          [
+            2.07,
+            7.5
+          ],
+          [
+            2.12,
+            8.7
+          ],
+          [
+            2.21,
+            8.9
+          ],
+          [
+            2.4,
+            4.4
+          ],
+          [
+            2.45,
+            1.43
+          ],
+          [
+            2.48,
+            7
+          ],
+          [
+            2.48,
+            8.3
+          ],
+          [
+            2.5,
+            11.2
+          ],
+          [
+            2.58,
+            11.8
+          ],
+          [
+            2.6,
+            1.3
+          ],
+          [
+            2.63,
+            12.4
+          ],
+          [
+            2.73,
+            2.7
+          ],
+          [
+            2.74,
+            8.1
+          ],
+          [
+            2.78,
+            10.8
+          ],
+          [
+            2.88,
+            15.6
+          ],
+          [
+            2.9,
+            1.9
+          ],
+          [
+            2.91,
+            0.6
+          ],
+          [
+            3.03,
+            2.5
+          ],
+          [
+            3.04,
+            8.1
+          ],
+          [
+            3.06,
+            8.9
+          ],
+          [
+            3.08,
+            17
+          ],
+          [
+            3.13,
+            17.5
+          ],
+          [
+            3.18,
+            8
+          ],
+          [
+            3.25,
+            19
+          ],
+          [
+            3.32,
+            8.9
+          ],
+          [
+            3.33,
+            0.55
+          ],
+          [
+            3.4,
+            4.5
+          ],
+          [
+            3.41,
+            21.7
+          ],
+          [
+            3.53,
+            10.1
+          ],
+          [
+            3.57,
+            4.2
+          ],
+          [
+            3.6,
+            8
+          ],
+          [
+            3.66,
+            9.2
+          ],
+          [
+            3.7,
+            2.2
+          ],
+          [
+            3.74,
+            2.8
+          ],
+          [
+            3.76,
+            1.6
+          ],
+          [
+            3.84,
+            2.4
+          ],
+          [
+            3.88,
+            6.5
+          ],
+          [
+            4,
+            3.2
+          ],
+          [
+            4.14,
+            6.1
+          ]
+        ],
+        "sourceUrl": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-69",
+        "seriesSource": "NASA PSI-69 (FLEX) experimental droplet burn trials extracted from in-repo KNN artifact modelo.json (258 runs; DOI 10.60555/mbq8-0451 / NASA/TP-2015-216046)"
+      },
+      {
+        "name": "burn_duration_heptane_he",
+        "label": "Heptane · He dilution (FLEX PSI-69)",
+        "unit": "s",
+        "xLabel": "Initial droplet diameter (mm)",
+        "samples": [
+          [
+            1.49,
+            2.9
+          ],
+          [
+            1.61,
+            1.4
+          ],
+          [
+            1.61,
+            2.7
+          ],
+          [
+            1.86,
+            3.5
+          ],
+          [
+            2.12,
+            4.5
+          ],
+          [
+            2.22,
+            1.9
+          ],
+          [
+            2.27,
+            3.5
+          ],
+          [
+            2.27,
+            8.6
+          ],
+          [
+            2.3,
+            9.1
+          ],
+          [
+            2.59,
+            12
+          ],
+          [
+            2.8,
+            11.4
+          ],
+          [
+            2.82,
+            11.7
+          ],
+          [
+            2.85,
+            3.2
+          ],
+          [
+            2.86,
+            11
+          ],
+          [
+            3.08,
+            5.4
+          ],
+          [
+            3.23,
+            7.5
+          ],
+          [
+            3.52,
+            4.1
+          ],
+          [
+            3.54,
+            7.6
+          ],
+          [
+            3.69,
+            4.3
+          ],
+          [
+            3.78,
+            12.2
+          ]
+        ],
+        "sourceUrl": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-69",
+        "seriesSource": "NASA PSI-69 (FLEX) experimental droplet burn trials extracted from in-repo KNN artifact modelo.json (258 runs; DOI 10.60555/mbq8-0451 / NASA/TP-2015-216046)"
+      }
+    ],
+    "seriesSource": "NASA PSI-69 (FLEX) experimental droplet burn trials extracted from in-repo KNN artifact modelo.json (258 runs; DOI 10.60555/mbq8-0451 / NASA/TP-2015-216046)",
     "earthApplications": [
       "Clean-agent inert gas and CO2 fire suppression system optimization",
       "Ultra-fine water mist fire suppression kinetics for data centers and marine vessels"
     ],
-    "sourceUrl": "https://psi.nasa.gov/",
+    "sourceUrl": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-69",
     "tags": [
       "droplet",
       "CIR",
@@ -356,6 +1473,8 @@
     "hardware": "CIR/MDCA (Combustion Integrated Rack / Multi-user Droplet Combustion Apparatus)",
     "category": "prevention",
     "gravityLevel": "microgravity",
+    "status": "published",
+    "dataAvailable": true,
     "conditions": {
       "oxygenPct": 30,
       "oxygenMinPct": 15,
@@ -377,6 +1496,7 @@
       "SiC fiber thermocouples"
     ],
     "series": [],
+    "seriesSource": null,
     "earthApplications": [
       "Clean, high-efficiency liquid fuel spray combustion in automotive and aviation engines",
       "Chemical kinetic validation for low-temperature alkane oxidation"
@@ -401,6 +1521,8 @@
     "hardware": "CIR/MDCA (Combustion Integrated Rack / Multi-user Droplet Combustion Apparatus)",
     "category": "prevention",
     "gravityLevel": "microgravity",
+    "status": "published",
+    "dataAvailable": true,
     "conditions": {
       "oxygenPct": 21,
       "oxygenMinPct": 15,
@@ -421,6 +1543,7 @@
       "Thermocouples"
     ],
     "series": [],
+    "seriesSource": null,
     "earthApplications": [
       "Homogeneous charge compression ignition (HCCI) and low-temperature engine design",
       "Prevention of cool-flame auto-ignition hazards in fuel storage"
@@ -444,6 +1567,8 @@
     "hardware": "CIR/ACME (Combustion Integrated Rack / Advanced Combustion via Microgravity Experiments)",
     "category": "prevention",
     "gravityLevel": "microgravity",
+    "status": "published",
+    "dataAvailable": true,
     "conditions": {
       "oxygenPct": 85,
       "oxygenMinPct": 21,
@@ -464,6 +1589,7 @@
       "Fine-wire thermocouples"
     ],
     "series": [],
+    "seriesSource": null,
     "earthApplications": [
       "High-oxygen gas handling safety standards",
       "Validation of gaseous hydrocarbon cool-flame kinetic mechanisms"
@@ -488,6 +1614,8 @@
     "hardware": "CIR/ACME (Combustion Integrated Rack / Advanced Combustion via Microgravity Experiments)",
     "category": "prevention",
     "gravityLevel": "microgravity",
+    "status": "published",
+    "dataAvailable": true,
     "conditions": {
       "oxygenPct": 30,
       "oxygenMinPct": 21,
@@ -507,6 +1635,7 @@
       "Broadband radiometers"
     ],
     "series": [],
+    "seriesSource": null,
     "earthApplications": [
       "Non-destructive material flammability screening using gas burner emulation"
     ],
@@ -530,6 +1659,8 @@
     "hardware": "CIR/ACME (Combustion Integrated Rack / Advanced Combustion via Microgravity Experiments)",
     "category": "suppression",
     "gravityLevel": "microgravity",
+    "status": "published",
+    "dataAvailable": true,
     "conditions": {
       "oxygenPct": 21,
       "oxygenMinPct": 21,
@@ -551,6 +1682,7 @@
       "Radiometers"
     ],
     "series": [],
+    "seriesSource": null,
     "earthApplications": [
       "Low-emission electric-field-assisted industrial gas burners",
       "Active electrostatic flame stabilization and suppression"
@@ -575,6 +1707,8 @@
     "hardware": "CIR/ACME (Combustion Integrated Rack / Advanced Combustion via Microgravity Experiments)",
     "category": "prevention",
     "gravityLevel": "microgravity",
+    "status": "published",
+    "dataAvailable": true,
     "conditions": {
       "oxygenPct": 21,
       "oxygenMinPct": 21,
@@ -596,6 +1730,7 @@
       "Radiometers"
     ],
     "series": [],
+    "seriesSource": null,
     "earthApplications": [
       "High-fidelity CFD validation for clean combustion furnace and burner design"
     ],
@@ -619,6 +1754,8 @@
     "hardware": "CIR/ACME (Combustion Integrated Rack / Advanced Combustion via Microgravity Experiments)",
     "category": "prevention",
     "gravityLevel": "microgravity",
+    "status": "published",
+    "dataAvailable": true,
     "conditions": {
       "oxygenPct": 35,
       "oxygenMinPct": 15,
@@ -640,6 +1777,7 @@
       "Thermocouple rake"
     ],
     "series": [],
+    "seriesSource": null,
     "earthApplications": [
       "Soot-free, high-efficiency industrial oxy-fuel burners"
     ],
@@ -663,6 +1801,8 @@
     "hardware": "CIR/ACME (Combustion Integrated Rack / Advanced Combustion via Microgravity Experiments)",
     "category": "prevention",
     "gravityLevel": "microgravity",
+    "status": "published",
+    "dataAvailable": true,
     "conditions": {
       "oxygenPct": 21,
       "oxygenMinPct": 15,
@@ -682,6 +1822,7 @@
       "Broadband and narrowband radiometers"
     ],
     "series": [],
+    "seriesSource": null,
     "earthApplications": [
       "Hydrogen-blended clean fuel combustion stability models"
     ],
@@ -705,6 +1846,8 @@
     "hardware": "MSG with SPICE flow duct",
     "category": "detection",
     "gravityLevel": "microgravity",
+    "status": "published",
+    "dataAvailable": true,
     "conditions": {
       "oxygenPct": 21,
       "oxygenMinPct": 21,
@@ -725,6 +1868,7 @@
       "Fuel mass flow meter"
     ],
     "series": [],
+    "seriesSource": null,
     "earthApplications": [
       "Jet fuel smoke-point propensity standards for lower-soot aviation gas turbines"
     ],
@@ -747,6 +1891,8 @@
     "hardware": "MSG with SPICE flow duct",
     "category": "prevention",
     "gravityLevel": "microgravity",
+    "status": "published",
+    "dataAvailable": true,
     "conditions": {
       "oxygenPct": 21,
       "oxygenMinPct": 21,
@@ -767,6 +1913,7 @@
       "Hot-wire anemometer"
     ],
     "series": [],
+    "seriesSource": null,
     "earthApplications": [
       "Lifted-flame stabilization in low-NOx power-generation turbines and industrial burners"
     ],
@@ -789,6 +1936,8 @@
     "hardware": "SAME Pegasor aerosol instrument (ISS cabin)",
     "category": "detection",
     "gravityLevel": "microgravity",
+    "status": "published",
+    "dataAvailable": true,
     "conditions": {
       "oxygenPct": 21,
       "oxygenMinPct": 21,
@@ -805,6 +1954,7 @@
       "SAME Pegasor particle sensor"
     ],
     "series": [],
+    "seriesSource": null,
     "earthApplications": [
       "Dust-immune fire alarm calibration and indoor air quality monitoring"
     ],
@@ -827,6 +1977,8 @@
     "hardware": "SAME Pegasor aerosol instrument (ISS cabin)",
     "category": "detection",
     "gravityLevel": "microgravity",
+    "status": "published",
+    "dataAvailable": true,
     "conditions": {
       "oxygenPct": 21,
       "oxygenMinPct": 21,
@@ -843,6 +1995,7 @@
       "SAME Pegasor particle sensor"
     ],
     "series": [],
+    "seriesSource": null,
     "earthApplications": [
       "Particulate monitoring and false-alarm rejection in dusty mining and industrial enclosures"
     ],
@@ -853,6 +2006,126 @@
       "SAME-instrument",
       "detection",
       "lunar-dust"
+    ]
+  },
+  {
+    "psiId": "PSI-SOFIE",
+    "title": "Solid Fuel Ignition and Extinction",
+    "acronym": "SoFIE",
+    "objective": "Characterize ignition, flame spread, and extinction limits of solid spacecraft materials (PMMA and thin fabrics) under controlled oxygen concentration, pressure, and low-speed flow inside the ISS Combustion Integrated Rack (CIR).",
+    "fuel": "Solid fuels: cast polymethyl methacrylate (PMMA) rods/sheets and cotton/Nomex fabrics",
+    "fuelType": "solid",
+    "hardware": "CIR / SoFIE (Combustion Integrated Rack Solid Fuel Ignition and Extinction insert)",
+    "category": "prevention",
+    "gravityLevel": "microgravity",
+    "status": "published",
+    "dataAvailable": true,
+    "conditions": {
+      "oxygenPct": 21,
+      "oxygenMinPct": 15,
+      "oxygenMaxPct": 36,
+      "pressurePsi": 14.7,
+      "flowVelocity": 0.2,
+      "ambient": "ISS CIR chamber across variable O2/N2 pressure and low-speed convective flow"
+    },
+    "variables": [
+      "Oxygen concentration (O2%)",
+      "Chamber pressure",
+      "Opposed and concurrent convective flow velocity",
+      "Ignition delay and solid flame spread rate",
+      "Limiting Oxygen Index (LOI) and extinction boundary"
+    ],
+    "sensors": [
+      "High-resolution color and IR flame cameras",
+      "Broadband and narrowband radiometers",
+      "Surface thermocouples",
+      "Mass flow and chamber pressure transducers"
+    ],
+    "series": [],
+    "seriesSource": null,
+    "earthApplications": [
+      "Building and transit interior material flammability screening standards",
+      "Flame-retardant polymer and textile testing under low-flow ventilation"
+    ],
+    "sourceUrl": "https://psi.nasa.gov/",
+    "tags": [
+      "solid-fuel",
+      "CIR",
+      "SoFIE",
+      "flammability-limits",
+      "LOI",
+      "partial-gravity-proxy"
+    ]
+  },
+  {
+    "psiId": "PSI-LUCI",
+    "title": "Lunar-g Combustion Investigation",
+    "acronym": "LUCI",
+    "objective": "Planned lunar-gravity combustion investigation to measure solid-fuel ignition and flame spread at 1/6 g (~0.165 g) and bridge the empirical gap between ISS microgravity and 1 g baseline tests.",
+    "fuel": "Solid spacecraft reference materials (planned)",
+    "fuelType": "solid",
+    "hardware": "Suborbital lunar-gravity combustion payload (planned)",
+    "category": "prevention",
+    "gravityLevel": "lunar-partial",
+    "status": "upcoming",
+    "dataAvailable": false,
+    "conditions": {
+      "oxygenPct": null,
+      "oxygenMinPct": null,
+      "oxygenMaxPct": null,
+      "pressurePsi": null,
+      "flowVelocity": null,
+      "ambient": null
+    },
+    "variables": [],
+    "sensors": [],
+    "series": [],
+    "seriesSource": null,
+    "earthApplications": [
+      "Partial-gravity buoyancy and ventilation scaling for enclosed habitats"
+    ],
+    "sourceUrl": "https://psi.nasa.gov/",
+    "tags": [
+      "upcoming",
+      "lunar",
+      "lunar-partial",
+      "no-psi-data"
+    ]
+  },
+  {
+    "psiId": "PSI-FM2",
+    "title": "Flammability of Materials on the Moon",
+    "acronym": "FM2",
+    "objective": "Planned lunar-surface combustion experiment to evaluate ignition and flame spread of crew-cabin fabrics and polymers directly under 1/6 g lunar surface gravity.",
+    "fuel": "Solid crew-cabin fabrics and polymers (planned)",
+    "fuelType": "solid",
+    "hardware": "Lunar surface combustion test chamber / CLPS payload (planned)",
+    "category": "prevention",
+    "gravityLevel": "lunar-partial",
+    "status": "upcoming",
+    "dataAvailable": false,
+    "conditions": {
+      "oxygenPct": null,
+      "oxygenMinPct": null,
+      "oxygenMaxPct": null,
+      "pressurePsi": null,
+      "flowVelocity": null,
+      "ambient": null
+    },
+    "variables": [],
+    "sensors": [],
+    "series": [],
+    "seriesSource": null,
+    "earthApplications": [
+      "Enclosed low-buoyancy habitat material qualification"
+    ],
+    "sourceUrl": "https://psi.nasa.gov/",
+    "tags": [
+      "upcoming",
+      "lunar",
+      "lunar-partial",
+      "CLPS",
+      "no-psi-data"
     ]
   }
 ]

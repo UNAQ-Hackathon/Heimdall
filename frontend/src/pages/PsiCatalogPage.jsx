@@ -4,13 +4,28 @@ import { useApp } from '../context/AppContext.jsx';
 import { INVESTIGATIONS } from '../services/mockData.js';
 import { api } from '../services/api.js';
 import {
+  buildPsiDatasetCsv,
   CATALOG_CATEGORIES,
+  CATALOG_DATA_FILTERS,
   CATALOG_FUEL_TYPES,
   CATALOG_HARDWARE_FILTERS,
   CATEGORY_STYLE,
   filterPsiInvestigations,
+  getHardwareFamily,
   summarizeCatalogMetrics,
 } from '../services/psi-catalog.js';
+
+function triggerDownload(filename, content, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
 
 function FilterPillRow({ label, options, value, onChange, activeColor = '#38bdf8' }) {
   return (
@@ -65,6 +80,7 @@ export default function PsiCatalogPage() {
   const [category, setCategory] = useState('all');
   const [fuelType, setFuelType] = useState('all');
   const [hardware, setHardware] = useState('all');
+  const [dataStatus, setDataStatus] = useState('all');
 
   useEffect(() => {
     let cancelled = false;
@@ -80,18 +96,21 @@ export default function PsiCatalogPage() {
   }, []);
 
   const filtered = useMemo(
-    () => filterPsiInvestigations(investigations, { query, category, fuelType, hardware }),
-    [investigations, query, category, fuelType, hardware]
+    () => filterPsiInvestigations(investigations, { query, category, fuelType, hardware, dataStatus }),
+    [investigations, query, category, fuelType, hardware, dataStatus]
   );
 
   const metrics = useMemo(() => summarizeCatalogMetrics(filtered), [filtered]);
-  const hasFilters = Boolean(query.trim() || category !== 'all' || fuelType !== 'all' || hardware !== 'all');
+  const hasFilters = Boolean(
+    query.trim() || category !== 'all' || fuelType !== 'all' || hardware !== 'all' || dataStatus !== 'all'
+  );
 
   const resetFilters = () => {
     setQuery('');
     setCategory('all');
     setFuelType('all');
     setHardware('all');
+    setDataStatus('all');
   };
 
   return (
@@ -122,21 +141,36 @@ export default function PsiCatalogPage() {
         <div>
           <div
             style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
               fontSize: '10px',
               fontFamily: 'var(--font-mono)',
-              color: '#4f8ef7',
+              color: 'var(--audience-accent, #4f8ef7)',
               letterSpacing: '0.8px',
               marginBottom: '6px',
             }}
           >
-            NASA PHYSICAL SCIENCES INFORMATICS // COMBUSTION ARCHIVE ({investigations.length} STUDIES)
+            <span>NASA PHYSICAL SCIENCES INFORMATICS // COMBUSTION ARCHIVE ({investigations.length} STUDIES)</span>
+            <span
+              style={{
+                padding: '2px 8px',
+                borderRadius: '9999px',
+                background: 'var(--audience-tint)',
+                border: '1px solid var(--audience-border)',
+                color: 'var(--audience-accent)',
+              }}
+            >
+              {audience === 'Student' ? 'STUDENT LEARNING VIEW' : 'ENGINEER PARAMETRIC VIEW'}
+            </span>
           </div>
           <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#f8fafc', margin: '0 0 6px' }}>
             NASA PSI Investigation Catalog
           </h1>
           <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0, maxWidth: '78ch', lineHeight: 1.5 }}>
-            Search and filter verified ISS and Cygnus combustion studies by safety pillar, fuel state, and hardware
-            rack (`CIR/ACME`, `CIR/MDCA`, `MSG`, `Saffire`, `SAME`). Select any record for telemetry and curves.
+            {audience === 'Student'
+              ? 'Explore ISS and Cygnus fire-safety experiments with plain-language physics takeaways grouped by prevention, detection, and suppression.'
+              : 'Search and filter verified ISS and Cygnus combustion studies by safety pillar, fuel state, and hardware rack (`CIR/ACME`, `CIR/MDCA`, `MSG`, `Saffire`, `SAME`). Select any record for telemetry and curves.'}
           </p>
         </div>
 
@@ -154,6 +188,52 @@ export default function PsiCatalogPage() {
           >
             SOURCE: {dataSource === 'api' ? 'MONGODB / API' : 'VERIFIED PSI ARCHIVE'}
           </span>
+          <button
+            type="button"
+            disabled={filtered.length === 0}
+            onClick={() =>
+              triggerDownload(
+                'nasa-psi-investigations.csv',
+                buildPsiDatasetCsv(filtered),
+                'text/csv;charset=utf-8;'
+              )
+            }
+            style={{
+              fontSize: '11px',
+              fontFamily: 'var(--font-mono)',
+              color: '#34d399',
+              background: 'rgba(16, 185, 129, 0.12)',
+              border: '1px solid rgba(16, 185, 129, 0.35)',
+              borderRadius: '6px',
+              padding: '6px 11px',
+              cursor: filtered.length ? 'pointer' : 'not-allowed',
+            }}
+          >
+            Extract CSV ({filtered.length})
+          </button>
+          <button
+            type="button"
+            disabled={filtered.length === 0}
+            onClick={() =>
+              triggerDownload(
+                'nasa-psi-investigations.json',
+                JSON.stringify(filtered, null, 2),
+                'application/json;charset=utf-8;'
+              )
+            }
+            style={{
+              fontSize: '11px',
+              fontFamily: 'var(--font-mono)',
+              color: '#7dd3fc',
+              background: 'rgba(56, 189, 248, 0.12)',
+              border: '1px solid rgba(56, 189, 248, 0.35)',
+              borderRadius: '6px',
+              padding: '6px 11px',
+              cursor: filtered.length ? 'pointer' : 'not-allowed',
+            }}
+          >
+            Extract JSON
+          </button>
           <Link
             to="/?tab=ranking"
             style={{
@@ -267,6 +347,7 @@ export default function PsiCatalogPage() {
         <FilterPillRow label="PILLAR" options={CATALOG_CATEGORIES} value={category} onChange={setCategory} activeColor="#38bdf8" />
         <FilterPillRow label="FUEL" options={CATALOG_FUEL_TYPES} value={fuelType} onChange={setFuelType} activeColor="#f59e0b" />
         <FilterPillRow label="HARDWARE" options={CATALOG_HARDWARE_FILTERS} value={hardware} onChange={setHardware} activeColor="#a78bfa" />
+        <FilterPillRow label="DATA" options={CATALOG_DATA_FILTERS} value={dataStatus} onChange={setDataStatus} activeColor="#34d399" />
       </section>
 
       {/* Study Grid */}
@@ -339,7 +420,22 @@ export default function PsiCatalogPage() {
                     <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
                       {inv.psiId ?? inv.archiveCode}
                     </span>
-                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      {inv.dataAvailable === false && (
+                        <span
+                          style={{
+                            fontSize: '9px',
+                            fontFamily: 'var(--font-mono)',
+                            color: '#fbbf24',
+                            background: 'rgba(245, 158, 11, 0.14)',
+                            border: '1px solid rgba(245, 158, 11, 0.35)',
+                            padding: '2px 7px',
+                            borderRadius: '4px',
+                          }}
+                        >
+                          UPCOMING · NO PSI DATA YET
+                        </span>
+                      )}
                       <span
                         style={{
                           fontSize: '9px',
@@ -373,13 +469,22 @@ export default function PsiCatalogPage() {
                       {inv.acronym} — {inv.title}
                     </h2>
                     <div style={{ fontSize: '11px', color: '#7dd3fc', fontFamily: 'var(--font-mono)' }}>
-                      {inv.hardware}
+                      {getHardwareFamily(inv.hardware)} · {inv.gravityLevel ?? 'microgravity'}
                     </div>
                   </div>
 
                   <p style={{ fontSize: '12px', color: '#cbd5e1', lineHeight: 1.5, margin: 0 }}>
                     {summary}
                   </p>
+
+                  {audience === 'Engineer' && Array.isArray(inv.variables) && inv.variables.length > 0 && (
+                    <div style={{ fontSize: '10.5px', color: '#94a3b8', lineHeight: 1.4 }}>
+                      <strong style={{ fontFamily: 'var(--font-mono)', fontSize: '9.5px', color: '#7dd3fc' }}>
+                        TEST VARIABLES:{' '}
+                      </strong>
+                      {inv.variables.slice(0, 3).join(' · ')}
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>

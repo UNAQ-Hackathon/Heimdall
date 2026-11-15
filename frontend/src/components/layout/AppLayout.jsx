@@ -20,11 +20,11 @@ function isNavItemActive(pathname, { to, matchPaths }) {
 }
 
 export default function AppLayout() {
-  const { chatOpen, setChatOpen } = useApp();
+  const { chatOpen, setChatOpen, audience, setAudience } = useApp();
   const { pathname } = useLocation();
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" data-audience={audience === 'Student' ? 'student' : 'engineer'}>
       {/* Minimalist Top Navigation */}
       <header className="app-header">
         {/* Left: Heimdall Identity */}
@@ -55,8 +55,22 @@ export default function AppLayout() {
           })}
         </nav>
 
-        {/* Right: AI Copilot + NASA Seal */}
+        {/* Right: Audience Mode Switcher + AI Copilot + NASA Seal */}
         <div className="app-header__actions">
+          <div className="app-header__audience" role="group" aria-label="Audience mode">
+            {['Engineer', 'Student'].map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                className="app-header__audience-btn"
+                aria-pressed={audience === mode}
+                onClick={() => setAudience(mode)}
+              >
+                {mode}
+              </button>
+            ))}
+          </div>
+
           <button type="button" className="app-header__copilot" aria-label="Toggle Gemini AI assistant" aria-pressed={chatOpen} onClick={() => setChatOpen(!chatOpen)}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
               <path d="M5 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-6 3V6a2 2 0 0 1 2-2Z" />

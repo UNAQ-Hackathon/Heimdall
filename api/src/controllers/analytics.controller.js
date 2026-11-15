@@ -191,7 +191,7 @@ export async function firehazrPresets(_req, res) {
         {},
         { id: 1, psiId: 1, slug: 1, name: 1, family: 1, acronym: 1, title: 1, hardware: 1, oxygenRange: 1, ambientPressure: 1, fuelType: 1 }
       )
-        .limit(25)
+        .limit(50)
         .lean();
       if (mongoDocs.length > 0) {
         docs = mongoDocs;
