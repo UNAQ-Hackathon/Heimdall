@@ -8,12 +8,12 @@ import SolarSystemScene from '../components/three/SolarSystemScene.jsx';
 import { SCENARIOS, useApp } from '../context/AppContext.jsx';
 import { api } from '../services/api.js';
 import { FACTOR_LABELS, rankLocalInvestigations } from '../services/ranking.js';
-import { PLANETS } from '../services/mockData.js';
+import { PLANETS, ISS_DESTINATION } from '../services/mockData.js';
 import '../styles/mission-hub.css';
 
 const SCENARIO_TO_PLANET = {
   earth: 'Earth',
-  iss: 'Earth',
+  iss: 'ISS',
   moon: 'Moon',
   mars: 'Mars',
   suit: 'Earth',
@@ -94,7 +94,10 @@ export default function MissionHub() {
   }, [scenario, category, weights, localRanked]);
 
   const activePlanetObj = useMemo(
-    () => PLANETS.find((p) => p.name === focusPlanet) ?? null,
+    () =>
+      focusPlanet === 'ISS'
+        ? ISS_DESTINATION
+        : PLANETS.find((p) => p.name === focusPlanet) ?? null,
     [focusPlanet]
   );
 
@@ -785,7 +788,11 @@ export default function MissionHub() {
           >
             Overview
           </button>
-          {PLANETS.map((p) => {
+          {[
+            ...PLANETS.slice(0, 4),
+            ISS_DESTINATION,
+            ...PLANETS.slice(4),
+          ].map((p) => {
             const active = focusPlanet === p.name;
             return (
               <button

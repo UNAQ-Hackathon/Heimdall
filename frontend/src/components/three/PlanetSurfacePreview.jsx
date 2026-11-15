@@ -11,9 +11,10 @@ import { OrbitControls, useGLTF, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import { Color, Object3D, Vector3 } from 'three';
 
-import { createSurfacePreview } from './surface-preview.js';
+import { createSurfacePreview, ISS_INTERIOR_PHASE_LABELS } from './surface-preview.js';
 import LowPolySpace from './LowPolySpace.jsx';
 import EnvironmentLandscape from './EnvironmentLandscape.jsx';
+import StationInteriorPreview from './StationInteriorPreview.jsx';
 import {
   getEnvironmentPerspective,
   sampleEnvironmentHeight,
@@ -534,6 +535,70 @@ function PlanetaryLandingSequence({ planetId, zoneId, scene, view, replayKey }) 
 
 export default function PlanetSurfacePreview({ zoneId, planetId = 'earth' }) {
   const [replayKey, setReplayKey] = useState(0);
+  const [issPhase, setIssPhase] = useState('pressurize');
+
+  if (planetId === 'iss') {
+    const phaseLabel =
+      ISS_INTERIOR_PHASE_LABELS[issPhase] ?? ISS_INTERIOR_PHASE_LABELS.pressurize;
+    const phaseColor =
+      issPhase === 'sealed'
+        ? '#34d399'
+        : issPhase === 'ingress'
+          ? '#38bdf8'
+          : '#fbbf24';
+
+    return (
+      <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+        <StationInteriorPreview replayKey={replayKey} onPhaseChange={setIssPhase} />
+
+        <div
+          aria-live="polite"
+          style={{
+            position: 'absolute',
+            bottom: '8px',
+            left: '8px',
+            zIndex: 10,
+            padding: '4px 9px',
+            borderRadius: '6px',
+            fontSize: '9.5px',
+            fontFamily: 'var(--font-mono)',
+            background: 'rgba(10, 15, 29, 0.85)',
+            border: '1px solid rgba(56, 189, 248, 0.3)',
+            color: phaseColor,
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          ● {phaseLabel}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            setIssPhase('pressurize');
+            setReplayKey((k) => k + 1);
+          }}
+          style={{
+            position: 'absolute',
+            top: '8px',
+            right: '8px',
+            zIndex: 10,
+            padding: '4px 9px',
+            borderRadius: '6px',
+            fontSize: '10px',
+            fontFamily: 'var(--font-mono)',
+            background: 'rgba(10, 15, 29, 0.82)',
+            border: '1px solid rgba(56, 189, 248, 0.35)',
+            color: '#e2e8f0',
+            cursor: 'pointer',
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          ↻ Replay Airlock Entry
+        </button>
+      </div>
+    );
+  }
+
   const rawScene = useMemo(() => createSurfacePreview(zoneId, planetId), [planetId, zoneId]);
   const scene = useMemo(
     () => createCubicAtmosphereScene(planetId, rawScene),

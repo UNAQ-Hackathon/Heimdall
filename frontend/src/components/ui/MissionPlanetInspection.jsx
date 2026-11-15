@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
-import { getPlanetModel } from '../three/planet-catalog.js';
+import { getPlanetModel, ISS_STATION_MODEL } from '../three/planet-catalog.js';
 import { getSolarPlanetId } from '../three/solar-system-model.js';
 import { EARTH_ZONES } from '../three/planet-analysis.js';
 import PlanetAnalysisPanel from './PlanetAnalysisPanel.jsx';
 
 export default function MissionPlanetInspection({ body, onClose, onOpenTestbench }) {
   const [zoneId, setZoneId] = useState('temperate');
-  const planet = getPlanetModel(getSolarPlanetId(body.model));
+  const planet =
+    body.name === 'ISS'
+      ? ISS_STATION_MODEL
+      : getPlanetModel(getSolarPlanetId(body.model));
   const zone =
     planet.id === 'earth'
       ? EARTH_ZONES.find(({ id }) => id === zoneId) ?? EARTH_ZONES[2]

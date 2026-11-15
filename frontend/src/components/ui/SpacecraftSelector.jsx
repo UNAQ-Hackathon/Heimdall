@@ -10,9 +10,10 @@ function RotatingShipPreviewModel({ shipFile, scale = 0.86 }) {
   const model = useMemo(() => normalizeModel(scene), [scene]);
   const isUfo = shipFile.toLowerCase().includes('ovni');
   const isLander = shipFile.toLowerCase().includes('lander');
+  const isFalcon = shipFile.toLowerCase().includes('millenium');
 
   const spinRef = useRef(null);
-  const launchPitch = isUfo ? 0.16 : isLander ? 0.12 : 0.78;
+  const launchPitch = isUfo ? 0.16 : isLander ? 0.12 : isFalcon ? 0.48 : 0.78;
 
   useFrame((state) => {
     const t = state.clock.getElapsedTime();
@@ -23,8 +24,8 @@ function RotatingShipPreviewModel({ shipFile, scale = 0.86 }) {
   });
 
   return (
-    <group ref={spinRef} scale={scale}>
-      <group rotation={[launchPitch, 0, 0]}>
+    <group ref={spinRef} scale={isFalcon ? scale * 1.12 : scale}>
+      <group rotation={[launchPitch, isFalcon ? Math.PI / 2 : 0, 0]}>
         <primitive object={model} dispose={null} />
       </group>
     </group>

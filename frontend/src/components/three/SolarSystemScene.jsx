@@ -12,8 +12,10 @@ import { OrbitControls, useGLTF, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import SolarSystemPlanet from './SolarSystemPlanet.jsx';
 import { normalizeModel } from './normalize-model.js';
-import { PLANETS } from '../../services/mockData.js';
+import { ISS_DESTINATION, PLANETS } from '../../services/mockData.js';
 import { useApp } from '../../context/AppContext.jsx';
+
+const ALL_NAV_BODIES = [...PLANETS, ISS_DESTINATION];
 
 const asteroidUrlMap = import.meta.glob('../../../../assets3d/asteroides/*.glb', {
   query: '?url',
@@ -22,6 +24,18 @@ const asteroidUrlMap = import.meta.glob('../../../../assets3d/asteroides/*.glb',
 });
 
 const newShipUrlMap = import.meta.glob('../../../../assets3d/nuevasNaves/*.glb', {
+  query: '?url',
+  import: 'default',
+  eager: true,
+});
+
+const milleniumUrlMap = import.meta.glob('../../../../assets3d/millenium/*.glb', {
+  query: '?url',
+  import: 'default',
+  eager: true,
+});
+
+const issUrlMap = import.meta.glob('../../../../assets3d/ISS/*.glb', {
   query: '?url',
   import: 'default',
   eager: true,
@@ -84,15 +98,23 @@ export const SHIP_CATALOG = [
     role: 'Experimental Ion-Plasma Disc',
     accent: '#c084fc',
   },
+  {
+    id: 'MilleniumTriangle.glb',
+    label: 'Millennium Falcon',
+    role: 'YT-1300 Corellian Freighter',
+    accent: '#60a5fa',
+  },
 ].filter(
   (s) =>
     newShipUrlMap[`../../../../assets3d/nuevasNaves/${s.id}`] ||
+    milleniumUrlMap[`../../../../assets3d/millenium/${s.id}`] ||
     legacyShipUrlMap[`../../../../assets3d/naves/${s.id}`]
 );
 
 export function getShipUrl(shipFile = 'naveAzulNuevo.glb') {
   const mappedNew = LEGACY_TO_NEW_SHIP[shipFile] ?? shipFile;
   return (
+    milleniumUrlMap[`../../../../assets3d/millenium/${mappedNew}`] ??
     newShipUrlMap[`../../../../assets3d/nuevasNaves/${mappedNew}`] ??
     legacyShipUrlMap[`../../../../assets3d/naves/${shipFile}`] ??
     Object.values(newShipUrlMap)[0] ??
@@ -100,12 +122,15 @@ export function getShipUrl(shipFile = 'naveAzulNuevo.glb') {
   );
 }
 
+const ISS_MODEL_URL =
+  issUrlMap['../../../../assets3d/ISS/issNuevo.glb'] ?? Object.values(issUrlMap)[0];
+
 const SPACE_TILE_URL = spaceTexUrlMap['../../../../assets3d/texturaMapaEspacio/espacio_tileable.png'];
 const SPACE_HEX_URL = spaceTexUrlMap['../../../../assets3d/texturaMapaEspacio/espacio_hex.png'];
 
 const SCENARIO_DEFAULT_BODY = {
   earth: 'Earth',
-  iss: 'Earth',
+  iss: 'ISS',
   moon: 'Moon',
   mars: 'Mars',
   suit: 'Earth',
@@ -380,7 +405,8 @@ function createTailConeGeometry(radius, length, radialSegs = 5) {
  * pinned strictly to the spacecraft's rear thruster nozzle `[0, -0.17, 1.02]`
  * OR Alien Plasma / Antigravity Ring Trail when piloting the UFO (`ovniNuevo.glb`)!
  */
-function SpacecraftExhaustFX({ isUfo, isLander, inTransitRef }) {
+function SpacecraftExhaustFX({ isUfo, isLander, isFalcon, inTransitRef }) {
+  const exhaustGroupRef = useRef(null);
   const yellowFlameRef = useRef(null);
   const orangeFlameRef = useRef(null);
   const redFlameRef = useRef(null);
@@ -399,14 +425,29 @@ function SpacecraftExhaustFX({ isUfo, isLander, inTransitRef }) {
         spreadX: Math.cos(i * 2.399) * (0.14 + (i % 4) * 0.06),
         spreadY: Math.sin(i * 2.399) * (0.14 + (i % 4) * 0.06),
         spinRate: (i % 2 === 0 ? 1 : -1) * (1.8 + (i % 4) * 0.5),
-        color: i % 3 === 0 ? '#e2e8f0' : i % 3 === 1 ? '#cbd5e1' : '#94a3b8',
+        color: isFalcon
+          ? i % 3 === 0
+            ? '#bae6fd'
+            : i % 3 === 1
+              ? '#7dd3fc'
+              : '#38bdf8'
+          : i % 3 === 0
+            ? '#e2e8f0'
+            : i % 3 === 1
+              ? '#cbd5e1'
+              : '#94a3b8',
       })),
-    []
+    [isFalcon]
   );
 
   useFrame((state) => {
     const t = state.clock.getElapsedTime();
     const inTransit = inTransitRef.current?.inTransit ?? false;
+    const isParked = !inTransit && inTransitRef.current?.currentTarget === 'ISS';
+    if (exhaustGroupRef.current) {
+      exhaustGroupRef.current.visible = !isParked;
+    }
+    if (isParked) return;
     const thrustPower = inTransit ? 1.0 : 0.42;
 
     if (!isUfo) {
@@ -477,7 +518,7 @@ function SpacecraftExhaustFX({ isUfo, isLander, inTransitRef }) {
 
   if (isUfo) {
     return (
-      <group>
+      <group ref={exhaustGroupRef}>
         <mesh position={[0, -0.12, 0]} rotation={[Math.PI / 2, 0, 0]}>
           <torusGeometry args={[0.52, 0.08, 6, 12]} />
           <meshBasicMaterial color="#22d3ee" transparent opacity={0.9} />
@@ -501,37 +542,44 @@ function SpacecraftExhaustFX({ isUfo, isLander, inTransitRef }) {
 
   // Exact rear thruster nozzle position in normalized model coordinates:
   // For `naveAzulNuevo` / `naveRojaNuevo` / `naveVerdeNuevo`, `LP_Propulsor` is at [0, -0.17, +1.02].
-  const nozzlePos = isLander ? [0, -0.65, 0.85] : [0, -0.17, 1.02];
+  // For `MilleniumTriangle` rotated +90deg around Y, rear `Motor` is at [0, 0, +0.86].
+  const nozzlePos = isFalcon ? [0, 0, 0.86] : isLander ? [0, -0.65, 0.85] : [0, -0.17, 1.02];
 
   return (
-    <group position={nozzlePos}>
-      {/* 1. Inner White-Yellow Core Rocket Flame (base pinned at nozzle z=0, pointing +Z) */}
+    <group ref={exhaustGroupRef} position={nozzlePos}>
+      {isFalcon && (
+        <mesh position={[0, 0, -0.02]}>
+          <boxGeometry args={[0.78, 0.14, 0.08]} />
+          <meshBasicMaterial color="#bae6fd" />
+        </mesh>
+      )}
+      {/* 1. Inner Core Rocket / Sublight Ion Flame (base pinned at nozzle z=0, pointing +Z) */}
       <mesh
         ref={yellowFlameRef}
         geometry={yellowGeo}
         rotation={[Math.PI / 2, 0, 0]}
       >
-        <meshBasicMaterial color="#fde047" />
+        <meshBasicMaterial color={isFalcon ? '#e0f2fe' : '#fde047'} />
       </mesh>
 
-      {/* 2. Mid Vibrant Orange Rocket Plume */}
+      {/* 2. Mid Vibrant Plume */}
       <mesh
         ref={orangeFlameRef}
         geometry={orangeGeo}
         position={[0, 0, 0.04]}
         rotation={[Math.PI / 2, 0, 0]}
       >
-        <meshBasicMaterial color="#f97316" transparent opacity={0.92} />
+        <meshBasicMaterial color={isFalcon ? '#38bdf8' : '#f97316'} transparent opacity={0.92} />
       </mesh>
 
-      {/* 3. Outer Crimson-Red Combustion Envelope */}
+      {/* 3. Outer Combustion / Ion Envelope */}
       <mesh
         ref={redFlameRef}
         geometry={redGeo}
         position={[0, 0, 0.08]}
         rotation={[Math.PI / 2, 0, 0]}
       >
-        <meshBasicMaterial color="#ef4444" transparent opacity={0.78} />
+        <meshBasicMaterial color={isFalcon ? '#0284c7' : '#ef4444'} transparent opacity={0.78} />
       </mesh>
 
       {/* 4. Dynamic Billowing Low-Poly Exhaust Smoke Puffs */}
@@ -551,7 +599,12 @@ function SpacecraftExhaustFX({ isUfo, isLander, inTransitRef }) {
         ))}
       </group>
 
-      <pointLight color="#f97316" intensity={5.0} distance={3.2} position={[0, 0, 0.45]} />
+      <pointLight
+        color={isFalcon ? '#38bdf8' : '#f97316'}
+        intensity={5.0}
+        distance={3.2}
+        position={[0, 0, 0.45]}
+      />
     </group>
   );
 }
@@ -572,6 +625,7 @@ function SpacecraftNavigator({
   const shipModel = useMemo(() => normalizeModel(scene), [scene]);
   const isUfo = shipFile.toLowerCase().includes('ovni');
   const isLander = shipFile.toLowerCase().includes('lander');
+  const isFalcon = shipFile.toLowerCase().includes('millenium');
 
   const shipGroupRef = useRef(null);
   const beaconRef = useRef(null);
@@ -615,7 +669,7 @@ function SpacecraftNavigator({
       up: new THREE.Vector3(0, 1, 0),
       mat4: new THREE.Matrix4(),
       targetQuat: new THREE.Quaternion(),
-      obstacles: PLANETS.map((p) => ({
+      obstacles: ALL_NAV_BODIES.map((p) => ({
         name: p.name,
         pos: new THREE.Vector3(),
         safeR:
@@ -623,7 +677,9 @@ function SpacecraftNavigator({
             ? p.size * 1.26 + 0.14
             : p.name === 'Saturn'
               ? p.size * 1.62 + 0.12
-              : p.size * 1.22 + 0.10,
+              : p.name === 'ISS'
+                ? p.size * 1.35 + 0.12
+                : p.size * 1.22 + 0.10,
       })),
     }),
     []
@@ -694,14 +750,16 @@ function SpacecraftNavigator({
 
     targetObj.getWorldPosition(planetWorldPos);
 
-    const planetMeta = PLANETS.find((p) => p.name === st.currentTarget);
+    const planetMeta = ALL_NAV_BODIES.find((p) => p.name === st.currentTarget);
     const bodySize = planetMeta?.size ?? 0.6;
     const localOrbitRadius =
       st.currentTarget === 'Saturn'
         ? bodySize * 1.68 + 0.14
         : st.currentTarget === 'Sol'
           ? bodySize * 1.32 + 0.16
-          : bodySize * 1.28 + 0.14;
+          : st.currentTarget === 'ISS'
+            ? bodySize * 1.55 + 0.14
+            : bodySize * 1.28 + 0.14;
 
     let activeObstacles = 0;
     for (let i = 0; i < obstacles.length; i += 1) {
@@ -722,9 +780,18 @@ function SpacecraftNavigator({
         for (let i = 0; i < obstacles.length; i += 1) {
           const obs = obstacles[i];
           if (!obs.active) continue;
+          if (st.currentTarget === 'ISS' && obs.name === 'Earth') {
+            diff.subVectors(pt, obs.pos);
+            const earthDist = diff.length();
+            if (earthDist < 0.9) {
+              diff.normalize();
+              pt.copy(obs.pos).addScaledVector(diff, 0.9);
+            }
+            continue;
+          }
           diff.subVectors(pt, obs.pos);
           const dist = diff.length();
-          const influenceR = obs.safeR * 2.15;
+          const influenceR = obs.safeR * 1.45;
           if (dist < influenceR) {
             const s = Math.min(1, Math.max(0, (influenceR - dist) / (influenceR - obs.safeR)));
             const falloff = s * s * (3 - 2 * s);
@@ -741,6 +808,9 @@ function SpacecraftNavigator({
       return pt;
     };
 
+    const isDockingTarget = st.currentTarget === 'ISS';
+    const dockObj = isDockingTarget ? planetObjectsRef.current['ISS_DOCK'] : null;
+
     if (st.inTransit) {
       const approachAngle =
         Math.atan2(
@@ -748,16 +818,20 @@ function SpacecraftNavigator({
           st.startPos.x - planetWorldPos.x
         ) + 0.65;
       st.orbitAngle = approachAngle;
-    } else if (!paused) {
+    } else if (!paused && !isDockingTarget) {
       st.orbitAngle += delta * 0.95;
     }
 
-    destPos.set(
-      planetWorldPos.x + Math.cos(st.orbitAngle) * localOrbitRadius,
-      planetWorldPos.y + Math.sin(st.orbitAngle * 2) * 0.015,
-      planetWorldPos.z + Math.sin(st.orbitAngle) * localOrbitRadius
-    );
-    pushOutsideObstacles(destPos);
+    if (isDockingTarget && dockObj) {
+      dockObj.getWorldPosition(destPos);
+    } else {
+      destPos.set(
+        planetWorldPos.x + Math.cos(st.orbitAngle) * localOrbitRadius,
+        planetWorldPos.y + Math.sin(st.orbitAngle * 2) * 0.015,
+        planetWorldPos.z + Math.sin(st.orbitAngle) * localOrbitRadius
+      );
+      pushOutsideObstacles(destPos);
+    }
 
     if (!st.initialized) {
       ship.position.copy(destPos);
@@ -844,13 +918,20 @@ function SpacecraftNavigator({
       }
     } else {
       trajectoryLine.visible = false;
-      ship.position.lerp(destPos, 1 - Math.exp(-delta * 8));
+      ship.position.lerp(destPos, 1 - Math.exp(-delta * (isDockingTarget ? 12 : 8)));
 
-      tangent.set(-Math.sin(st.orbitAngle), 0, Math.cos(st.orbitAngle)).normalize();
-      aheadPos.copy(ship.position).add(tangent);
-      mat4.lookAt(ship.position, aheadPos, up);
-      targetQuat.setFromRotationMatrix(mat4);
-      ship.quaternion.slerp(targetQuat, 1 - Math.exp(-delta * 8));
+      if (isDockingTarget) {
+        // Hold steady alongside the ISS docking berth with nose oriented toward the station
+        mat4.lookAt(ship.position, planetWorldPos, up);
+        targetQuat.setFromRotationMatrix(mat4);
+        ship.quaternion.slerp(targetQuat, 1 - Math.exp(-delta * 10));
+      } else {
+        tangent.set(-Math.sin(st.orbitAngle), 0, Math.cos(st.orbitAngle)).normalize();
+        aheadPos.copy(ship.position).add(tangent);
+        mat4.lookAt(ship.position, aheadPos, up);
+        targetQuat.setFromRotationMatrix(mat4);
+        ship.quaternion.slerp(targetQuat, 1 - Math.exp(-delta * 8));
+      }
 
       if (shipTransitRef) {
         shipTransitRef.current.inTransit = false;
@@ -873,9 +954,16 @@ function SpacecraftNavigator({
       <primitive object={trajectoryLine} />
 
       {/* Spacecraft 3D Mesh at realistic miniature scale relative to planets (nose at -Z, tail at +Z) */}
-      <group ref={shipGroupRef} scale={0.075}>
-        <primitive object={shipModel} dispose={null} />
-        <SpacecraftExhaustFX isUfo={isUfo} isLander={isLander} inTransitRef={flightState} />
+      <group ref={shipGroupRef} scale={isFalcon ? 0.095 : 0.075}>
+        <group rotation={[0, isFalcon ? Math.PI / 2 : 0, 0]}>
+          <primitive object={shipModel} dispose={null} />
+        </group>
+        <SpacecraftExhaustFX
+          isUfo={isUfo}
+          isLander={isLander}
+          isFalcon={isFalcon}
+          inTransitRef={flightState}
+        />
       </group>
 
       {/* Low-Poly Triangular Marker Beacon above the active planet */}
@@ -955,9 +1043,9 @@ function CameraController({
         const worldPos = new THREE.Vector3();
         obj.getWorldPosition(worldPos);
 
-        const planetData = PLANETS.find((p) => p.name === focusPlanet);
+        const planetData = ALL_NAV_BODIES.find((p) => p.name === focusPlanet);
         const size = planetData?.size || 0.6;
-        const zoomDist = Math.max(0.95, size * 3.2);
+        const zoomDist = focusPlanet === 'ISS' ? Math.max(0.85, size * 3.5) : Math.max(0.95, size * 3.2);
 
         targetCamPosRef.current.set(
           worldPos.x + zoomDist * 0.72,
@@ -1006,9 +1094,9 @@ function CameraController({
       const worldPos = new THREE.Vector3();
       obj.getWorldPosition(worldPos);
 
-      const planetData = PLANETS.find((p) => p.name === focusPlanet);
+      const planetData = ALL_NAV_BODIES.find((p) => p.name === focusPlanet);
       const size = planetData?.size || 0.6;
-      const zoomDist = Math.max(0.95, size * 3.2);
+      const zoomDist = focusPlanet === 'ISS' ? Math.max(0.85, size * 3.5) : Math.max(0.95, size * 3.2);
 
       targetCamPosRef.current.set(
         worldPos.x + zoomDist * 0.72,
@@ -1047,9 +1135,72 @@ function CameraController({
   return null;
 }
 
+function OrbitalStationMesh({
+  stationData,
+  isSelected,
+  onClick,
+  registerPlanet,
+  paused,
+}) {
+  const orbitRef = useRef(null);
+  const stationRef = useRef(null);
+  const dockingBerthRef = useRef(null);
+  const spinRef = useRef(null);
+  const { scene } = useGLTF(ISS_MODEL_URL, false, false);
+  const model = useMemo(() => normalizeModel(scene), [scene]);
+
+  useEffect(() => {
+    if (orbitRef.current) {
+      orbitRef.current.rotation.y = stationData.initialAngle ?? 0;
+    }
+  }, [stationData.initialAngle]);
+
+  useEffect(() => {
+    registerPlanet?.(stationData.name, stationRef.current);
+    registerPlanet?.('ISS_DOCK', dockingBerthRef.current);
+    return () => {
+      registerPlanet?.(stationData.name, null);
+      registerPlanet?.('ISS_DOCK', null);
+    };
+  }, [stationData.name, registerPlanet]);
+
+  useFrame((_, delta) => {
+    if (paused || isSelected) return;
+    if (orbitRef.current) {
+      orbitRef.current.rotation.y += (stationData.orbitSpeed ?? 0.08) * 15 * delta;
+    }
+  });
+
+  const select = (event) => {
+    if (event.delta > 5) return;
+    event.stopPropagation();
+    onClick?.(stationData.name);
+  };
+
+  return (
+    <group ref={orbitRef}>
+      <group
+        ref={stationRef}
+        name="SolarDestination:iss"
+        position={[stationData.distance, stationData.yOffset ?? 0.22, 0]}
+        userData={{ planetId: 'iss', name: stationData.name }}
+      >
+        <group scale={stationData.size} onClick={select}>
+          <group ref={spinRef} rotation={[0.14, 0.35, -0.06]}>
+            <primitive object={model} dispose={null} />
+          </group>
+          {/* Collision-free outward LVLH docking berth well outside the ISS solar arrays */}
+          <group ref={dockingBerthRef} position={[2.05, 0.42, 0.2]} />
+        </group>
+      </group>
+    </group>
+  );
+}
+
 function EarthMoonSystem({
   earthData,
   moonData,
+  issData,
   focusPlanet,
   onPlanetClick,
   registerPlanet,
@@ -1060,7 +1211,8 @@ function EarthMoonSystem({
 
   const isEarthSelected = focusPlanet === 'Earth';
   const isMoonSelected = focusPlanet === 'Moon';
-  const isAnySelected = isEarthSelected || isMoonSelected;
+  const isIssSelected = focusPlanet === 'ISS';
+  const isAnySelected = isEarthSelected || isMoonSelected || isIssSelected;
 
   useEffect(() => {
     if (earthOrbitGroup.current) {
@@ -1098,7 +1250,22 @@ function EarthMoonSystem({
           registerPlanet={registerPlanet}
         />
 
-        <OrbitRing radius={moonData.distance} color="#38bdf8" opacity={0.28} />
+        {issData && ISS_MODEL_URL && (
+          <>
+            <group position={[0, issData.yOffset ?? 0.16, 0]}>
+              <OrbitRing radius={issData.distance} color="#38bdf8" opacity={0.28} />
+            </group>
+            <OrbitalStationMesh
+              stationData={issData}
+              isSelected={isIssSelected}
+              onClick={onPlanetClick}
+              registerPlanet={registerPlanet}
+              paused={paused}
+            />
+          </>
+        )}
+
+        <OrbitRing radius={moonData.distance} color="#38bdf8" opacity={0.24} />
 
         <group ref={moonOrbitGroup}>
           <SolarSystemPlanet
@@ -1189,11 +1356,12 @@ function SceneContent({ paused, panelCollapsed = false, shipFile = 'naveAzulNuev
         {/* Dense 3D Asteroid Belt Ring between Earth and Mars */}
         <AsteroidBelt3D paused={paused} />
 
-        {/* Earth + Moon compound system */}
+        {/* Earth + ISS + Moon compound system */}
         {earthData && moonData && (
           <EarthMoonSystem
             earthData={earthData}
             moonData={moonData}
+            issData={ISS_DESTINATION}
             focusPlanet={focusPlanet}
             onPlanetClick={handlePlanetClick}
             registerPlanet={registerPlanet}

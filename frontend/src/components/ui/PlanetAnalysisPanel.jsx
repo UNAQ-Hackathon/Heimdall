@@ -93,7 +93,9 @@ export default function PlanetAnalysisPanel({
               color: '#b7cbe4',
             }}
           >
-            {planet.label} · Surface Preview
+            {planet.id === 'iss'
+              ? `${planet.label} · Airlock & Module Interior`
+              : `${planet.label} · Surface Preview`}
           </span>
         </div>
 
@@ -202,7 +204,9 @@ export default function PlanetAnalysisPanel({
             textAlign: 'center',
           }}
         >
-          Interactive 3D low-poly landscape · Drag to look around
+          {planet.id === 'iss'
+            ? 'Interactive 3D ISS airlock & module interior · Drag to look around'
+            : 'Interactive 3D low-poly landscape · Drag to look around'}
         </figcaption>
       </figure>
 
@@ -223,8 +227,12 @@ export default function PlanetAnalysisPanel({
             fontFamily: 'var(--font-mono)',
           }}
         >
-          <div style={{ color: '#64748b', fontSize: '9px' }}>SURFACE GRAVITY</div>
-          <strong style={{ color: '#f8fafc', fontSize: '12px' }}>{planet.gravityG} g</strong>
+          <div style={{ color: '#64748b', fontSize: '9px' }}>
+            {planet.id === 'iss' ? 'MICROGRAVITY REGIME' : 'SURFACE GRAVITY'}
+          </div>
+          <strong style={{ color: '#f8fafc', fontSize: '12px' }}>
+            {planet.id === 'iss' ? '~0g (Free Fall LEO)' : `${planet.gravityG} g`}
+          </strong>
         </div>
         <div
           style={{
@@ -235,7 +243,9 @@ export default function PlanetAnalysisPanel({
             fontFamily: 'var(--font-mono)',
           }}
         >
-          <div style={{ color: '#64748b', fontSize: '9px' }}>SOLAR DISTANCE</div>
+          <div style={{ color: '#64748b', fontSize: '9px' }}>
+            {planet.id === 'iss' ? 'ORBITAL ALTITUDE' : 'SOLAR DISTANCE'}
+          </div>
           <strong style={{ color: '#f8fafc', fontSize: '12px' }}>
             {planet.distanceFromSun}
           </strong>
