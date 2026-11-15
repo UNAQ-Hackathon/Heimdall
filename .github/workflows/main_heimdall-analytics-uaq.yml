@@ -36,7 +36,9 @@ jobs:
         run: |
           mkdir -p ./analytics/firehazr
           cp -r "./PredictorFireHazard-main/Sensibilidad de gases/knn/." ./analytics/firehazr/
-          touch ./analytics/firehazr/__init__.py
+          if [ ! -f "./analytics/firehazr/__init__.py" ]; then
+            printf "from pathlib import Path\nSOURCE_DIR = Path(__file__).resolve().parent\n" > ./analytics/firehazr/__init__.py
+          fi
 
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v4
