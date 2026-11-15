@@ -18,6 +18,11 @@ test('GET /api/health and POST /api/ranking respond deterministically', async ()
     const invData = await invRes.json();
     assert.equal(invData.total, 20);
 
+    const detailRes = await fetch(`${baseUrl}/api/investigations/acme-cfi-g`);
+    assert.equal(detailRes.status, 200);
+    const detail = await detailRes.json();
+    assert.equal(detail.acronym, 'CFI-G');
+
     const moonScenario = { gravity: 'lunar', oxygenPct: 30, pressurePsi: 10.2, flowVelocity: 0.1 };
     const weights = { atmosphereMatch: 40, gravityMatch: 25, dataRichness: 20, documentation: 15 };
 
