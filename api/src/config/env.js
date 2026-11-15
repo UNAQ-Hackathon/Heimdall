@@ -6,6 +6,14 @@ const env = {
   mongoUri: process.env.MONGODB_URI ?? 'mongodb://localhost:27017/heimdall',
   corsOrigin: (process.env.CORS_ORIGIN ?? 'http://localhost:5173').split(','),
 
+  gemini: {
+    apiKey: process.env.GEMINI_API_KEY ?? '',
+    apiBase: process.env.GEMINI_API_BASE ?? 'https://generativelanguage.googleapis.com',
+    model: process.env.GEMINI_MODEL ?? 'gemini-2.5-flash',
+    tokenLimit: Math.max(1000, Number(process.env.GEMINI_TOKEN_LIMIT ?? 120000)),
+    maxOutputTokens: Math.max(128, Number(process.env.GEMINI_MAX_OUTPUT_TOKENS ?? 1024)),
+  },
+
   devin: {
     apiKey: process.env.DEVIN_API_KEY ?? '',
     apiBase: process.env.DEVIN_API_BASE ?? 'https://api.devin.ai',

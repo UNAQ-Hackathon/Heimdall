@@ -15,7 +15,14 @@ const BODY_THEMES = {
   uranus: { kind: 'atmosphere', title: 'Cyan cloud layers', sky: '#80b9bd', ground: ['#a6d4cf', '#73adb7', '#c0e1d6'], accent: '#5896a6', description: 'A stylized cyan atmospheric scene. Shapes and visibility are illustrative; there is no solid ground.' },
   neptune: { kind: 'atmosphere', title: 'Deep-blue cloud layers', sky: '#253e77', ground: ['#3868a8', '#588cbd', '#244d91'], accent: '#a0c8d6', description: 'An artistic deep-blue atmosphere with angular cloud forms. No solid ground is depicted.' },
   sun: { kind: 'plasma', title: 'Solar plasma', sky: '#120b16', ground: ['#bc3c15', '#f28b28', '#ffd266'], accent: '#ffcf69', description: 'A conceptual view above a curved emitting plasma layer, with bright granulation and rising prominence loops. Not solid ground or a physical simulation.' },
+  iss: { kind: 'interior', title: 'ISS Pressurized Lab & Airlock', sky: '#060c1a', ground: ['#1e293b', '#334155', '#0f172a'], accent: '#38bdf8', description: 'Stylized low-poly interior of the pressurized ISS orbital laboratory. Crew enters via the Quest-style airlock toward the CIR combustion rack and Cupola viewport.' },
 };
+
+export const ISS_INTERIOR_PHASE_LABELS = Object.freeze({
+  pressurize: 'EQUALIZING AIRLOCK · 14.7 PSI',
+  ingress: 'AIRLOCK OPEN · CREW INGRESS',
+  sealed: 'HATCH SEALED · MICRO-G LAB',
+});
 
 export function getPreviewTheme(zoneId, planetId = 'earth') {
   const theme = planetId === 'earth' ? EARTH_THEMES[zoneId] : BODY_THEMES[planetId];

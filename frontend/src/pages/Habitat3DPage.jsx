@@ -1,10 +1,15 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import { PLANET_MODELS, getPlanetModel } from '../components/three/planet-catalog.js';
+import {
+  ISS_STATION_MODEL,
+  PLANET_MODELS,
+  getPlanetModel,
+} from '../components/three/planet-catalog.js';
 import { EARTH_ZONES } from '../components/three/planet-analysis.js';
 import PlanetAnalysisPanel from '../components/ui/PlanetAnalysisPanel.jsx';
 import HeimdallLogo from '../components/ui/HeimdallLogo.jsx';
 
 const PlanetViewer = lazy(() => import('../components/three/PlanetViewer.jsx'));
+const PlanetSurfacePreview = lazy(() => import('../components/three/PlanetSurfacePreview.jsx'));
 
 export default function Habitat3DPage() {
   const [planetId, setPlanetId] = useState('earth');
@@ -12,7 +17,7 @@ export default function Habitat3DPage() {
   const [panelSelection, setPanelSelection] = useState(null);
   const selectionOrigin = useRef(null);
   const selectorRef = useRef(null);
-  const planet = getPlanetModel(planetId);
+  const planet = planetId === 'iss' ? ISS_STATION_MODEL : getPlanetModel(planetId);
   const zone = EARTH_ZONES.find(({ id }) => id === panelSelection?.zoneId);
 
   useEffect(() => {
@@ -57,21 +62,28 @@ export default function Habitat3DPage() {
           Model
           <select ref={selectorRef} value={planetId} onChange={(event) => { setSelection(null); setPanelSelection(null); setPlanetId(event.target.value); }}>
             {PLANET_MODELS.map(({ id, label }) => <option key={id} value={id}>{label}</option>)}
+            <option value={ISS_STATION_MODEL.id}>{ISS_STATION_MODEL.label}</option>
           </select>
         </label>
       </div>
       <div className={`planet-preview__stage${selection ? ' planet-preview__stage--focused' : ''}`}>
         <Suspense fallback={<p role="status">Loading 3D viewer…</p>}>
-          <PlanetViewer
-            planetId={planetId}
-            className="planet-preview__viewport"
-            style={{ height: 'clamp(420px, 70vh, 780px)' }}
-            spaceBackground
-            autoRotate
-            enableAnalysis
-            selection={selection}
-            onRegionSelect={selectRegion}
-          />
+          {planetId === 'iss' ? (
+            <div className="planet-preview__viewport" style={{ height: 'clamp(420px, 70vh, 780px)' }}>
+              <PlanetSurfacePreview planetId="iss" />
+            </div>
+          ) : (
+            <PlanetViewer
+              planetId={planetId}
+              className="planet-preview__viewport"
+              style={{ height: 'clamp(420px, 70vh, 780px)' }}
+              spaceBackground
+              autoRotate
+              enableAnalysis
+              selection={selection}
+              onRegionSelect={selectRegion}
+            />
+          )}
         </Suspense>
         <div className="planet-preview__mode" aria-live="polite">
           {selection ? 'ENVIRONMENT INSPECTION' : 'GLOBAL VIEW / SELECT THE MODEL'}
@@ -109,7 +121,7 @@ export default function Habitat3DPage() {
         </div>
       ) : (
         <button className="planet-preview__inspect" type="button" onClick={() => selectRegion({ planetId, zoneId: null, point: null })}>
-          Explore environment
+          {planetId === 'iss' ? 'Board ISS · Inspect Telemetry' : 'Explore environment'}
         </button>
       )}
       <p className="planet-preview__hint">

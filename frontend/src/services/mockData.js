@@ -231,12 +231,26 @@ export const FLAME_COMPARISON = {
 
 // ─── Solar System Planets (for 3D scene) ────────────────────────────
 
+export const ISS_DESTINATION = Object.freeze({
+  name: 'ISS',
+  label: 'ISS',
+  model: '/models/ISS/issNuevo.glb',
+  color: '#38bdf8',
+  size: 0.24,
+  distance: 1.24,
+  yOffset: 0.22,
+  au: '408 km LEO',
+  orbitSpeed: 0.085,
+  initialAngle: 2.7,
+  parent: 'Earth',
+});
+
 export const PLANETS = [
   { name: 'Sol',      model: '/models/planetas/Sol.glb',      color: '#fbbf24', size: 2.2,  distance: 0,    au: '0.00 AU', orbitSpeed: 0,      initialAngle: 0 },
   { name: 'Mercury',  model: '/models/planetas/Mercurio.glb', color: '#9ca3af', size: 0.28, distance: 4.5,  au: '0.39 AU', orbitSpeed: 0.016,  initialAngle: 0.8 },
   { name: 'Venus',    model: '/models/planetas/Venus.glb',    color: '#f59e0b', size: 0.65, distance: 7.2,  au: '0.72 AU', orbitSpeed: 0.010,  initialAngle: 2.4 },
   { name: 'Earth',    model: '/models/planetas/Tierra.glb',   color: '#3b82f6', size: 0.70, distance: 10.2, au: '1.00 AU', orbitSpeed: 0.007,  initialAngle: 4.1 },
-  { name: 'Moon',     model: '/models/planetas/Luna.glb',     color: '#d1d5db', size: 0.19, distance: 1.35, au: '384,400 km', orbitSpeed: 0.045, initialAngle: 1.2, parent: 'Earth' },
+  { name: 'Moon',     model: '/models/planetas/Luna.glb',     color: '#d1d5db', size: 0.19, distance: 1.85, au: '384,400 km', orbitSpeed: 0.045, initialAngle: 1.2, parent: 'Earth' },
   { name: 'Mars',     model: '/models/planetas/Marte.glb',    color: '#ef4444', size: 0.40, distance: 18.2, au: '1.52 AU', orbitSpeed: 0.0045, initialAngle: 5.5 },
   { name: 'Jupiter',  model: '/models/planetas/Jupiter.glb',  color: '#d97706', size: 1.55, distance: 26.5, au: '5.20 AU', orbitSpeed: 0.0018, initialAngle: 1.7 },
   { name: 'Saturn',   model: '/models/planetas/Saturno.glb',  color: '#eab308', size: 1.85, distance: 36.5, au: '9.54 AU', orbitSpeed: 0.0010, initialAngle: 3.6 },

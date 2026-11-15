@@ -104,6 +104,18 @@ export const PLANET_MODELS = Object.freeze(
   ].map(Object.freeze)
 );
 
+export const ISS_STATION_MODEL = Object.freeze({
+  id: 'iss',
+  label: 'ISS (LEO)',
+  filename: 'issNuevo.glb',
+  analyzable: true,
+  scenarioId: 'iss',
+  gravityG: 0,
+  distanceFromSun: '1.00 AU (~408 km LEO)',
+  publicDescription:
+    'International Space Station in low Earth orbit (~0g), housing the CIR (ACME, FLEX/MDCA), MSG (BASS, SPICE, SLICE), and SAME fire safety experiments.',
+});
+
 export function getPlanetModel(id) {
   const model = PLANET_MODELS.find((entry) => entry.id === id);
   if (!model) throw new RangeError(`Unknown planetary model: ${id}`);

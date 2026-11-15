@@ -1,8 +1,10 @@
 import { Router } from 'express';
-import { ask, pollSession } from '../controllers/chat.controller.js';
+import { ask, pollSession, status } from '../controllers/chat.controller.js';
 import { validateBody } from '../middleware/validate.js';
 
 const router = Router();
+
+router.get('/status', status);
 
 router.post(
   '/',

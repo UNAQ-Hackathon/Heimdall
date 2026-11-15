@@ -3,9 +3,16 @@ import Investigation from '../models/Investigation.js';
 import {
   answerQuestion,
   extractCitations,
+  getDevinAccountStatus,
   getDevinSessionStatus,
   PSI_FALLBACK_DOCS,
 } from '../services/devin.service.js';
+import { getReadOnlyMongoContext } from '../services/mongo-reader.service.js';
+
+export async function status(_req, res) {
+  const info = await getDevinAccountStatus();
+  res.json(info);
+}
 
 export async function ask(req, res) {
   const { question, sessionId, audience, scenario } = req.body;
@@ -25,10 +32,13 @@ export async function ask(req, res) {
     }
   }
 
+  const mongoContext = await getReadOnlyMongoContext(question).catch(() => null);
+
   const result = await answerQuestion(question, contextDocs, {
     sessionId,
     audience,
     scenario,
+    mongoContext,
   });
   res.json({ question, ...result });
 }

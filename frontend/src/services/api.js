@@ -20,8 +20,12 @@ async function request(path, options = {}) {
 
 export const api = {
   firehazrMetadata: () => request('/analytics/firehazr'),
+  firehazrPresets: () => request('/analytics/firehazr/presets'),
   predictFirehazr: (conditions, { signal } = {}) => request('/analytics/firehazr/predict', {
     method: 'POST', body: JSON.stringify(conditions), signal,
+  }),
+  interpretFirehazr: (payload, { signal } = {}) => request('/analytics/firehazr/interpret', {
+    method: 'POST', body: JSON.stringify(payload), signal,
   }),
   listInvestigations: async (params = {}) => {
     try {
@@ -39,17 +43,43 @@ export const api = {
       const doc = await request(`/investigations/${encodeURIComponent(id)}`);
       return enrichInvestigationForUI(doc);
     } catch {
-      const lower = String(id).toLowerCase();
+      const lower = String(id ?? '').toLowerCase();
+      const normalized = lower.replace(/^psi-/, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       const all = processedInvestigations.map((inv) => enrichInvestigationForUI(inv));
-      const found =
-        all.find(
-          (item) =>
-            item.id === lower ||
-            String(item.psiId ?? '').toLowerCase() === lower ||
-            String(item.acronym ?? '').toLowerCase() === lower
-        );
+      const found = all.find(
+        (item) =>
+          item.id === lower ||
+          item.id === normalized ||
+          String(item.slug ?? '').toLowerCase() === lower ||
+          String(item.psiId ?? '').toLowerCase() === lower ||
+          String(item.acronym ?? '').toLowerCase() === lower ||
+          String(item.name ?? '').toLowerCase() === lower
+      );
       if (!found) throw new Error(`Investigation "${id}" not found`);
       return found;
+    }
+  },
+
+  getStudyTelemetry: async (id) => {
+    try {
+      const path = id
+        ? `/investigations/${encodeURIComponent(id)}/telemetry`
+        : '/telemetry';
+      const data = await request(path);
+      return {
+        ...data,
+        investigation: data.investigation
+          ? enrichInvestigationForUI(data.investigation)
+          : null,
+      };
+    } catch {
+      const investigation = id ? await api.getInvestigation(id) : null;
+      return {
+        investigation,
+        experiments: [],
+        measurements: [],
+        source: 'local-processed-fallback',
+      };
     }
   },
 
@@ -92,6 +122,8 @@ export const api = {
       };
     }
   },
+
+  chatStatus: () => request('/chat/status'),
 
   ask: (question, optionsOrSessionId = {}) => {
     const opts =

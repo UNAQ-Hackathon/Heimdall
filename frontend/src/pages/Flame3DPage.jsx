@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import FlameVisualization from '../components/three/FlameVisualization.jsx';
+import FlameVisualization, { TEST_SUBJECT_OPTIONS } from '../components/three/FlameVisualization.jsx';
 import FireHazRPage from './FireHazRPage.jsx';
 import { FLAME_COMPARISON } from '../services/mockData.js';
+
+const SUBJECT_3D_OPTIONS = TEST_SUBJECT_OPTIONS.filter((item) => item.kind !== 'flame');
 
 const CHAMBER_PRESETS = [
   {
     id: 'normal',
-    label: 'Preset: Nominal Suit (21% O₂)',
+    label: 'Preset: Nominal (21% O₂)',
     oxygen: 21.0,
     airflow: 0.05,
     gravityIndex: 0,
@@ -15,7 +17,7 @@ const CHAMBER_PRESETS = [
   },
   {
     id: 'flames',
-    label: 'Preset: Suit in Flames (35% O₂)',
+    label: 'Preset: In Flames (35% O₂)',
     oxygen: 35.0,
     airflow: 0.14,
     gravityIndex: 1,
@@ -24,7 +26,7 @@ const CHAMBER_PRESETS = [
   },
   {
     id: 'burned',
-    label: 'Preset: Burned Suit / Flashover (85% O₂)',
+    label: 'Preset: Burned / Flashover (85% O₂)',
     oxygen: 85.0,
     airflow: 0.25,
     gravityIndex: 0,
@@ -38,6 +40,7 @@ export default function Flame3DPage() {
   const [airflow, setAirflow] = useState(0.05);
   const [gravityIndex, setGravityIndex] = useState(0);
   const [suitState, setSuitState] = useState('auto');
+  const [subjectType, setSubjectType] = useState('astronaut');
 
   const gravities = [
     { label: '0g ISS', g: 0.0, name: '0.00 g (Microgravity)' },
@@ -71,11 +74,15 @@ export default function Flame3DPage() {
 
   const zeroG = FLAME_COMPARISON.zeroG;
   const oneG = FLAME_COMPARISON.oneG;
+  const activeSubject = SUBJECT_3D_OPTIONS.find((item) => item.id === subjectType) ?? SUBJECT_3D_OPTIONS[0];
 
   return (
     <div
       style={{
         flex: 1,
+        width: '100%',
+        height: '100%',
+        minHeight: 0,
         overflowY: 'auto',
         padding: '20px 28px',
         display: 'flex',
@@ -139,7 +146,7 @@ export default function Flame3DPage() {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '15px', fontWeight: 700, color: '#f8fafc' }}>
-                  3D EVA Astronaut Suit Test
+                  3D {activeSubject.label} Test
                 </span>
                 <span
                   style={{
@@ -165,16 +172,41 @@ export default function Flame3DPage() {
                     ? 'BURNED / CHARRED'
                     : resolvedSuitState === 'flames'
                       ? 'ACTIVE FLAMES'
-                      : 'NOMINAL SUIT'}
+                      : 'NOMINAL'}
                 </span>
               </div>
               <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#64748b', marginTop: '2px' }}>
-                EVA Suit Material Response ({oxygen.toFixed(0)}% O₂)
+                {activeSubject.label} Material Response ({oxygen.toFixed(0)}% O₂)
               </div>
             </div>
             <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#94a3b8' }}>
               CAM-SUIT-3D
             </span>
+          </div>
+
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            {SUBJECT_3D_OPTIONS.map((opt) => {
+              const active = opt.id === subjectType;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setSubjectType(opt.id)}
+                  style={{
+                    fontSize: '10px',
+                    fontFamily: 'var(--font-mono)',
+                    padding: '4px 9px',
+                    borderRadius: '5px',
+                    border: active ? '1px solid #38bdf8' : '1px solid #1c2640',
+                    background: active ? 'rgba(56, 189, 248, 0.14)' : '#080f1c',
+                    color: active ? '#e0f2fe' : '#94a3b8',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
           </div>
 
           <div
@@ -187,7 +219,7 @@ export default function Flame3DPage() {
             }}
           >
             <FlameVisualization
-              type="astronaut"
+              type={subjectType}
               oxygen={oxygen}
               airflow={airflow}
               suitState={resolvedSuitState}
@@ -437,7 +469,7 @@ export default function Flame3DPage() {
       </div>
 
       {/* ── Full FireHazR Lab Panel ── */}
-      <FireHazRPage />
+      <FireHazRPage embedded />
     </div>
   );
 }

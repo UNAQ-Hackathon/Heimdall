@@ -11,9 +11,10 @@ import { OrbitControls, useGLTF, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import { Color, Object3D, Vector3 } from 'three';
 
-import { createSurfacePreview } from './surface-preview.js';
+import { createSurfacePreview, ISS_INTERIOR_PHASE_LABELS } from './surface-preview.js';
 import LowPolySpace from './LowPolySpace.jsx';
 import EnvironmentLandscape from './EnvironmentLandscape.jsx';
+import StationInteriorPreview from './StationInteriorPreview.jsx';
 import {
   getEnvironmentPerspective,
   sampleEnvironmentHeight,
@@ -60,7 +61,7 @@ const BODY_SPACE_TEXTURE = {
 };
 
 function sampleSurfaceGroundY(x, z, planetId, scene) {
-  if (planetId === 'earth' && scene?.tiles?.length) {
+  if (scene?.tiles?.length) {
     let bestTile = scene.tiles[0];
     let bestDist = Infinity;
     for (let i = 0; i < scene.tiles.length; i += 1) {
@@ -74,6 +75,32 @@ function sampleSurfaceGroundY(x, z, planetId, scene) {
     return bestTile.height;
   }
   return sampleEnvironmentHeight(x, z, planetId);
+}
+
+function createCubicAtmosphereScene(planetId, scene) {
+  if (scene.tiles?.length) return scene;
+  const palette = scene.ground ?? ['#64748b', '#94a3b8', '#475569'];
+  const tiles = [];
+  for (let row = 0; row < 24; row += 1) {
+    for (let column = 0; column < 24; column += 1) {
+      const x = (column - 11.5) * 2;
+      const z = (row - 11.5) * 2;
+      const isSun = planetId === 'sun';
+      const wave = isSun
+        ? Math.sin(x * 0.45 + Math.cos(z * 0.4)) * Math.cos(z * 0.35)
+        : Math.sin(z * 0.25 + Math.sin(x * 0.12) * 1.4);
+      const height = isSun
+        ? 0.9 + Math.max(0, wave) * 0.95 + Math.max(0, -z / 16) * 0.65
+        : 0.8 + (wave + 1) * 0.55 + Math.max(0, -z / 14) * 0.55;
+      const bandIdx = Math.abs(Math.floor((z * 0.35 + wave * 1.5))) % palette.length;
+      const isStorm =
+        (planetId === 'jupiter' || planetId === 'neptune') &&
+        Math.hypot((x + 4) / 6, (z + 8) / 4) < 1;
+      const color = isStorm && scene.accent ? scene.accent : palette[bandIdx];
+      tiles.push({ x, z, height, color });
+    }
+  }
+  return { ...scene, tiles, plants: [], rocks: [] };
 }
 
 /**
@@ -106,7 +133,7 @@ function SurfaceSkyBackdrop({ planetId, isAirless }) {
   );
 }
 
-function Terrain({ scene, clearCenter }) {
+function Terrain({ scene, clearCenter, emissive = false }) {
   const tiles = useRef(null);
 
   useLayoutEffect(() => {
@@ -142,7 +169,11 @@ function Terrain({ scene, clearCenter }) {
     <>
       <instancedMesh ref={tiles} args={[undefined, undefined, scene.tiles.length]}>
         <boxGeometry />
-        <meshStandardMaterial flatShading roughness={1} />
+        {emissive ? (
+          <meshBasicMaterial toneMapped={false} />
+        ) : (
+          <meshStandardMaterial flatShading roughness={1} />
+        )}
       </instancedMesh>
       {filteredPlants.map(({ x, y, z, scale }, index) => (
         <group key={index} position={[x, y, z]} scale={scale}>
@@ -502,10 +533,108 @@ function PlanetaryLandingSequence({ planetId, zoneId, scene, view, replayKey }) 
   );
 }
 
-export default function PlanetSurfacePreview({ zoneId, planetId = 'earth' }) {
+export function IssInteriorPreviewStage({ showCaption = false }) {
   const [replayKey, setReplayKey] = useState(0);
-  const scene = useMemo(() => createSurfacePreview(zoneId, planetId), [zoneId, planetId]);
-  const view = getEnvironmentPerspective(planetId);
+  const [issPhase, setIssPhase] = useState('pressurize');
+  const phaseLabel =
+    ISS_INTERIOR_PHASE_LABELS[issPhase] ?? ISS_INTERIOR_PHASE_LABELS.pressurize;
+  const phaseColor =
+    issPhase === 'sealed'
+      ? '#34d399'
+      : issPhase === 'ingress'
+        ? '#38bdf8'
+        : '#fbbf24';
+
+  return (
+    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+      <StationInteriorPreview replayKey={replayKey} onPhaseChange={setIssPhase} />
+
+      <div
+        aria-live="polite"
+        style={{
+          position: 'absolute',
+          bottom: '8px',
+          left: '8px',
+          zIndex: 10,
+          padding: '4px 9px',
+          borderRadius: '6px',
+          fontSize: '9.5px',
+          fontFamily: 'var(--font-mono)',
+          background: 'rgba(10, 15, 29, 0.85)',
+          border: '1px solid rgba(56, 189, 248, 0.3)',
+          color: phaseColor,
+          backdropFilter: 'blur(8px)',
+        }}
+      >
+        ● {phaseLabel}
+      </div>
+
+      {showCaption && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '8px',
+            right: '8px',
+            zIndex: 10,
+            padding: '4px 9px',
+            borderRadius: '6px',
+            fontSize: '9.5px',
+            fontFamily: 'var(--font-mono)',
+            background: 'rgba(10, 15, 29, 0.82)',
+            border: '1px solid rgba(148, 163, 184, 0.25)',
+            color: '#94a3b8',
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          Drag to look around · CIR / MSG / Cupola
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => {
+          setIssPhase('pressurize');
+          setReplayKey((k) => k + 1);
+        }}
+        style={{
+          position: 'absolute',
+          top: '8px',
+          right: '8px',
+          zIndex: 10,
+          padding: '4px 9px',
+          borderRadius: '6px',
+          fontSize: '10px',
+          fontFamily: 'var(--font-mono)',
+          background: 'rgba(10, 15, 29, 0.82)',
+          border: '1px solid rgba(56, 189, 248, 0.35)',
+          color: '#e2e8f0',
+          cursor: 'pointer',
+          backdropFilter: 'blur(8px)',
+        }}
+      >
+        ↻ Replay Airlock Entry
+      </button>
+    </div>
+  );
+}
+
+function PlanetarySurfacePreviewStage({ zoneId, planetId }) {
+  const [replayKey, setReplayKey] = useState(0);
+
+  const rawScene = useMemo(() => createSurfacePreview(zoneId, planetId), [planetId, zoneId]);
+  const scene = useMemo(
+    () => createCubicAtmosphereScene(planetId, rawScene),
+    [planetId, rawScene]
+  );
+  const view = useMemo(
+    () => ({
+      ...getEnvironmentPerspective(planetId),
+      position: [0, 3.2, 8],
+      target: [0, 2, -10],
+      fov: 52,
+    }),
+    [planetId]
+  );
   const offset = new Vector3(...view.position).sub(new Vector3(...view.target));
   const polar = Math.acos(offset.y / offset.length());
   const azimuth = Math.atan2(offset.x, offset.z);
@@ -565,10 +694,34 @@ export default function PlanetSurfacePreview({ zoneId, planetId = 'earth' }) {
           )}
         </Suspense>
 
-        {planetId === 'earth' ? (
-          <Terrain scene={scene} clearCenter={landingZoneCenter} />
-        ) : (
-          <EnvironmentLandscape scene={scene} planetId={planetId} />
+        <Terrain
+          scene={scene}
+          clearCenter={landingZoneCenter}
+          emissive={scene.kind === 'plasma'}
+        />
+        {planetId === 'saturn' && (
+          <group position={[0, -36, 12]} rotation={[-Math.PI / 2 + 0.54, 0, -0.22]}>
+            {[
+              { inner: 96, outer: 103, color: '#a8926a', opacity: 0.28 },
+              { inner: 104, outer: 111, color: '#e6d3a7', opacity: 0.58 },
+              { inner: 111.6, outer: 117.5, color: '#d4bd8d', opacity: 0.52 },
+              // Cassini Division gap between 117.5 and 120.5
+              { inner: 120.5, outer: 126.5, color: '#cbb589', opacity: 0.42 },
+              { inner: 127.2, outer: 129.5, color: '#b49e74', opacity: 0.26 },
+            ].map((band, idx) => (
+              <mesh key={idx}>
+                <ringGeometry args={[band.inner, band.outer, 128]} />
+                <meshBasicMaterial
+                  color={band.color}
+                  transparent
+                  opacity={band.opacity}
+                  side={THREE.DoubleSide}
+                  depthWrite={false}
+                  fog={false}
+                />
+              </mesh>
+            ))}
+          </group>
         )}
 
         <OrbitControls
@@ -609,4 +762,11 @@ export default function PlanetSurfacePreview({ zoneId, planetId = 'earth' }) {
       )}
     </div>
   );
+}
+
+export default function PlanetSurfacePreview({ zoneId, planetId = 'earth' }) {
+  if (planetId === 'iss') {
+    return <IssInteriorPreviewStage />;
+  }
+  return <PlanetarySurfacePreviewStage zoneId={zoneId} planetId={planetId} />;
 }

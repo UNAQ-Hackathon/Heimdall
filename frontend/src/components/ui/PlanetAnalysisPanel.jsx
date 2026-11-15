@@ -14,6 +14,7 @@ export default function PlanetAnalysisPanel({
   onClose,
   onSelectPlanet,
   onOpenTestbench,
+  onEnterIssAirlock,
 }) {
   const titleRef = useRef(null);
   const appCtx = useApp();
@@ -49,7 +50,12 @@ export default function PlanetAnalysisPanel({
   };
 
   const handleJump = (targetPlanetId) => {
-    const targetName = targetPlanetId === 'moon' ? 'Moon' : 'Mars';
+    const targetName =
+      targetPlanetId === 'iss'
+        ? 'ISS'
+        : targetPlanetId === 'moon'
+          ? 'Moon'
+          : 'Mars';
     if (appCtx?.setScenarioKey) {
       appCtx.setScenarioKey(targetPlanetId);
     }
@@ -93,7 +99,9 @@ export default function PlanetAnalysisPanel({
               color: '#b7cbe4',
             }}
           >
-            {planet.label} · Surface Preview
+            {planet.id === 'iss'
+              ? `${planet.label} · Airlock & Module Interior`
+              : `${planet.label} · Surface Preview`}
           </span>
         </div>
 
@@ -202,9 +210,31 @@ export default function PlanetAnalysisPanel({
             textAlign: 'center',
           }}
         >
-          Interactive 3D low-poly landscape · Drag to look around
+          {planet.id === 'iss'
+            ? 'Interactive 3D ISS airlock & module interior · Drag to look around'
+            : 'Interactive 3D low-poly landscape · Drag to look around'}
         </figcaption>
       </figure>
+
+      {planet.id === 'iss' && onEnterIssAirlock && (
+        <button
+          type="button"
+          onClick={onEnterIssAirlock}
+          style={{
+            width: '100%',
+            padding: '8px 12px',
+            borderRadius: '8px',
+            border: '1px solid rgba(56, 189, 248, 0.45)',
+            background: 'rgba(56, 189, 248, 0.16)',
+            color: '#e0f2fe',
+            fontSize: '11.5px',
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          Board ISS · Expand Airlock &amp; Lab View
+        </button>
+      )}
 
       {/* Surface Gravity & Distance Pills */}
       <div
@@ -223,8 +253,12 @@ export default function PlanetAnalysisPanel({
             fontFamily: 'var(--font-mono)',
           }}
         >
-          <div style={{ color: '#64748b', fontSize: '9px' }}>SURFACE GRAVITY</div>
-          <strong style={{ color: '#f8fafc', fontSize: '12px' }}>{planet.gravityG} g</strong>
+          <div style={{ color: '#64748b', fontSize: '9px' }}>
+            {planet.id === 'iss' ? 'MICROGRAVITY REGIME' : 'SURFACE GRAVITY'}
+          </div>
+          <strong style={{ color: '#f8fafc', fontSize: '12px' }}>
+            {planet.id === 'iss' ? '~0g (Free Fall LEO)' : `${planet.gravityG} g`}
+          </strong>
         </div>
         <div
           style={{
@@ -235,7 +269,9 @@ export default function PlanetAnalysisPanel({
             fontFamily: 'var(--font-mono)',
           }}
         >
-          <div style={{ color: '#64748b', fontSize: '9px' }}>SOLAR DISTANCE</div>
+          <div style={{ color: '#64748b', fontSize: '9px' }}>
+            {planet.id === 'iss' ? 'ORBITAL ALTITUDE' : 'SOLAR DISTANCE'}
+          </div>
           <strong style={{ color: '#f8fafc', fontSize: '12px' }}>
             {planet.distanceFromSun}
           </strong>
@@ -262,7 +298,25 @@ export default function PlanetAnalysisPanel({
           <span style={{ color: '#cbd5e1', lineHeight: 1.4 }}>
             Spacecraft fire risk depends on a pressurized habitat&apos;s internal atmosphere and gravity.
           </span>
-          <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+          <div style={{ display: 'flex', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => handleJump('iss')}
+              style={{
+                flex: 1,
+                padding: '6px 10px',
+                borderRadius: '6px',
+                background: 'rgba(56, 189, 248, 0.2)',
+                border: '1px solid rgba(56, 189, 248, 0.45)',
+                color: '#f8fafc',
+                fontSize: '11px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Board ISS
+            </button>
             <button
               type="button"
               onClick={() => handleJump('moon')}
@@ -276,6 +330,7 @@ export default function PlanetAnalysisPanel({
                 fontSize: '11px',
                 fontWeight: 600,
                 cursor: 'pointer',
+                whiteSpace: 'nowrap',
               }}
             >
               Jump to Moon
@@ -293,6 +348,7 @@ export default function PlanetAnalysisPanel({
                 fontSize: '11px',
                 fontWeight: 600,
                 cursor: 'pointer',
+                whiteSpace: 'nowrap',
               }}
             >
               Jump to Mars
@@ -331,6 +387,10 @@ export default function PlanetAnalysisPanel({
                       key={key}
                       type="button"
                       onClick={() => {
+                        if (key === 'iss') {
+                          handleJump('iss');
+                          return;
+                        }
                         setEarthSubScenario(key);
                         appCtx?.setScenarioKey?.(key);
                       }}

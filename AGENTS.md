@@ -38,6 +38,7 @@ cd frontend && npm run dev       # http://localhost:5173
 - AI calls go through `api/src/services/devin.service.js` (Devin API + SWE model, `DEVIN_*` env vars). The model must never invent numbers — prompts enforce this.
 - Ranking is transparent: `ranking.service.js` returns per-factor score breakdowns.
 - Python runs from the `analytics/` dir so `app.*` imports resolve.
+- For a non-default local API port, set `VITE_API_URL=/api` and `VITE_API_PROXY_TARGET=http://localhost:5080` in ignored `frontend/.env.local`; Vite retains port 5000 as its default proxy target when no override exists. Keep database and Devin credentials exclusively in ignored `api/.env`, never in frontend `VITE_*` variables. Restart the API after changing its environment; restart Vite if needed to reload local environment settings.
 
 ## Planet viewer integration
 

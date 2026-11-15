@@ -2,6 +2,41 @@ import env from '../config/env.js';
 import HttpError from '../utils/http-error.js';
 
 const { apiKey, apiBase, model } = env.devin;
+const gemini = env.gemini ?? {};
+
+const geminiBudget = {
+  limit: Math.max(1000, Number(gemini.tokenLimit ?? 120000)),
+  usedTokens: 0,
+  promptTokens: 0,
+  outputTokens: 0,
+  requests: 0,
+};
+
+export function getGeminiTokenBudget() {
+  const remainingTokens = Math.max(0, geminiBudget.limit - geminiBudget.usedTokens);
+  const percentUsed =
+    geminiBudget.limit > 0
+      ? Number(Math.min(100, (geminiBudget.usedTokens / geminiBudget.limit) * 100).toFixed(1))
+      : 0;
+  const alertLevel =
+    percentUsed >= 100
+      ? 'exhausted'
+      : percentUsed >= 85
+        ? 'critical'
+        : percentUsed >= 60
+          ? 'warning'
+          : 'ok';
+  return {
+    limit: geminiBudget.limit,
+    usedTokens: geminiBudget.usedTokens,
+    promptTokens: geminiBudget.promptTokens,
+    outputTokens: geminiBudget.outputTokens,
+    remainingTokens,
+    percentUsed,
+    requests: geminiBudget.requests,
+    alertLevel,
+  };
+}
 
 export const PSI_FALLBACK_DOCS = [
   {
@@ -110,6 +145,82 @@ export function extractCitations(docs = [], answerText = '') {
   return matched.length ? matched : normalizedDocs.slice(0, 2);
 }
 
+function parseDevinError(text, fallback) {
+  try {
+    const parsed = JSON.parse(text);
+    const detail = parsed?.detail || parsed?.message || fallback;
+    const code = parsed?.error_code ? ` (${parsed.error_code})` : '';
+    return { message: `${detail}${code}`, errorCode: parsed?.error_code ?? null };
+  } catch {
+    return { message: text || fallback, errorCode: null };
+  }
+}
+
+export async function getDevinAccountStatus() {
+  if (gemini.apiKey) {
+    const res = await fetch(
+      `${gemini.apiBase}/v1beta/models/${encodeURIComponent(gemini.model)}?key=${encodeURIComponent(gemini.apiKey)}`
+    ).catch(() => null);
+    if (!res || !res.ok) {
+      return {
+        connected: false,
+        provider: 'gemini',
+        model: gemini.model,
+        quotaStatus: res ? `error_${res.status}` : 'offline',
+      };
+    }
+    const info = await res.json().catch(() => ({}));
+    return {
+      connected: true,
+      provider: 'gemini',
+      model: gemini.model,
+      displayName: info.displayName ?? 'Gemini',
+      inputTokenLimit: info.inputTokenLimit ?? null,
+      outputTokenLimit: info.outputTokenLimit ?? null,
+      tokenBudget: getGeminiTokenBudget(),
+      quotaStatus: getGeminiTokenBudget().alertLevel === 'exhausted' ? 'budget_exhausted' : 'connected',
+    };
+  }
+  if (!apiKey) {
+    return {
+      connected: false,
+      model,
+      sessionsUsed: null,
+      activeSessions: null,
+      quotaStatus: 'unconfigured',
+    };
+  }
+  const res = await fetch(`${apiBase}/v1/sessions?limit=100`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    const { message, errorCode } = parseDevinError(text, `HTTP ${res.status}`);
+    return {
+      connected: false,
+      model,
+      sessionsUsed: null,
+      activeSessions: null,
+      quotaStatus: errorCode ?? `error_${res.status}`,
+      detail: message,
+    };
+  }
+  const data = await res.json();
+  const sessions = Array.isArray(data.sessions) ? data.sessions : [];
+  const activeSessions = sessions.filter((s) =>
+    ['working', 'running', 'claiming', 'resuming'].includes(
+      String(s.status_enum ?? s.status ?? '').toLowerCase()
+    )
+  ).length;
+  return {
+    connected: true,
+    model,
+    sessionsUsed: sessions.length,
+    activeSessions,
+    quotaStatus: 'connected',
+  };
+}
+
 export async function getDevinSessionStatus(sessionId) {
   const res = await fetch(`${apiBase}/v1/sessions/${encodeURIComponent(sessionId)}`, {
     headers: authHeaders(),
@@ -175,8 +286,10 @@ async function runDevinSessionPrompt(prompt, { sessionId, waitMs = 15000 } = {})
 
     if (!createRes.ok) {
       const text = await createRes.text();
-      throw new HttpError(502, `Devin session creation error ${createRes.status}`, {
+      const { message, errorCode } = parseDevinError(text, `HTTP ${createRes.status}`);
+      throw new HttpError(502, `Devin session creation error ${createRes.status}: ${message}`, {
         body: text,
+        errorCode,
       });
     }
 
@@ -216,11 +329,95 @@ async function runDevinSessionPrompt(prompt, { sessionId, waitMs = 15000 } = {})
   };
 }
 
+async function chatWithGemini(messages, { temperature = 0.2 } = {}) {
+  const systemText = messages
+    .filter((m) => m.role === 'system')
+    .map((m) => m.content)
+    .join('\n\n');
+  const contents = messages
+    .filter((m) => m.role !== 'system')
+    .map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }));
+
+  if (geminiBudget.usedTokens >= geminiBudget.limit) {
+    throw new HttpError(
+      429,
+      `Gemini API token budget limit reached (${geminiBudget.usedTokens.toLocaleString()}/${geminiBudget.limit.toLocaleString()} tokens).`
+    );
+  }
+
+  const res = await fetch(
+    `${gemini.apiBase}/v1beta/models/${encodeURIComponent(gemini.model)}:generateContent?key=${encodeURIComponent(gemini.apiKey)}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...(systemText ? { systemInstruction: { parts: [{ text: systemText }] } } : {}),
+        contents,
+        generationConfig: {
+          temperature,
+          maxOutputTokens: Math.max(128, Number(gemini.maxOutputTokens ?? 1024)),
+        },
+      }),
+    }
+  );
+
+  if (!res.ok) {
+    const text = await res.text();
+    let msg = `HTTP ${res.status}`;
+    try {
+      const parsed = JSON.parse(text);
+      msg = parsed?.error?.message ?? msg;
+    } catch {
+      if (text) msg = text;
+    }
+    const status = res.status === 503 || res.status === 429 ? res.status : 502;
+    throw new HttpError(status, `Gemini API error ${res.status}: ${msg}`, { body: text });
+  }
+
+  const data = await res.json();
+  const usage = data.usageMetadata ?? null;
+  if (usage) {
+    const promptTok = Number(usage.promptTokenCount ?? 0);
+    const outTok = Number(usage.candidatesTokenCount ?? 0);
+    const totalTok = Number(usage.totalTokenCount ?? promptTok + outTok);
+    geminiBudget.promptTokens += promptTok;
+    geminiBudget.outputTokens += outTok;
+    geminiBudget.usedTokens += totalTok;
+    geminiBudget.requests += 1;
+  }
+
+  const content =
+    data.candidates?.[0]?.content?.parts
+      ?.map((p) => p.text ?? '')
+      .join('')
+      .trim() ?? '';
+
+  return {
+    content,
+    status: 'completed',
+    sessionId: null,
+    sessionUrl: null,
+    sessionStatus: 'completed',
+    baselineCount: 0,
+    usage,
+    tokenBudget: getGeminiTokenBudget(),
+    model: gemini.model,
+    provider: 'gemini',
+  };
+}
+
 /**
- * Devin API client — supports both `api.devin.ai/v1/sessions` (Devin agent API)
- * and OpenAI-compatible `/v1/chat/completions` endpoints.
+ * AI client — uses Google AI Studio (Gemini) when GEMINI_API_KEY is set,
+ * otherwise falls back to Devin API.
  */
 async function chat(messages, { temperature = 0.2, sessionId, waitMs } = {}) {
+  if (gemini.apiKey) {
+    return chatWithGemini(messages, { temperature });
+  }
+
   if (isDevinSessionsApi()) {
     const prompt = messages
       .map((m) => `[${m.role.toUpperCase()}]\n${m.content}`)
@@ -272,24 +469,40 @@ export async function summarizeInvestigation(investigation) {
 }
 
 const RAG_SYSTEM = [
-  'You are Heimdall AI Copilot, a scientific assistant for NASA PSI spacecraft fire safety investigations.',
-  'IMPORTANT: Do NOT clone repositories, do NOT browse files, and do NOT run shell commands. Reply immediately and concisely in chat (2-4 sentences).',
-  'Use ONLY the provided NASA PSI context excerpts below. Cite the study acronym (e.g. Saffire-III, BASS-II, ACME, FLEX-2, SAME) for every claim.',
-  'Never invent experimental numbers. If the context does not contain a requested measurement, state that explicitly.',
+  'You are Heimdall AI Copilot powered by Gemini, a scientific assistant for NASA PSI spacecraft fire safety investigations.',
+  'You have READ-ONLY access to the live MongoDB `heimdall` database snapshot provided below (you can read and summarize collections, counts, investigations, experiments, and scenarios, but NEVER modify or write to the database).',
+  'Use ONLY the provided MongoDB read-only snapshot and NASA PSI context excerpts below. Cite study acronyms or slugs (e.g. Saffire-III, BASS-II, ACME, FLEX-2, SAME) and exact database counts when summarizing MongoDB.',
+  'Never invent experimental numbers or database records. If a requested measurement is missing, state that explicitly.',
 ].join(' ');
 
 export async function answerQuestion(
   question,
   contextDocs = [],
-  { sessionId, audience = 'Engineer', scenario = null } = {}
+  { sessionId, audience = 'Engineer', scenario = null, mongoContext = null } = {}
 ) {
   const activeDocs = contextDocs.length ? contextDocs : PSI_FALLBACK_DOCS;
   const context = activeDocs
     .map(
       (d, i) =>
-        `[${i + 1}] ${d.acronym ?? d.title}: ${d.title ?? ''}\nObjective: ${d.objective ?? ''}\nDetails: ${d.aiSummary ?? ''}`
+        `[${i + 1}] ${d.acronym ?? d.name ?? d.title}: ${d.title ?? d.family ?? ''}\nObjective: ${d.objective ?? ''}\nDetails: ${d.aiSummary ?? ''}`
     )
     .join('\n\n');
+
+  const mongoNote = mongoContext?.connected
+    ? `Live MongoDB Read-Only Snapshot (db: ${mongoContext.database}):\n${JSON.stringify(
+        {
+          collections: mongoContext.collections,
+          investigations: mongoContext.investigations,
+          experimentSummaryByStudy: mongoContext.experimentSummary,
+          scenarios: mongoContext.scenarios,
+          ...(mongoContext.matchedExperiments?.length
+            ? { matchedExperiments: mongoContext.matchedExperiments }
+            : {}),
+        },
+        null,
+        2
+      )}`
+    : 'MongoDB Status: Not connected (offline).';
 
   const scenarioNote = scenario
     ? `Active Mission Scenario: ${scenario.label ?? scenario.id} (Gravity: ${scenario.gravity ?? '0g'}, O2: ${scenario.oxygenPct ?? 21}%, Pressure: ${scenario.pressurePsi ?? 14.7} psi).`
@@ -304,7 +517,7 @@ export async function answerQuestion(
       { role: 'system', content: `${RAG_SYSTEM} ${audienceNote}` },
       {
         role: 'user',
-        content: `${scenarioNote ? `${scenarioNote}\n\n` : ''}NASA PSI Context:\n${context}\n\nUser Question: ${question}`,
+        content: `${scenarioNote ? `${scenarioNote}\n\n` : ''}${mongoNote}\n\nNASA PSI Context:\n${context}\n\nUser Question: ${question}`,
       },
     ],
     { sessionId }
@@ -318,6 +531,35 @@ export async function answerQuestion(
     sessionStatus: res.sessionStatus,
     baselineCount: res.baselineCount,
     citations: extractCitations(activeDocs, res.content ?? question),
-    model,
+    model: res.model ?? model,
+    provider: res.provider ?? (gemini.apiKey ? 'gemini' : 'devin'),
+    usage: res.usage ?? null,
+    tokenBudget: res.tokenBudget ?? (gemini.apiKey ? getGeminiTokenBudget() : null),
+  };
+}
+
+export async function interpretFirehazrResult({ conditions, result, study = null }) {
+  const system = [
+    'You are a NASA spacecraft fire safety specialist explaining a FireHazR (KNN FLEX v3) droplet-burn test result.',
+    'Write two short, clear sections in plain text (no markdown headers needed, use **bold** sparingly):',
+    '1) Technical interpretation (2-3 sentences): explain what the returned burn duration (or abstention reason) means given the fuel, pressure (mmHg), droplet diameter (mm), O2 fraction, and any CO2/He diluent, citing exact numbers from the JSON.',
+    '2) Mission relevance (1-2 sentences): connect this condition to NASA PSI research (FLEX/FLEX-2 suppression, Moon/Mars elevated-O2 habitats, or EVA safety).',
+    'STRICT RULE: Never invent numbers or claim fire probability/safety ratings. Only cite numbers present in the JSON.',
+  ].join(' ');
+
+  const res = await chat([
+    { role: 'system', content: system },
+    {
+      role: 'user',
+      content: JSON.stringify({ conditions, result, linkedPsiStudy: study }, null, 2),
+    },
+  ]);
+
+  return {
+    interpretation: res.content,
+    model: res.model ?? model,
+    provider: res.provider ?? (gemini.apiKey ? 'gemini' : 'devin'),
+    usage: res.usage ?? null,
+    tokenBudget: res.tokenBudget ?? (gemini.apiKey ? getGeminiTokenBudget() : null),
   };
 }

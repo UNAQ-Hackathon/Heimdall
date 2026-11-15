@@ -1,19 +1,21 @@
-import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import { lazy, Suspense, useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import MissionPlanetInspection from '../components/ui/MissionPlanetInspection.jsx';
 import FireHazRPage from './FireHazRPage.jsx';
 import FireHazrPredictor from '../components/ui/FireHazrPredictor.jsx';
 import SpacecraftSelector from '../components/ui/SpacecraftSelector.jsx';
 import SolarSystemScene from '../components/three/SolarSystemScene.jsx';
+
+const PlanetSurfacePreview = lazy(() => import('../components/three/PlanetSurfacePreview.jsx'));
 import { SCENARIOS, useApp } from '../context/AppContext.jsx';
 import { api } from '../services/api.js';
 import { FACTOR_LABELS, rankLocalInvestigations } from '../services/ranking.js';
-import { PLANETS } from '../services/mockData.js';
+import { PLANETS, ISS_DESTINATION } from '../services/mockData.js';
 import '../styles/mission-hub.css';
 
 const SCENARIO_TO_PLANET = {
   earth: 'Earth',
-  iss: 'Earth',
+  iss: 'ISS',
   moon: 'Moon',
   mars: 'Mars',
   suit: 'Earth',
@@ -53,6 +55,7 @@ export default function MissionHub() {
   const [paused, setPaused] = useState(false);
   const [weightsOpen, setWeightsOpen] = useState(false);
   const [panelCollapsed, setPanelCollapsed] = useState(false);
+  const [issAirlockModalOpen, setIssAirlockModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(() => {
     const tab = searchParams.get('tab');
     return ['ranking', 'whatif', 'prediction'].includes(tab) ? tab : 'prediction';
@@ -60,6 +63,21 @@ export default function MissionHub() {
   const [shipFile, setShipFile] = useState('naveAzulNuevo.glb');
   const navigate = useNavigate();
   const targetRef = useRef(null);
+
+  useEffect(() => {
+    if (focusPlanet !== 'ISS') {
+      setIssAirlockModalOpen(false);
+    }
+  }, [focusPlanet]);
+
+  useEffect(() => {
+    if (!issAirlockModalOpen) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') setIssAirlockModalOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [issAirlockModalOpen]);
 
   useEffect(() => {
     const qPlanet = searchParams.get('planet');
@@ -94,7 +112,10 @@ export default function MissionHub() {
   }, [scenario, category, weights, localRanked]);
 
   const activePlanetObj = useMemo(
-    () => PLANETS.find((p) => p.name === focusPlanet) ?? null,
+    () =>
+      focusPlanet === 'ISS'
+        ? ISS_DESTINATION
+        : PLANETS.find((p) => p.name === focusPlanet) ?? null,
     [focusPlanet]
   );
 
@@ -217,6 +238,110 @@ export default function MissionHub() {
                 </span>
               </div>
             </div>
+          </div>
+
+          {/* Live Scenario-Driven PSI Ranking Preview */}
+          {rankedItems.length > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px',
+                padding: '8px 10px',
+                borderRadius: '8px',
+                background: 'rgba(15, 23, 42, 0.45)',
+                border: '1px solid var(--border-subtle)',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  fontSize: '10px',
+                  fontFamily: 'var(--font-mono)',
+                  color: '#94a3b8',
+                }}
+              >
+                <span>TOP PSI RANKING · {scenario.label.toUpperCase()}</span>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('ranking')}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#60a5fa',
+                    fontSize: '10px',
+                    fontFamily: 'var(--font-mono)',
+                    cursor: 'pointer',
+                    padding: 0,
+                  }}
+                >
+                  All ({rankedItems.length}) ↗
+                </button>
+              </div>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {rankedItems.slice(0, 3).map((item, idx) => {
+                  const inv = item.investigation ?? item;
+                  const targetId = inv.id ?? inv.slug ?? inv.psiId ?? item.studyId ?? item._id;
+                  const pctScore = Math.round((item.score ?? item.ranking?.score ?? 0) * 100);
+                  return (
+                    <button
+                      key={inv.psiId ?? targetId ?? idx}
+                      type="button"
+                      onClick={() => navigate(`/study/${targetId}`)}
+                      style={{
+                        flex: '1 1 90px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '6px',
+                        padding: '5px 8px',
+                        borderRadius: '6px',
+                        background: '#0b1322',
+                        border: '1px solid #263449',
+                        color: '#e2e8f0',
+                        fontSize: '11px',
+                        fontFamily: 'var(--font-mono)',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                      }}
+                    >
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        #{idx + 1} {inv.acronym ?? inv.name ?? targetId}
+                      </span>
+                      <strong style={{ color: '#60a5fa', fontSize: '10.5px' }}>
+                        {pctScore}
+                      </strong>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Concise Mission & PSI Context in Main Sidebar */}
+          <div
+            style={{
+              border: '1px solid #263449',
+              borderRadius: '8px',
+              padding: '10px 12px',
+              background: '#0b1322',
+              fontSize: '11.5px',
+              lineHeight: 1.5,
+              color: '#cbd5e1',
+            }}
+          >
+            <strong style={{ display: 'block', color: '#93c5fd', marginBottom: '4px', fontSize: '12px' }}>
+              Why these NASA PSI fire tests matter
+            </strong>
+            <p style={{ margin: 0 }}>
+              In microgravity, flames lack buoyancy and form spherical diffusion clouds, making fire
+              prevention (<strong>BASS</strong>, <strong>Saffire</strong>, <strong>ACME</strong>),
+              detection (<strong>SAME</strong>), and suppression (<strong>FLEX</strong>) critical
+              for spacecraft, Moon bases (<strong>≥30% O₂, ≤10.2 psi</strong>), and Mars habitats
+              where 0g and 1g data bound partial-gravity risk.
+            </p>
           </div>
 
           {/* Clean Segmented Mode Switcher: PSI Studies vs Fire Hazard Lab */}
@@ -402,6 +527,42 @@ export default function MissionHub() {
                 </div>
               )}
 
+              <details
+                style={{
+                  border: '1px solid #263449',
+                  borderRadius: '8px',
+                  padding: '9px 12px',
+                  background: '#0b1322',
+                  fontSize: '11.5px',
+                  color: '#cbd5e1',
+                  lineHeight: 1.5,
+                }}
+              >
+                <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#93c5fd' }}>
+                  What are these NASA PSI investigations?
+                </summary>
+                <p style={{ margin: '8px 0 4px' }}>
+                  NASA&apos;s Physical Science Informatics (PSI) database groups microgravity fire
+                  research into three safety pillars:
+                </p>
+                <ul style={{ margin: '4px 0 0', paddingLeft: '16px', display: 'grid', gap: '4px' }}>
+                  <li>
+                    <strong>Prevention &amp; Flammability:</strong> <em>BASS / BASS-II</em> &amp;{' '}
+                    <em>Saffire-I/II/III</em> (solid fabrics/plastics in MSG/SPICE &amp; Cygnus);{' '}
+                    <em>ACME</em> (6 gas-flame tests in CIR, including <em>BRE</em>,{' '}
+                    <em>CFI-G</em> up to 85% O₂, and <em>E-FIELD Flames</em>).
+                  </li>
+                  <li>
+                    <strong>Detection:</strong> <em>SAME / SAME-R</em> (smoke aerosol sizing in
+                    MSG; instrument also used in <em>DAFT / DAFT-2</em> for dust).
+                  </li>
+                  <li>
+                    <strong>Suppression:</strong> <em>FLEX / FLEX-2</em> (liquid droplet burning in
+                    CIR/MDCA with CO₂ and He diluents).
+                  </li>
+                </ul>
+              </details>
+
               {/* Clean, Minimalist Study Cards */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {rankedItems.map(({ investigation: inv, score, breakdown }, idx) => {
@@ -493,10 +654,6 @@ export default function MissionHub() {
                           fontSize: '11.5px',
                           color: '#94a3b8',
                           lineHeight: 1.45,
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
                         }}
                       >
                         {audience === 'Engineer'
@@ -539,6 +696,38 @@ export default function MissionHub() {
           overflow: 'hidden',
         }}
       >
+        {/* Edge Tab Handle to Collapse / Expand Sidebar */}
+        <button
+          type="button"
+          aria-label={panelCollapsed ? 'Open sidebar' : 'Close sidebar'}
+          title={panelCollapsed ? 'Open sidebar' : 'Close sidebar'}
+          onClick={() => setPanelCollapsed(!panelCollapsed)}
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            zIndex: 30,
+            width: '20px',
+            height: '52px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(13, 19, 33, 0.9)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid var(--border-subtle)',
+            borderLeft: 'none',
+            borderRadius: '0 8px 8px 0',
+            color: '#94a3b8',
+            fontSize: '15px',
+            lineHeight: 1,
+            cursor: 'pointer',
+            boxShadow: '4px 0 14px rgba(0, 0, 0, 0.4)',
+          }}
+        >
+          {panelCollapsed ? '›' : '‹'}
+        </button>
+
         {/* Minimalist Top Bar Over 3D Scene */}
         <div
           style={{
@@ -555,42 +744,43 @@ export default function MissionHub() {
             flexWrap: 'wrap',
           }}
         >
-          {/* Left: Panel Toggle + Spacecraft Selector (Planet selection lives exclusively in the bottom dock) */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              padding: '5px 12px',
-              borderRadius: '9999px',
-              background: 'rgba(10, 15, 29, 0.82)',
-              backdropFilter: 'blur(12px)',
-              border: '1px solid var(--border-subtle)',
-              pointerEvents: 'auto',
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => setPanelCollapsed(!panelCollapsed)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: '#94a3b8',
-                fontSize: '11px',
-                fontFamily: 'var(--font-mono)',
-                cursor: 'pointer',
-                padding: '2px 6px',
-              }}
-            >
-              {panelCollapsed ? '☰ Panel' : '✕ Panel'}
-            </button>
-
-            <span style={{ width: '1px', height: '14px', background: 'var(--border-subtle)' }} />
+          {/* Left: Spacecraft Selector */}
+          <div style={{ pointerEvents: 'auto' }}>
             <SpacecraftSelector shipFile={shipFile} onSelect={setShipFile} />
           </div>
 
-          {/* Right: Pause Orbits */}
-          <div style={{ display: 'flex', gap: '8px', pointerEvents: 'auto' }}>
+          {/* Right: Dock/Board ISS Action + Pause Orbits */}
+          <div style={{ display: 'flex', gap: '8px', pointerEvents: 'auto', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setScenarioKey('iss');
+                if (focusPlanet !== 'ISS') {
+                  setFocusPlanet('ISS');
+                } else {
+                  setIssAirlockModalOpen(true);
+                }
+              }}
+              style={{
+                background:
+                  focusPlanet === 'ISS'
+                    ? 'rgba(56, 189, 248, 0.24)'
+                    : 'rgba(10, 15, 29, 0.85)',
+                backdropFilter: 'blur(12px)',
+                border:
+                  focusPlanet === 'ISS'
+                    ? '1px solid rgba(56, 189, 248, 0.6)'
+                    : '1px solid rgba(56, 189, 248, 0.35)',
+                borderRadius: '9999px',
+                padding: '6px 13px',
+                color: '#e0f2fe',
+                fontSize: '11px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              {focusPlanet === 'ISS' ? 'Enter ISS Airlock' : 'Dock & Board ISS'}
+            </button>
             <button
               type="button"
               onClick={() => setPaused(!paused)}
@@ -651,7 +841,11 @@ export default function MissionHub() {
           >
             Overview
           </button>
-          {PLANETS.map((p) => {
+          {[
+            ...PLANETS.slice(0, 4),
+            ISS_DESTINATION,
+            ...PLANETS.slice(4),
+          ].map((p) => {
             const active = focusPlanet === p.name;
             return (
               <button
@@ -697,7 +891,115 @@ export default function MissionHub() {
               setPanelCollapsed(false);
               setActiveTab('whatif');
             }}
+            onEnterIssAirlock={() => setIssAirlockModalOpen(true)}
           />
+        )}
+
+        {/* Expanded ISS Airlock & Pressurized Module Interior Modal */}
+        {issAirlockModalOpen && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="ISS Quest Airlock & Module Interior"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) setIssAirlockModalOpen(false);
+            }}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 40,
+              background: 'rgba(2, 6, 17, 0.78)',
+              backdropFilter: 'blur(8px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '20px',
+            }}
+          >
+            <div
+              style={{
+                width: 'min(720px, 100%)',
+                borderRadius: '14px',
+                border: '1px solid rgba(56, 189, 248, 0.4)',
+                background: 'rgba(8, 13, 26, 0.96)',
+                boxShadow: '0 24px 60px rgba(0, 0, 0, 0.72)',
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px',
+                  padding: '12px 16px',
+                  borderBottom: '1px solid var(--border-subtle)',
+                }}
+              >
+                <div>
+                  <div
+                    style={{
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      color: '#f8fafc',
+                    }}
+                  >
+                    ISS (LEO) · Quest Airlock &amp; Microgravity Lab Interior
+                  </div>
+                  <div
+                    style={{
+                      fontSize: '11px',
+                      fontFamily: 'var(--font-mono)',
+                      color: '#94a3b8',
+                    }}
+                  >
+                    Astronaut ingress through pressurized hatch · CIR 0g Flame Rack &amp; MSG
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIssAirlockModalOpen(false)}
+                  aria-label="Close ISS interior modal"
+                  style={{
+                    background: 'rgba(15, 23, 42, 0.85)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: '8px',
+                    color: '#cbd5e1',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    padding: '5px 10px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  ✕ Close
+                </button>
+              </div>
+              <div style={{ width: '100%', height: 'clamp(340px, 56vh, 520px)', position: 'relative' }}>
+                <Suspense
+                  fallback={
+                    <div
+                      role="status"
+                      style={{
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '12px',
+                        fontFamily: 'var(--font-mono)',
+                        color: '#94a3b8',
+                      }}
+                    >
+                      Pressurizing ISS interior view…
+                    </div>
+                  }
+                >
+                  <PlanetSurfacePreview planetId="iss" />
+                </Suspense>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

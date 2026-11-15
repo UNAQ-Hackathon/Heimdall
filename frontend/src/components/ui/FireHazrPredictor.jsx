@@ -1,5 +1,6 @@
 import { useEffect, useReducer, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { useApp } from '../../context/AppContext.jsx';
 import { api } from '../../services/api.js';
 import {
   initialPredictionState, predictionReducer, parsePredictionConditions, PREDICTION_REASONS,
@@ -7,15 +8,16 @@ import {
 import '../../styles/firehazr-predictor.css';
 
 const FIELDS = [
-  ['pressure_mmhg', 'Pressure (mmHg)', 0.001],
-  ['diameter_mm', 'Droplet diameter (mm)', 0.001],
-  ['o2_fraction', 'O₂ fraction', 0, 1],
-  ['n2_fraction', 'N₂ fraction', 0, 1],
-  ['co2_fraction', 'CO₂ fraction', 0, 1],
-  ['he_fraction', 'He fraction', 0, 1],
+  ['pressure_mmhg', 'Pressure (mmHg)', 0.001, undefined, '1'],
+  ['diameter_mm', 'Droplet diameter (mm)', 0.001, undefined, '0.1'],
+  ['o2_fraction', 'O₂ fraction', 0, 1, '0.01'],
+  ['n2_fraction', 'N₂ fraction', 0, 1, '0.01'],
+  ['co2_fraction', 'CO₂ fraction', 0, 1, '0.01'],
+  ['he_fraction', 'He fraction', 0, 1, '0.01'],
 ];
 
 export default function FireHazrPredictor() {
+  const { scenario, focusPlanet } = useApp();
   const [state, dispatch] = useReducer(predictionReducer, initialPredictionState);
   const controllerRef = useRef(null);
   const sequenceRef = useRef(0);
@@ -56,17 +58,33 @@ export default function FireHazrPredictor() {
         <p className="flex-predictor__eyebrow">FireHazR / KNN FLEX v3</p>
         <h2 id="flex-predictor-title">See the prediction</h2>
         <p>Recorded droplet burn duration under the FLEX microgravity protocol. Inputs are not taken from the selected planet.</p>
+        <p
+          style={{
+            marginTop: '6px',
+            padding: '6px 8px',
+            borderRadius: '6px',
+            background: 'rgba(15, 23, 42, 0.7)',
+            border: '1px solid #263449',
+            fontSize: '10.5px',
+            fontFamily: 'var(--font-mono)',
+            color: '#cbd5e1',
+          }}
+        >
+          <strong style={{ color: '#60a5fa' }}>Facility:</strong> ISS (EEI) · CIR/MDCA (0g) ·{' '}
+          <strong style={{ color: '#93c5fd' }}>Mission:</strong> {scenario?.label ?? 'Moon base / rover'}
+          {focusPlanet ? ` (${focusPlanet})` : ''}
+        </p>
       </header>
-      <form onSubmit={submit}>
+      <form onSubmit={submit} noValidate>
         <label>Fuel
           <select value={form.fuel} onChange={(e) => change('edit', { fuel: e.target.value })}>
             <option>Methanol</option><option>Heptane</option>
           </select>
         </label>
         <div className="flex-predictor__fields">
-          {FIELDS.map(([key, label, min, max]) => (
+          {FIELDS.map(([key, label, min, max, step]) => (
             <label key={key}>{label}
-              <input type="number" required min={min} max={max} step="any" value={form[key]}
+              <input type="number" required min={min} max={max} step={step} value={form[key]}
                 onChange={(e) => change('edit', { [key]: e.target.value })} />
             </label>
           ))}

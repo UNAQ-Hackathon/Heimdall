@@ -1,8 +1,10 @@
 import { Routes, Route } from 'react-router-dom';
 
 import AppLayout from './components/layout/AppLayout.jsx';
+import NasaSplashLoader from './components/ui/NasaSplashLoader.jsx';
 import MissionHub from './pages/MissionHub.jsx';
 import StudyDetailPage from './pages/StudyDetailPage.jsx';
+import PsiCatalogPage from './pages/PsiCatalogPage.jsx';
 import Flame3DPage from './pages/Flame3DPage.jsx';
 import FireHazRPage from './pages/FireHazRPage.jsx';
 import ComparePage from './pages/ComparePage.jsx';
@@ -12,13 +14,20 @@ import NotFoundPage from './pages/NotFoundPage.jsx';
 
 export default function App() {
   return (
-    <Routes>
+    <>
+      <NasaSplashLoader />
+      <Routes>
       <Route element={<AppLayout />}>
         {/* Main split-screen view */}
         <Route index element={<MissionHub />} />
 
-        {/* Study Detail view */}
+        {/* PSI Investigation Catalog & F1 Study Telemetry */}
+        <Route path="studies" element={<PsiCatalogPage />} />
+        <Route path="investigations" element={<PsiCatalogPage />} />
+        <Route path="study" element={<StudyDetailPage />} />
         <Route path="study/:id" element={<StudyDetailPage />} />
+        <Route path="telemetry" element={<StudyDetailPage />} />
+        <Route path="telemetry/:id" element={<StudyDetailPage />} />
 
         {/* 3D Flame comparative morphology */}
         <Route path="flame-3d" element={<Flame3DPage />} />
@@ -36,5 +45,6 @@ export default function App() {
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
+    </>
   );
 }
