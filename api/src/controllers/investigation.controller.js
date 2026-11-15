@@ -45,11 +45,18 @@ export async function getById(req, res, next) {
   }
   const all = await getAllInvestigations();
   const lower = String(id).toLowerCase();
+  const slugify = (value) =>
+    String(value ?? '')
+      .toLowerCase()
+      .replace(/^psi-/, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
   const found = all.find(
     (doc) =>
       String(doc._id ?? '').toLowerCase() === lower ||
       String(doc.psiId ?? '').toLowerCase() === lower ||
       String(doc.acronym ?? '').toLowerCase() === lower ||
+      slugify(doc.psiId ?? doc.acronym ?? doc.title) === lower ||
       String(doc.acronym ?? '')
         .toLowerCase()
         .replace(/\s+/g, '-') === lower

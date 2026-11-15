@@ -27,7 +27,7 @@ export const api = {
     try {
       const data = await request(`/investigations?${new URLSearchParams(params)}`);
       const items = (data.items ?? []).map((inv) => enrichInvestigationForUI(inv));
-      return { ...data, items, total: data.total ?? items.length };
+      return { ...data, items, total: data.total ?? items.length, source: 'api' };
     } catch {
       const items = processedInvestigations.map((inv) => enrichInvestigationForUI(inv));
       return { items, total: items.length, source: 'local-processed-fallback' };
@@ -47,7 +47,8 @@ export const api = {
             item.id === lower ||
             String(item.psiId ?? '').toLowerCase() === lower ||
             String(item.acronym ?? '').toLowerCase() === lower
-        ) ?? all[0];
+        );
+      if (!found) throw new Error(`Investigation "${id}" not found`);
       return found;
     }
   },
