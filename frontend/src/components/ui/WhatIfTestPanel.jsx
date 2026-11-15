@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import FlameVisualization from '../three/FlameVisualization.jsx';
+import FlameVisualization, { TEST_SUBJECT_OPTIONS } from '../three/FlameVisualization.jsx';
 import { SCENARIOS } from '../../context/ScenarioContext.jsx';
 import { api } from '../../services/api.js';
 import { checkConditionCoverage } from '../../services/ranking.js';
@@ -255,74 +255,30 @@ export default function WhatIfTestPanel({
               color: '#f8fafc',
             }}
           >
-            3D Low-Poly Flame Morphology
+            3D Test Subject &amp; Flame
           </span>
 
-          <div
+          <select
+            aria-label="3D test subject model"
+            value={flameShape}
+            onChange={(e) => setFlameShape(e.target.value)}
             style={{
-              display: 'flex',
-              gap: '4px',
-              padding: '3px',
-              borderRadius: '8px',
-              background: 'rgba(5, 8, 17, 0.8)',
+              fontSize: '11px',
+              fontFamily: 'var(--font-mono)',
+              padding: '5px 10px',
+              borderRadius: '7px',
               border: '1px solid var(--border-subtle)',
+              background: 'rgba(5, 8, 17, 0.9)',
+              color: '#e2e8f0',
+              cursor: 'pointer',
             }}
           >
-            <button
-              type="button"
-              onClick={() => setFlameShape('astronaut')}
-              style={{
-                fontSize: '10.5px',
-                fontFamily: 'var(--font-mono)',
-                padding: '4px 9px',
-                borderRadius: '6px',
-                border: 'none',
-                background:
-                  flameShape === 'astronaut' ? 'rgba(16, 185, 129, 0.2)' : 'transparent',
-                color: flameShape === 'astronaut' ? '#34d399' : '#94a3b8',
-                cursor: 'pointer',
-                fontWeight: flameShape === 'astronaut' ? 600 : 400,
-              }}
-            >
-              3D Astronaut Suit
-            </button>
-            <button
-              type="button"
-              onClick={() => setFlameShape('spherical')}
-              style={{
-                fontSize: '10.5px',
-                fontFamily: 'var(--font-mono)',
-                padding: '4px 9px',
-                borderRadius: '6px',
-                border: 'none',
-                background:
-                  flameShape === 'spherical' ? 'rgba(56, 189, 248, 0.2)' : 'transparent',
-                color: flameShape === 'spherical' ? '#38bdf8' : '#94a3b8',
-                cursor: 'pointer',
-                fontWeight: flameShape === 'spherical' ? 600 : 400,
-              }}
-            >
-              Micro-g Sphere
-            </button>
-            <button
-              type="button"
-              onClick={() => setFlameShape('teardrop')}
-              style={{
-                fontSize: '10.5px',
-                fontFamily: 'var(--font-mono)',
-                padding: '4px 9px',
-                borderRadius: '6px',
-                border: 'none',
-                background:
-                  flameShape === 'teardrop' ? 'rgba(245, 158, 11, 0.2)' : 'transparent',
-                color: flameShape === 'teardrop' ? '#fbbf24' : '#94a3b8',
-                cursor: 'pointer',
-                fontWeight: flameShape === 'teardrop' ? 600 : 400,
-              }}
-            >
-              Buoyant Plume (1g)
-            </button>
-          </div>
+            {TEST_SUBJECT_OPTIONS.map((opt) => (
+              <option key={opt.id} value={opt.id}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div

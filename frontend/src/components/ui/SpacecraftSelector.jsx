@@ -1,64 +1,32 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
-import * as THREE from 'three';
 import { SHIP_CATALOG, getShipUrl } from '../three/SolarSystemScene.jsx';
 import { normalizeModel } from '../three/normalize-model.js';
 
-function RotatingShipPreviewModel({ shipFile }) {
+function RotatingShipPreviewModel({ shipFile, scale = 0.86 }) {
   const url = getShipUrl(shipFile);
   const { scene } = useGLTF(url, false, false);
   const model = useMemo(() => normalizeModel(scene), [scene]);
   const isUfo = shipFile.toLowerCase().includes('ovni');
   const isLander = shipFile.toLowerCase().includes('lander');
 
-  const groupRef = useRef(null);
-  const flameRef = useRef(null);
-
-  const coneGeo = useMemo(() => {
-    const g = new THREE.ConeGeometry(0.18, 0.85, 5);
-    g.translate(0, 0.85 / 2, 0);
-    return g;
-  }, []);
+  const spinRef = useRef(null);
+  const launchPitch = isUfo ? 0.16 : isLander ? 0.12 : 0.78;
 
   useFrame((state) => {
     const t = state.clock.getElapsedTime();
-    if (groupRef.current) {
-      groupRef.current.rotation.y = t * 0.95;
-      groupRef.current.rotation.x = 0.22 + Math.sin(t * 1.6) * 0.06;
-      groupRef.current.position.y = Math.sin(t * 2.2) * 0.05;
-    }
-    if (flameRef.current) {
-      const pulse = 0.85 + Math.sin(t * 28) * 0.2;
-      flameRef.current.scale.set(pulse, pulse * 1.2, pulse);
+    if (spinRef.current) {
+      spinRef.current.rotation.y = t * 0.75 + 0.55;
+      spinRef.current.position.y = Math.sin(t * 2.0) * 0.035;
     }
   });
 
   return (
-    <group ref={groupRef} scale={0.95}>
-      <primitive object={model} dispose={null} />
-      {isUfo ? (
-        <mesh position={[0, -0.12, 0]} rotation={[Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[0.52, 0.07, 6, 12]} />
-          <meshBasicMaterial color="#22d3ee" transparent opacity={0.85} />
-        </mesh>
-      ) : (
-        <group
-          ref={flameRef}
-          position={isLander ? [0, -0.75, 0] : [0, -0.17, 1.02]}
-          rotation={isLander ? [Math.PI, 0, 0] : [Math.PI / 2, 0, 0]}
-        >
-          <mesh geometry={coneGeo} scale={[0.65, 0.65, 0.65]}>
-            <meshBasicMaterial color="#fde047" />
-          </mesh>
-          <mesh geometry={coneGeo} scale={[0.95, 0.9, 0.95]}>
-            <meshBasicMaterial color="#f97316" transparent opacity={0.88} />
-          </mesh>
-          <mesh geometry={coneGeo} scale={[1.2, 1.15, 1.2]}>
-            <meshBasicMaterial color="#ef4444" transparent opacity={0.72} />
-          </mesh>
-        </group>
-      )}
+    <group ref={spinRef} scale={scale}>
+      <group rotation={[launchPitch, 0, 0]}>
+        <primitive object={model} dispose={null} />
+      </group>
     </group>
   );
 }
@@ -113,36 +81,36 @@ export default function SpacecraftSelector({ shipFile, onSelect }) {
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
-          background: open ? 'rgba(56, 189, 248, 0.14)' : 'transparent',
-          border: 'none',
-          borderRadius: '9999px',
-          padding: '2px 8px 2px 4px',
+          background: open ? '#13233b' : '#080f1c',
+          border: open ? '1px solid #3b82f6' : '1px solid #263449',
+          borderRadius: '8px',
+          padding: '4px 10px 4px 5px',
           cursor: 'pointer',
-          color: '#f8fafc',
-          transition: 'background 0.15s ease',
+          color: '#e2e8f0',
+          transition: 'background 0.15s ease, border-color 0.15s ease',
         }}
       >
         {/* Inline Live 3D Ship Preview Badge */}
         <span
           style={{
-            width: '32px',
-            height: '24px',
-            borderRadius: '9999px',
-            background: 'rgba(5, 8, 17, 0.9)',
-            border: `1px solid ${activeShip.accent ?? '#38bdf8'}55`,
+            width: '30px',
+            height: '22px',
+            borderRadius: '5px',
+            background: '#0c1422',
+            border: '1px solid #263449',
             overflow: 'hidden',
             display: 'inline-block',
             flexShrink: 0,
           }}
         >
           <Canvas
-            camera={{ position: [1.6, 0.9, 1.9], fov: 38 }}
+            camera={{ position: [0, 0.3, 2.95], fov: 35 }}
             gl={{ antialias: true, alpha: true }}
           >
-            <ambientLight intensity={0.85} />
+            <ambientLight intensity={0.9} />
             <directionalLight position={[3, 4, 3]} intensity={1.4} />
             <Suspense fallback={null}>
-              <RotatingShipPreviewModel shipFile={activeShip.id} />
+              <RotatingShipPreviewModel shipFile={activeShip.id} scale={0.9} />
             </Suspense>
           </Canvas>
         </span>
@@ -151,8 +119,8 @@ export default function SpacecraftSelector({ shipFile, onSelect }) {
           style={{
             fontSize: '10px',
             fontFamily: 'var(--font-mono)',
-            color: '#64748b',
-            letterSpacing: '0.05em',
+            color: '#94a3b8',
+            letterSpacing: '0.04em',
           }}
         >
           CRAFT
@@ -160,9 +128,9 @@ export default function SpacecraftSelector({ shipFile, onSelect }) {
 
         <span
           style={{
-            fontSize: '11.5px',
+            fontSize: '12px',
             fontWeight: 600,
-            color: activeShip.accent ?? '#38bdf8',
+            color: '#e2e8f0',
           }}
         >
           {activeShip.label}
@@ -185,14 +153,13 @@ export default function SpacecraftSelector({ shipFile, onSelect }) {
         <div
           style={{
             position: 'absolute',
-            top: 'calc(100% + 10px)',
+            top: 'calc(100% + 8px)',
             left: 0,
-            width: '264px',
-            borderRadius: '14px',
-            background: 'rgba(10, 15, 29, 0.95)',
-            backdropFilter: 'blur(16px)',
-            border: '1px solid var(--border-strong)',
-            boxShadow: '0 20px 45px rgba(0, 0, 0, 0.65)',
+            width: '280px',
+            borderRadius: '10px',
+            background: '#0c1422',
+            border: '1px solid #263449',
+            boxShadow: '0 16px 36px rgba(0, 0, 0, 0.6)',
             padding: '10px',
             zIndex: 60,
             display: 'flex',
@@ -200,51 +167,52 @@ export default function SpacecraftSelector({ shipFile, onSelect }) {
             gap: '8px',
           }}
         >
-          {/* Large 3D Interactive Spacecraft Preview Stage */}
+          {/* Large Centered 3D Spacecraft Preview Stage */}
           <div
             style={{
-              height: '126px',
-              borderRadius: '10px',
-              background:
-                'radial-gradient(circle at 50% 45%, rgba(30, 58, 138, 0.32), rgba(4, 7, 17, 0.96))',
-              border: '1px solid var(--border-subtle)',
-              position: 'relative',
+              borderRadius: '8px',
+              background: '#080f1c',
+              border: '1px solid #263449',
               overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
             }}
           >
-            <Canvas
-              camera={{ position: [1.7, 0.95, 2.05], fov: 38 }}
-              gl={{ antialias: true, alpha: true }}
-            >
-              <ambientLight intensity={0.85} />
-              <directionalLight position={[4, 6, 4]} intensity={1.5} />
-              <pointLight
-                position={[-2, -1, 2]}
-                intensity={0.8}
-                color={previewShipMeta?.accent ?? '#38bdf8'}
-              />
-              <Suspense fallback={null}>
-                <RotatingShipPreviewModel shipFile={previewShipId} />
-              </Suspense>
-            </Canvas>
+            <div style={{ height: '132px', width: '100%' }}>
+              <Canvas
+                camera={{ position: [0, 0.35, 3.15], fov: 35 }}
+                gl={{ antialias: true, alpha: true }}
+              >
+                <ambientLight intensity={0.9} />
+                <directionalLight position={[4, 6, 4]} intensity={1.5} />
+                <pointLight
+                  position={[-2, -1, 2]}
+                  intensity={0.6}
+                  color="#60a5fa"
+                />
+                <Suspense fallback={null}>
+                  <RotatingShipPreviewModel shipFile={previewShipId} scale={0.86} />
+                </Suspense>
+              </Canvas>
+            </div>
 
             <div
               style={{
-                position: 'absolute',
-                bottom: '7px',
-                left: '10px',
-                right: '10px',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'baseline',
-                pointerEvents: 'none',
+                gap: '8px',
+                padding: '7px 10px',
+                borderTop: '1px solid #1c2640',
+                background: '#0a1220',
               }}
             >
               <span
                 style={{
                   fontSize: '11.5px',
                   fontWeight: 700,
-                  color: '#f8fafc',
+                  color: '#f1f5f9',
+                  whiteSpace: 'nowrap',
                 }}
               >
                 {previewShipMeta?.label}
@@ -253,7 +221,8 @@ export default function SpacecraftSelector({ shipFile, onSelect }) {
                 style={{
                   fontSize: '9.5px',
                   fontFamily: 'var(--font-mono)',
-                  color: previewShipMeta?.accent ?? '#38bdf8',
+                  color: '#93c5fd',
+                  textAlign: 'right',
                 }}
               >
                 {previewShipMeta?.role}
@@ -262,7 +231,7 @@ export default function SpacecraftSelector({ shipFile, onSelect }) {
           </div>
 
           {/* Selectable Craft Options */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
             {SHIP_CATALOG.map((ship) => {
               const selected = ship.id === shipFile;
               return (
@@ -280,18 +249,16 @@ export default function SpacecraftSelector({ shipFile, onSelect }) {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '7px 10px',
-                    borderRadius: '8px',
+                    padding: '8px 10px',
+                    borderRadius: '7px',
                     border: selected
-                      ? `1px solid ${ship.accent ?? '#38bdf8'}66`
-                      : '1px solid transparent',
-                    background: selected
-                      ? `${ship.accent ?? '#38bdf8'}18`
-                      : 'rgba(15, 23, 42, 0.45)',
-                    color: selected ? '#f8fafc' : '#cbd5e1',
+                      ? '1px solid #3b82f6'
+                      : '1px solid #263449',
+                    background: selected ? '#13233b' : '#080f1c',
+                    color: selected ? '#f1f5f9' : '#cbd5e1',
                     cursor: 'pointer',
                     textAlign: 'left',
-                    transition: 'all 0.12s ease',
+                    transition: 'background 0.12s ease, border-color 0.12s ease',
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -300,15 +267,14 @@ export default function SpacecraftSelector({ shipFile, onSelect }) {
                         width: '7px',
                         height: '7px',
                         borderRadius: '50%',
-                        background: ship.accent ?? '#38bdf8',
-                        boxShadow: selected ? `0 0 8px ${ship.accent}` : 'none',
+                        background: ship.accent ?? '#60a5fa',
                       }}
                     />
                     <div>
-                      <div style={{ fontSize: '11.5px', fontWeight: selected ? 600 : 500 }}>
+                      <div style={{ fontSize: '12px', fontWeight: selected ? 600 : 500 }}>
                         {ship.label}
                       </div>
-                      <div style={{ fontSize: '9.5px', color: '#64748b' }}>
+                      <div style={{ fontSize: '10px', color: '#94a3b8' }}>
                         {ship.role}
                       </div>
                     </div>
@@ -316,9 +282,13 @@ export default function SpacecraftSelector({ shipFile, onSelect }) {
                   {selected && (
                     <span
                       style={{
-                        fontSize: '10px',
+                        fontSize: '9.5px',
                         fontFamily: 'var(--font-mono)',
-                        color: ship.accent ?? '#38bdf8',
+                        color: '#93c5fd',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        background: 'rgba(59, 130, 246, 0.18)',
+                        border: '1px solid rgba(59, 130, 246, 0.35)',
                       }}
                     >
                       ACTIVE

@@ -6,8 +6,15 @@ import {
   prepareAnimatableAstronaut,
   applyAstronautPose,
 } from './astronaut-limb-anim.js';
+import { normalizeModel } from './normalize-model.js';
 
 const suitUrlMap = import.meta.glob('../../../../assets3d/trajesEspaciales/*.glb', {
+  query: '?url',
+  import: 'default',
+  eager: true,
+});
+
+const shipUrlMap = import.meta.glob('../../../../assets3d/nuevasNaves/*.glb', {
   query: '?url',
   import: 'default',
   eager: true,
@@ -28,8 +35,45 @@ const spaceTexUrlMap = import.meta.glob('../../../../assets3d/texturaMapaEspacio
 const ASTRO_NORMAL_URL = suitUrlMap['../../../../assets3d/trajesEspaciales/astronautaNormal.glb'];
 const ASTRO_FLAMES_URL = suitUrlMap['../../../../assets3d/trajesEspaciales/astronautaLlamas.glb'];
 const ASTRO_BURNED_URL = suitUrlMap['../../../../assets3d/trajesEspaciales/astronautaQuemado.glb'];
+const LANDER_URL = shipUrlMap['../../../../assets3d/nuevasNaves/landerNuevo.glb'];
+const BLUE_SHIP_URL = shipUrlMap['../../../../assets3d/nuevasNaves/naveAzulNuevo.glb'];
 const SMOKE_COL_URL = fxUrlMap['../../../../assets3d/FX/humo_despegue_columna_chico.glb'];
 const SPACE_HEX_URL = spaceTexUrlMap['../../../../assets3d/texturaMapaEspacio/espacio_hex.png'];
+
+export const TEST_SUBJECT_OPTIONS = [
+  { id: 'astronaut', label: 'EVA Spacesuit', kind: 'suit' },
+  { id: 'lander', label: 'Lunar Lander / Habitat', kind: 'vehicle' },
+  { id: 'spacecraft-blue', label: 'Spacecraft · Blue Explorer', kind: 'vehicle' },
+  { id: 'spherical', label: '0g Spherical Flame', kind: 'flame' },
+  { id: 'teardrop', label: '1g Buoyant Plume', kind: 'flame' },
+];
+
+const VEHICLE_TEST_CONFIG = {
+  lander: {
+    url: LANDER_URL,
+    scale: 1.05,
+    y: -0.18,
+    pitch: 0.14,
+    smokePos: [0, 0.56, -0.08],
+    flameAnchors: [
+      { pos: [0, 0.12, 0.24], rot: [0.12, 0, 0] },
+      { pos: [-0.26, 0.04, 0.06], rot: [0, 0, 0.2] },
+      { pos: [0.26, 0.04, -0.06], rot: [0, 0, -0.2] },
+    ],
+  },
+  'spacecraft-blue': {
+    url: BLUE_SHIP_URL,
+    scale: 1.08,
+    y: -0.05,
+    pitch: 0.34,
+    smokePos: [0, 0.36, 0.04],
+    flameAnchors: [
+      { pos: [0, 0.08, -0.12], rot: [0, 0, 0.1] },
+      { pos: [-0.28, -0.02, 0.08], rot: [0, 0, 0.24] },
+      { pos: [0.28, -0.02, 0.08], rot: [0, 0, -0.24] },
+    ],
+  },
+};
 
 [ASTRO_NORMAL_URL, ASTRO_FLAMES_URL, ASTRO_BURNED_URL, SMOKE_COL_URL]
   .filter(Boolean)
@@ -468,6 +512,235 @@ function AstronautSuitFireTest({ oxygen = 30, airflow = 0.05, suitState = 'auto'
   );
 }
 
+function resolveHazardState(suitState, oxygen) {
+  if (suitState && suitState !== 'auto') return suitState;
+  if (oxygen >= 60) return 'burned';
+  if (oxygen >= 25) return 'flames';
+  return 'normal';
+}
+
+function prepareCharredVehicle(modelRoot) {
+  const charred = modelRoot.clone(true);
+  charred.traverse((node) => {
+    if (!node.isMesh || !node.material) return;
+    const applyChar = (mat) => {
+      const cloned = mat.clone();
+      if (cloned.color) cloned.color.multiplyScalar(0.32);
+      if ('emissive' in cloned && cloned.emissive) {
+        cloned.emissive.set('#3b0c06');
+        cloned.emissiveIntensity = 0.35;
+      }
+      if ('roughness' in cloned) cloned.roughness = 0.92;
+      return cloned;
+    };
+    node.material = Array.isArray(node.material)
+      ? node.material.map(applyChar)
+      : applyChar(node.material);
+  });
+  return charred;
+}
+
+/**
+ * 3D Spacecraft / Lunar Lander / Habitat Fire Hazard Test Rig
+ */
+function VehicleFireTest({ variant, oxygen = 30, airflow = 0.05, suitState = 'auto' }) {
+  const cfg = VEHICLE_TEST_CONFIG[variant] ?? VEHICLE_TEST_CONFIG.lander;
+  const resolvedState = resolveHazardState(suitState, oxygen);
+  const levelProgress = Math.max(0, Math.min(1.35, (oxygen - 24) / 34));
+  const flameGrowth = 0.28 + levelProgress * 1.35 + airflow * 0.45;
+
+  const { scene: rawScene } = useGLTF(cfg.url, false, false);
+  const { scene: smokeScene } = useGLTF(SMOKE_COL_URL, false, false);
+
+  const normalModel = useMemo(() => normalizeModel(rawScene), [rawScene]);
+  const charredModel = useMemo(() => prepareCharredVehicle(normalModel), [normalModel]);
+  const smokeClone = useMemo(() => smokeScene.clone(true), [smokeScene]);
+
+  const coneYellowGeo = useMemo(() => createUpwardFlameCone(0.11, 0.38, 5), []);
+  const coneOrangeGeo = useMemo(() => createUpwardFlameCone(0.16, 0.52, 5), []);
+  const coneRedGeo = useMemo(() => createUpwardFlameCone(0.21, 0.66, 6), []);
+
+  const rigRef = useRef(null);
+  const fireGroupRef = useRef(null);
+  const smokeGroupRef = useRef(null);
+  const smokePuffsRef = useRef(null);
+
+  const puffSeeds = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, i) => ({
+        phase: i / 12,
+        angle: (i / 12) * Math.PI * 2,
+        speed: 0.62 + (i % 4) * 0.15 + airflow * 1.1,
+        color:
+          resolvedState === 'burned'
+            ? i % 2 === 0
+              ? '#334155'
+              : '#475569'
+            : i % 2 === 0
+              ? '#cbd5e1'
+              : '#94a3b8',
+      })),
+    [airflow, resolvedState]
+  );
+
+  useFrame((state) => {
+    const t = state.clock.getElapsedTime();
+    if (rigRef.current) {
+      const bob =
+        resolvedState === 'flames'
+          ? Math.sin(t * (4 + levelProgress * 4)) * 0.025
+          : Math.sin(t * 1.8) * 0.03;
+      rigRef.current.position.y = cfg.y + bob;
+      rigRef.current.rotation.y = t * 0.48 + 0.5;
+    }
+
+    if (fireGroupRef.current && resolvedState === 'flames') {
+      const anchors = fireGroupRef.current.children;
+      for (let a = 0; a < anchors.length; a += 1) {
+        const cones = anchors[a].children;
+        for (let c = 0; c < cones.length; c += 1) {
+          const cone = cones[c];
+          const pulse = 0.85 + Math.sin(t * (18 + c * 3) + a * 2 + c) * 0.22;
+          const wScale = pulse * (0.4 + flameGrowth * 0.65);
+          const hScale = pulse * (0.35 + flameGrowth * 1.0);
+          cone.scale.set(wScale, hScale, wScale);
+          cone.rotation.y = t * (c % 2 === 0 ? 4.5 : -4.5);
+        }
+      }
+    }
+
+    if (smokeGroupRef.current && resolvedState !== 'normal') {
+      const baseSmoke = resolvedState === 'flames' ? 0.42 + flameGrowth * 0.48 : 0.85;
+      const sPulse = baseSmoke * (0.92 + Math.sin(t * 4.8) * 0.1);
+      smokeGroupRef.current.scale.set(sPulse, sPulse * 1.1, sPulse);
+      smokeGroupRef.current.rotation.y = t * 0.85;
+    }
+
+    if (smokePuffsRef.current && resolvedState !== 'normal') {
+      const children = smokePuffsRef.current.children;
+      const puffMult = resolvedState === 'flames' ? 0.55 + flameGrowth * 0.5 : 1.05;
+      for (let i = 0; i < children.length; i += 1) {
+        const puff = children[i];
+        const s = puffSeeds[i];
+        const cycle = (t * s.speed + s.phase) % 1;
+        const r = (0.24 + cycle * 0.46) * puffMult;
+        puff.position.set(
+          Math.cos(s.angle + t * 0.85) * r,
+          0.25 + cycle * 1.2 * puffMult,
+          Math.sin(s.angle + t * 0.85) * r
+        );
+        const sc = Math.sin(cycle * Math.PI) * 0.14 * puffMult;
+        puff.scale.setScalar(Math.max(0.005, sc));
+        puff.rotation.set(t * 1.6 + i, t * 1.2, i);
+      }
+    }
+  });
+
+  const activeModel = resolvedState === 'burned' ? charredModel : normalModel;
+  const ringColor =
+    resolvedState === 'normal'
+      ? '#10b981'
+      : resolvedState === 'flames'
+        ? '#f59e0b'
+        : '#ef4444';
+
+  return (
+    <group>
+      {/* Orbital Test Chamber Pedestal */}
+      <group position={[0, -1.04, 0]}>
+        <mesh position={[0, 0.03, 0]}>
+          <cylinderGeometry args={[0.88, 1.02, 0.08, 10]} />
+          <meshStandardMaterial color="#1e293b" metalness={0.7} roughness={0.35} flatShading />
+        </mesh>
+        <mesh position={[0, 0.075, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.72, 0.82, 10]} />
+          <meshBasicMaterial color={ringColor} />
+        </mesh>
+      </group>
+
+      {/* Test Subject Vehicle */}
+      <group ref={rigRef} position={[0, cfg.y, 0]} scale={cfg.scale}>
+        <group rotation={[cfg.pitch, 0, 0]}>
+          <primitive object={activeModel} dispose={null} />
+        </group>
+
+        {resolvedState === 'flames' && (
+          <>
+            <group ref={fireGroupRef}>
+              {cfg.flameAnchors.map((anchor, idx) => (
+                <group key={idx} position={anchor.pos} rotation={anchor.rot}>
+                  <mesh geometry={coneYellowGeo}>
+                    <meshBasicMaterial color="#fde047" />
+                  </mesh>
+                  <mesh geometry={coneOrangeGeo}>
+                    <meshBasicMaterial color="#f97316" transparent opacity={0.86} />
+                  </mesh>
+                  <mesh geometry={coneRedGeo}>
+                    <meshBasicMaterial color="#ef4444" transparent opacity={0.74} />
+                  </mesh>
+                </group>
+              ))}
+            </group>
+            <group ref={smokeGroupRef} position={cfg.smokePos} scale={0.8}>
+              <primitive object={smokeClone} dispose={null} />
+            </group>
+            <group ref={smokePuffsRef}>
+              {puffSeeds.map((s, idx) => (
+                <mesh key={idx}>
+                  <dodecahedronGeometry args={[1, 0]} />
+                  <meshStandardMaterial
+                    color={s.color}
+                    flatShading
+                    roughness={0.95}
+                    transparent
+                    opacity={0.72}
+                  />
+                </mesh>
+              ))}
+            </group>
+            <RisingLowPolyEmbers
+              count={16}
+              color="#fde047"
+              isSpherical={false}
+              levelScale={flameGrowth}
+            />
+            <pointLight
+              color="#f97316"
+              intensity={6 + flameGrowth * 8}
+              distance={6}
+              position={[0, 0.65, 0.65]}
+            />
+          </>
+        )}
+
+        {resolvedState === 'burned' && (
+          <>
+            <group ref={smokeGroupRef} position={cfg.smokePos} scale={0.85}>
+              <primitive object={smokeClone} dispose={null} />
+            </group>
+            <group ref={smokePuffsRef}>
+              {puffSeeds.map((s, idx) => (
+                <mesh key={idx}>
+                  <dodecahedronGeometry args={[1, 0]} />
+                  <meshStandardMaterial
+                    color={s.color}
+                    flatShading
+                    roughness={0.98}
+                    transparent
+                    opacity={0.78}
+                  />
+                </mesh>
+              ))}
+            </group>
+            <RisingLowPolyEmbers count={18} color="#ef4444" isSpherical={false} levelScale={1.15} />
+            <pointLight color="#ef4444" intensity={10} distance={5} position={[0, 0.5, 0.6]} />
+          </>
+        )}
+      </group>
+    </group>
+  );
+}
+
 /**
  * Microgravity (~0g) Triangulated Low-Poly Spherical Diffusion Flame
  * Scales noticeably with oxygen level!
@@ -547,7 +820,7 @@ function SphericalFlame({ oxygen = 30, airflow = 0.05 }) {
         <meshStandardMaterial color="#475569" metalness={0.6} roughness={0.4} flatShading />
       </mesh>
 
-      <mesh ref={coreRef} position={[0, 0.05, 0]}>
+      <mesh ref={coreRef} position={[0, 0.05, 0]} renderOrder={1}>
         <icosahedronGeometry args={[0.42, 1]} />
         <meshStandardMaterial
           color="#e0f2fe"
@@ -555,11 +828,12 @@ function SphericalFlame({ oxygen = 30, airflow = 0.05 }) {
           emissiveIntensity={1.6}
           flatShading
           transparent
+          depthWrite={false}
           opacity={0.92}
         />
       </mesh>
 
-      <mesh ref={midShellRef} geometry={baseGeo}>
+      <mesh ref={midShellRef} geometry={baseGeo} renderOrder={2}>
         <meshStandardMaterial
           color={hotO2 ? '#7dd3fc' : '#38bdf8'}
           emissive={hotO2 ? '#0284c7' : '#0369a1'}
@@ -567,16 +841,17 @@ function SphericalFlame({ oxygen = 30, airflow = 0.05 }) {
           roughness={0.35}
           flatShading
           transparent
+          depthWrite={false}
           opacity={0.68}
         />
       </mesh>
 
-      <mesh ref={wireRef}>
+      <mesh ref={wireRef} renderOrder={4}>
         <icosahedronGeometry args={[0.8, 2]} />
-        <meshBasicMaterial color="#7dd3fc" wireframe transparent opacity={0.22} />
+        <meshBasicMaterial color="#7dd3fc" wireframe transparent depthWrite={false} opacity={0.22} />
       </mesh>
 
-      <mesh ref={outerShellRef}>
+      <mesh ref={outerShellRef} renderOrder={3}>
         <icosahedronGeometry args={[0.82, 1]} />
         <meshStandardMaterial
           color="#0284c7"
@@ -584,6 +859,7 @@ function SphericalFlame({ oxygen = 30, airflow = 0.05 }) {
           emissiveIntensity={0.6}
           flatShading
           transparent
+          depthWrite={false}
           opacity={0.22}
           side={THREE.DoubleSide}
         />
@@ -674,7 +950,7 @@ function TeardropFlame({ oxygen = 30, airflow = 0.05 }) {
         <meshStandardMaterial color="#64748b" metalness={0.85} roughness={0.25} flatShading />
       </mesh>
 
-      <mesh position={[0, 0.16, 0]}>
+      <mesh position={[0, 0.16, 0]} renderOrder={0}>
         <cylinderGeometry args={[0.38, 0.22, 0.26, 8, 1]} />
         <meshStandardMaterial
           color="#38bdf8"
@@ -682,22 +958,24 @@ function TeardropFlame({ oxygen = 30, airflow = 0.05 }) {
           emissiveIntensity={1.2}
           flatShading
           transparent
+          depthWrite={false}
           opacity={0.72}
         />
       </mesh>
 
-      <mesh ref={coreRef} geometry={coreGeo} position={[0, 0.08, 0]}>
+      <mesh ref={coreRef} geometry={coreGeo} position={[0, 0.08, 0]} renderOrder={1}>
         <meshStandardMaterial
           color="#fef9c3"
           emissive="#fde047"
           emissiveIntensity={1.8}
           flatShading
           transparent
+          depthWrite={false}
           opacity={0.95}
         />
       </mesh>
 
-      <mesh ref={midRef} geometry={midGeo} position={[0, 0.05, 0]}>
+      <mesh ref={midRef} geometry={midGeo} position={[0, 0.05, 0]} renderOrder={2}>
         <meshStandardMaterial
           color="#fb923c"
           emissive="#f59e0b"
@@ -705,11 +983,12 @@ function TeardropFlame({ oxygen = 30, airflow = 0.05 }) {
           roughness={0.3}
           flatShading
           transparent
+          depthWrite={false}
           opacity={0.82}
         />
       </mesh>
 
-      <mesh ref={outerRef} geometry={outerGeo} position={[0, 0.02, 0]}>
+      <mesh ref={outerRef} geometry={outerGeo} position={[0, 0.02, 0]} renderOrder={3}>
         <meshStandardMaterial
           color="#ea580c"
           emissive="#dc2626"
@@ -717,12 +996,13 @@ function TeardropFlame({ oxygen = 30, airflow = 0.05 }) {
           roughness={0.4}
           flatShading
           transparent
+          depthWrite={false}
           opacity={0.46}
         />
       </mesh>
 
-      <mesh ref={wireRef} geometry={outerGeo} position={[0, 0.02, 0]}>
-        <meshBasicMaterial color="#fde047" wireframe transparent opacity={0.18} />
+      <mesh ref={wireRef} geometry={outerGeo} position={[0, 0.02, 0]} renderOrder={4}>
+        <meshBasicMaterial color="#fde047" wireframe transparent depthWrite={false} opacity={0.18} />
       </mesh>
 
       <RisingLowPolyEmbers count={20} color="#fbbf24" isSpherical={false} levelScale={o2ScaleH} />
@@ -739,11 +1019,13 @@ export default function FlameVisualization({
   airflow = 0.05,
   suitState = 'auto',
 }) {
-  const showAstronautEasterEgg =
-    type === 'astronaut' &&
-    (suitState === 'flames' ||
-      suitState === 'burned' ||
-      (suitState === 'auto' && oxygen >= 25));
+  const isVehicle = Boolean(VEHICLE_TEST_CONFIG[type]);
+  const isFlamingOrBurned =
+    suitState === 'flames' ||
+    suitState === 'burned' ||
+    (suitState === 'auto' && oxygen >= 25);
+  const showAstronautEasterEgg = type === 'astronaut' && isFlamingOrBurned;
+  const showVehicleDisclaimer = isVehicle && isFlamingOrBurned;
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -772,6 +1054,13 @@ export default function FlameVisualization({
               airflow={airflow}
               suitState={suitState}
             />
+          ) : isVehicle ? (
+            <VehicleFireTest
+              variant={type}
+              oxygen={oxygen}
+              airflow={airflow}
+              suitState={suitState}
+            />
           ) : type === 'spherical' ? (
             <SphericalFlame oxygen={oxygen} airflow={airflow} />
           ) : (
@@ -780,29 +1069,42 @@ export default function FlameVisualization({
         </Suspense>
       </Canvas>
 
-      {/* Easter Egg Disclaimer shown as soon as fire level rises on the astronaut suit */}
-      {showAstronautEasterEgg && (
+      {/* Easter Egg / Rig Disclaimer shown when fire level rises on a 3D test subject */}
+      {(showAstronautEasterEgg || showVehicleDisclaimer) && (
         <div
           style={{
             position: 'absolute',
             bottom: '8px',
-            left: '50%',
-            transform: 'translateX(-50%)',
+            left: '10px',
+            right: '10px',
+            marginInline: 'auto',
+            width: 'fit-content',
+            maxWidth: 'calc(100% - 20px)',
             zIndex: 12,
-            padding: '4px 11px',
-            borderRadius: '9999px',
+            padding: '5px 12px',
+            borderRadius: '12px',
             background: 'rgba(10, 15, 29, 0.88)',
             border: '1px solid rgba(245, 158, 11, 0.4)',
             color: '#fde68a',
             fontFamily: 'var(--font-mono)',
             fontSize: '10px',
+            lineHeight: 1.35,
+            textAlign: 'center',
             letterSpacing: '0.02em',
-            whiteSpace: 'nowrap',
+            whiteSpace: 'normal',
             pointerEvents: 'none',
             backdropFilter: 'blur(8px)',
           }}
         >
-          No astronauts were harmed in this test · 100% thermal mannequin
+          {showAstronautEasterEgg ? (
+            <>
+              No astronauts were harmed in this test.
+              <br />
+              100% thermal mannequin.
+            </>
+          ) : (
+            <>Thermal chamber test rig · Spacecraft &amp; habitat hull simulation.</>
+          )}
         </div>
       )}
     </div>

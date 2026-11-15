@@ -1,65 +1,81 @@
-import { Outlet, NavLink, Link } from 'react-router-dom';
-import { useApp, AUDIENCES } from '../../context/AppContext.jsx';
+import { Outlet, NavLink, Link, useLocation } from 'react-router-dom';
+import { useApp } from '../../context/AppContext.jsx';
 import HeimdallLogo from '../ui/HeimdallLogo.jsx';
 import CopilotChat from '../ui/CopilotChat.jsx';
 import nasaLogo from '../../../../docs/assets/nasa-logo.png';
 import '../../styles/app-shell.css';
 
 const NAV_ITEMS = [
-  { to: '/', label: 'Mission Hub' },
-  { to: '/flame', label: 'FireHazR Lab' },
-  { to: '/study/saffire-iii', label: 'Study Detail' },
-  { to: '/compare', label: 'Compare & Earth' },
+  { to: '/', label: 'Mission Hub', matchPaths: ['/'] },
+  { to: '/studies', label: 'PSI Catalog', matchPaths: ['/studies', '/investigations', '/study/'] },
+  { to: '/flame', label: 'FireHazR Lab', matchPaths: ['/flame', '/firehazr'] },
+  { to: '/flame-3d', label: 'Flame 3D', matchPaths: ['/flame-3d'] },
+  { to: '/compare', label: 'Compare & Earth', matchPaths: ['/compare'] },
 ];
 
+function isNavItemActive(pathname, { to, matchPaths }) {
+  if (to === '/') return pathname === '/';
+  return matchPaths.some((prefix) =>
+    prefix.endsWith('/') ? pathname.startsWith(prefix) : pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
+}
+
 export default function AppLayout() {
-  const { audience, setAudience, chatOpen, setChatOpen } = useApp();
+  const { chatOpen, setChatOpen } = useApp();
+  const { pathname } = useLocation();
 
   return (
     <div className="app-shell">
-      {/* Clean Minimalist NASA Top Navigation */}
+      {/* Minimalist Top Navigation */}
       <header className="app-header">
-        {/* Left: NASA Brand + Heimdall Identity */}
+        {/* Left: Heimdall Identity */}
         <div className="app-header__identity">
           <Link to="/" className="app-header__brand" aria-label="Heimdall home">
-            <HeimdallLogo size={42} />
+            <HeimdallLogo size={40} />
             <div className="app-header__wordmark">
               <strong>Heimdall</strong>
               <span>Spacecraft fire research</span>
             </div>
           </Link>
-          <img className="app-header__nasa" src={nasaLogo} alt="NASA" width={34} height={34} />
         </div>
 
-        {/* Center: Clean Pill Navigation */}
+        {/* Center: Pill Navigation */}
         <nav className="app-nav" aria-label="Main navigation">
-          {NAV_ITEMS.map(({ to, label }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === '/'}
-              className={({ isActive }) => `app-nav__link${isActive ? ' app-nav__link--active' : ''}`}
-            >
-              {label}
-            </NavLink>
-          ))}
+          {NAV_ITEMS.map((item) => {
+            const active = isNavItemActive(pathname, item);
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.to === '/'}
+                className={`app-nav__link${active ? ' app-nav__link--active' : ''}`}
+              >
+                {item.label}
+              </NavLink>
+            );
+          })}
         </nav>
 
-        {/* Right: Mode Selector + AI Copilot Button */}
+        {/* Right: AI Copilot + NASA Seal */}
         <div className="app-header__actions">
-          <label className="app-header__audience">
-            <span>View</span>
-            <select value={audience} onChange={(e) => setAudience(e.target.value)} aria-label="Audience mode">
-              {AUDIENCES.map((aud) => <option key={aud} value={aud}>{aud} mode</option>)}
-            </select>
-          </label>
-          <button type="button" className="app-header__copilot" aria-label="Toggle Heimdall AI assistant" aria-pressed={chatOpen} onClick={() => setChatOpen(!chatOpen)}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+          <button type="button" className="app-header__copilot" aria-label="Toggle Gemini AI assistant" aria-pressed={chatOpen} onClick={() => setChatOpen(!chatOpen)}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
               <path d="M5 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-6 3V6a2 2 0 0 1 2-2Z" />
               <path d="M8 9h8M8 13h5" />
             </svg>
-            <span>Heimdall AI</span>
+            <span>Gemini AI</span>
           </button>
+
+          <span className="app-header__divider" aria-hidden="true" />
+
+          <img
+            className="app-header__nasa"
+            src={nasaLogo}
+            alt="NASA"
+            title="NASA Physical Sciences Informatics (PSI)"
+            width={48}
+            height={48}
+          />
         </div>
       </header>
 

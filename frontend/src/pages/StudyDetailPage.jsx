@@ -119,6 +119,9 @@ export default function StudyDetailPage() {
     <div
       style={{
         flex: 1,
+        width: '100%',
+        height: '100%',
+        minHeight: 0,
         overflowY: 'auto',
         padding: '24px 32px',
         display: 'flex',
@@ -141,6 +144,22 @@ export default function StudyDetailPage() {
         </div>
 
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => navigate('/studies')}
+            style={{
+              fontSize: '10.5px',
+              fontFamily: 'var(--font-mono)',
+              color: '#cbd5e1',
+              background: '#111827',
+              border: '1px solid #1e293b',
+              padding: '7px 11px',
+              borderRadius: '4px',
+              cursor: 'pointer',
+            }}
+          >
+            ← PSI Catalog
+          </button>
           <select
             aria-label="Select PSI Investigation"
             className="tri-select"

@@ -8,7 +8,7 @@ import {
   useState,
 } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, useGLTF, useTexture, Line } from '@react-three/drei';
+import { OrbitControls, useGLTF, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import SolarSystemPlanet from './SolarSystemPlanet.jsx';
 import { normalizeModel } from './normalize-model.js';
@@ -100,7 +100,6 @@ export function getShipUrl(shipFile = 'naveAzulNuevo.glb') {
   );
 }
 
-const LONG_SMOKE_URL = fxUrlMap['../../../../assets3d/FX/humo_estela_larga.glb'];
 const SPACE_TILE_URL = spaceTexUrlMap['../../../../assets3d/texturaMapaEspacio/espacio_tileable.png'];
 const SPACE_HEX_URL = spaceTexUrlMap['../../../../assets3d/texturaMapaEspacio/espacio_hex.png'];
 
@@ -366,21 +365,6 @@ function AsteroidBelt3D({ paused }) {
 }
 
 /**
- * 3D Smoke Trail GLB Asset (`humo_estela_larga.glb`) attached behind rocket exhaust
- * Note: `humo_estela_larga.glb` starts near z=0 and extends backward to z=+1.29.
- */
-function RocketSmokeGlbMesh({ smokeRef }) {
-  if (!LONG_SMOKE_URL) return null;
-  const { scene } = useGLTF(LONG_SMOKE_URL, false, false);
-  const clone = useMemo(() => scene.clone(true), [scene]);
-  return (
-    <group ref={smokeRef} position={[0, 0, 0.55]} scale={[1.3, 1.3, 1.8]}>
-      <primitive object={clone} dispose={null} />
-    </group>
-  );
-}
-
-/**
  * Creates a cone geometry whose wide base is pinned at y = 0 and whose tip points to +Y.
  * When rotated by [Math.PI / 2, 0, 0], the wide base stays pinned at z = 0 (the tail nozzle)
  * and the flame tip extends strictly backward along +Z!
@@ -400,7 +384,6 @@ function SpacecraftExhaustFX({ isUfo, isLander, inTransitRef }) {
   const yellowFlameRef = useRef(null);
   const orangeFlameRef = useRef(null);
   const redFlameRef = useRef(null);
-  const smokeGlbRef = useRef(null);
   const smokePuffsRef = useRef(null);
   const ufoRingsRef = useRef(null);
 
@@ -410,11 +393,12 @@ function SpacecraftExhaustFX({ isUfo, isLander, inTransitRef }) {
 
   const puffSeeds = useMemo(
     () =>
-      Array.from({ length: 14 }, (_, i) => ({
-        phase: i / 14,
-        speed: 1.45 + (i % 4) * 0.22,
-        spreadX: ((i % 5) - 2) * 0.07,
-        spreadY: (((i * 3) % 5) - 2) * 0.07,
+      Array.from({ length: 20 }, (_, i) => ({
+        phase: i / 20,
+        speed: 1.5 + (i % 5) * 0.24,
+        spreadX: Math.cos(i * 2.399) * (0.14 + (i % 4) * 0.06),
+        spreadY: Math.sin(i * 2.399) * (0.14 + (i % 4) * 0.06),
+        spinRate: (i % 2 === 0 ? 1 : -1) * (1.8 + (i % 4) * 0.5),
         color: i % 3 === 0 ? '#e2e8f0' : i % 3 === 1 ? '#cbd5e1' : '#94a3b8',
       })),
     []
@@ -423,7 +407,7 @@ function SpacecraftExhaustFX({ isUfo, isLander, inTransitRef }) {
   useFrame((state) => {
     const t = state.clock.getElapsedTime();
     const inTransit = inTransitRef.current?.inTransit ?? false;
-    const thrustPower = inTransit ? 1.0 : 0.36;
+    const thrustPower = inTransit ? 1.0 : 0.42;
 
     if (!isUfo) {
       // Animate multi-layered Yellow -> Orange -> Red rocket fire from the tail nozzle (z = 0 in nozzle group)
@@ -455,27 +439,26 @@ function SpacecraftExhaustFX({ isUfo, isLander, inTransitRef }) {
         );
         redFlameRef.current.rotation.y = t * 4.5;
       }
-      if (smokeGlbRef.current) {
-        const sScale = inTransit ? 1.55 + Math.sin(t * 14) * 0.22 : 0.6;
-        smokeGlbRef.current.scale.set(sScale * 0.85, sScale * 0.85, sScale * 1.25);
-        smokeGlbRef.current.rotation.z = Math.sin(t * 6) * 0.25;
-      }
       if (smokePuffsRef.current) {
         const children = smokePuffsRef.current.children;
         for (let i = 0; i < children.length; i += 1) {
           const puff = children[i];
           const s = puffSeeds[i];
-          const cycle = (t * s.speed + s.phase) % 1;
-          // Start strictly behind the flame tip (z >= 0.65 behind nozzle)
-          const zDist = 0.65 + cycle * (inTransit ? 3.2 : 1.1);
-          const radial = (0.1 + cycle * 0.34) * thrustPower;
+          const cycle = (t * s.speed * (inTransit ? 1.25 : 0.72) + s.phase) % 1;
+          const zDist = 0.52 + cycle * (inTransit ? 3.8 : 1.35);
+          const billow = Math.sin(Math.PI * Math.min(1, cycle * 0.95 + 0.05));
+          const size = (0.14 + billow * 0.36) * thrustPower;
+          const swirl = 1 + cycle * 2.2;
           puff.position.set(
-            s.spreadX * cycle * 2.6 + Math.sin(t * 5 + i) * 0.05 * cycle,
-            s.spreadY * cycle * 2.6 + Math.cos(t * 4 + i) * 0.05 * cycle,
+            s.spreadX * swirl + Math.sin(t * 4.5 + i * 1.3) * 0.11 * cycle,
+            s.spreadY * swirl + Math.cos(t * 3.9 + i * 1.1) * 0.11 * cycle,
             zDist
           );
-          puff.scale.setScalar(Math.max(0.01, radial * (1 - cycle * 0.65)));
-          puff.rotation.set(t * 2 + i, t * 1.6, i);
+          puff.scale.setScalar(Math.max(0.015, size));
+          puff.rotation.set(t * s.spinRate + i, t * s.spinRate * 0.8, i * 0.7);
+          if (puff.material) {
+            puff.material.opacity = Math.max(0, (1 - cycle) * (inTransit ? 0.78 : 0.45));
+          }
         }
       }
     } else if (ufoRingsRef.current) {
@@ -551,10 +534,7 @@ function SpacecraftExhaustFX({ isUfo, isLander, inTransitRef }) {
         <meshBasicMaterial color="#ef4444" transparent opacity={0.78} />
       </mesh>
 
-      {/* 4. 3D Smoke Trail GLB (`humo_estela_larga.glb`) starting behind the flame */}
-      <RocketSmokeGlbMesh smokeRef={smokeGlbRef} />
-
-      {/* 5. Expanding Low-Poly Exhaust Smoke Puffs */}
+      {/* 4. Dynamic Billowing Low-Poly Exhaust Smoke Puffs */}
       <group ref={smokePuffsRef}>
         {puffSeeds.map((s, idx) => (
           <mesh key={idx}>
@@ -562,9 +542,10 @@ function SpacecraftExhaustFX({ isUfo, isLander, inTransitRef }) {
             <meshStandardMaterial
               color={s.color}
               flatShading
-              roughness={0.9}
+              roughness={0.92}
               transparent
-              opacity={0.72}
+              depthWrite={false}
+              opacity={0.7}
             />
           </mesh>
         ))}
@@ -594,7 +575,59 @@ function SpacecraftNavigator({
 
   const shipGroupRef = useRef(null);
   const beaconRef = useRef(null);
-  const [trajectoryCurve, setTrajectoryCurve] = useState(null);
+
+  const TRAJECTORY_STEPS = 36;
+  const trajectoryLine = useMemo(() => {
+    const geo = new THREE.BufferGeometry();
+    const positions = new Float32Array((TRAJECTORY_STEPS + 1) * 3);
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const mat = new THREE.LineDashedMaterial({
+      color: isUfo ? '#c084fc' : '#f97316',
+      dashSize: 0.28,
+      gapSize: 0.14,
+      transparent: true,
+      opacity: 0.88,
+      depthWrite: false,
+    });
+    const line = new THREE.Line(geo, mat);
+    line.frustumCulled = false;
+    line.visible = false;
+    return line;
+  }, [isUfo]);
+
+  useEffect(() => () => {
+    trajectoryLine.geometry.dispose();
+    trajectoryLine.material.dispose();
+  }, [trajectoryLine]);
+
+  const scratch = useMemo(
+    () => ({
+      planetWorldPos: new THREE.Vector3(),
+      destPos: new THREE.Vector3(),
+      mid: new THREE.Vector3(),
+      chord: new THREE.Vector3(),
+      perp: new THREE.Vector3(),
+      controlPt: new THREE.Vector3(),
+      currentPos: new THREE.Vector3(),
+      aheadPos: new THREE.Vector3(),
+      tangent: new THREE.Vector3(),
+      diff: new THREE.Vector3(),
+      up: new THREE.Vector3(0, 1, 0),
+      mat4: new THREE.Matrix4(),
+      targetQuat: new THREE.Quaternion(),
+      obstacles: PLANETS.map((p) => ({
+        name: p.name,
+        pos: new THREE.Vector3(),
+        safeR:
+          p.name === 'Sol'
+            ? p.size * 1.26 + 0.14
+            : p.name === 'Saturn'
+              ? p.size * 1.62 + 0.12
+              : p.size * 1.22 + 0.10,
+      })),
+    }),
+    []
+  );
 
   const flightState = useRef({
     currentTarget: targetBodyName,
@@ -620,7 +653,7 @@ function SpacecraftNavigator({
         destObj.getWorldPosition(destWorld);
         tripDist = st.startPos.distanceTo(destWorld);
       }
-      st.duration = Math.min(6.5, Math.max(2.6, 2.2 + tripDist * 0.16));
+      st.duration = Math.min(7.5, Math.max(3.2, 2.5 + tripDist * 0.18));
       st.currentTarget = targetBodyName;
       st.inTransit = true;
       st.progress = 0;
@@ -633,7 +666,8 @@ function SpacecraftNavigator({
     }
   }, [targetBodyName, planetObjectsRef, shipTransitRef]);
 
-  useFrame((_, delta) => {
+  useFrame((_, rawDelta) => {
+    const delta = Math.min(rawDelta, 0.05);
     const st = flightState.current;
     const ship = shipGroupRef.current;
     if (!ship) return;
@@ -641,57 +675,66 @@ function SpacecraftNavigator({
     const targetObj = planetObjectsRef.current[st.currentTarget];
     if (!targetObj) return;
 
-    const planetWorldPos = new THREE.Vector3();
+    const {
+      planetWorldPos,
+      destPos,
+      mid,
+      chord,
+      perp,
+      controlPt,
+      currentPos,
+      aheadPos,
+      tangent,
+      diff,
+      up,
+      mat4,
+      targetQuat,
+      obstacles,
+    } = scratch;
+
     targetObj.getWorldPosition(planetWorldPos);
 
     const planetMeta = PLANETS.find((p) => p.name === st.currentTarget);
     const bodySize = planetMeta?.size ?? 0.6;
-    const localOrbitRadius = bodySize * 1.56 + 0.36;
-    const localHoverHeight = bodySize * 0.28 + 0.08;
+    const localOrbitRadius =
+      st.currentTarget === 'Saturn'
+        ? bodySize * 1.68 + 0.14
+        : st.currentTarget === 'Sol'
+          ? bodySize * 1.32 + 0.16
+          : bodySize * 1.28 + 0.14;
 
-    // Collect live world positions & safe exclusion radii of ALL celestial bodies
-    // so the spacecraft trajectory and orbit NEVER clip or cross through any planet!
-    const obstacles = [];
-    for (let i = 0; i < PLANETS.length; i += 1) {
-      const pMeta = PLANETS[i];
-      const obj = planetObjectsRef.current[pMeta.name];
+    let activeObstacles = 0;
+    for (let i = 0; i < obstacles.length; i += 1) {
+      const obs = obstacles[i];
+      const obj = planetObjectsRef.current[obs.name];
       if (obj) {
-        const wPos = new THREE.Vector3();
-        obj.getWorldPosition(wPos);
-        const safeR =
-          pMeta.name === 'Sol'
-            ? pMeta.size * 1.38 + 0.45
-            : pMeta.name === 'Saturn'
-              ? pMeta.size * 1.75 + 0.38
-              : pMeta.size * 1.52 + 0.34;
-        obstacles.push({ name: pMeta.name, pos: wPos, safeR });
+        obj.getWorldPosition(obs.pos);
+        obs.active = true;
+        activeObstacles += 1;
+      } else {
+        obs.active = false;
       }
     }
 
     const pushOutsideObstacles = (pt) => {
+      if (activeObstacles === 0) return pt;
       for (let pass = 0; pass < 2; pass += 1) {
         for (let i = 0; i < obstacles.length; i += 1) {
           const obs = obstacles[i];
-          const diff = pt.clone().sub(obs.pos);
+          if (!obs.active) continue;
+          diff.subVectors(pt, obs.pos);
           const dist = diff.length();
-          const influenceR = obs.safeR * 1.22;
+          const influenceR = obs.safeR * 2.15;
           if (dist < influenceR) {
+            const s = Math.min(1, Math.max(0, (influenceR - dist) / (influenceR - obs.safeR)));
+            const falloff = s * s * (3 - 2 * s);
             if (dist < 1e-4) {
-              diff.set(0, 1, 0);
+              diff.set(1, 0, 0);
             } else {
-              // Add upward & outward deflection so the ship glides cleanly around & above any planet in its path
-              diff.y += obs.safeR * 0.32;
               diff.normalize();
             }
-            const targetR =
-              dist < obs.safeR
-                ? obs.safeR
-                : THREE.MathUtils.lerp(
-                    obs.safeR,
-                    influenceR,
-                    (dist - obs.safeR) / (influenceR - obs.safeR)
-                  );
-            pt.copy(obs.pos).addScaledVector(diff, Math.max(dist, targetR));
+            const clearedDist = Math.max(dist, THREE.MathUtils.lerp(dist, obs.safeR, falloff));
+            pt.copy(obs.pos).addScaledVector(diff, clearedDist);
           }
         }
       }
@@ -699,8 +742,6 @@ function SpacecraftNavigator({
     };
 
     if (st.inTransit) {
-      // Lock orbital insertion point on the near/tangential approach side of the target planet
-      // so the spacecraft never flies through the target planet to reach its far side!
       const approachAngle =
         Math.atan2(
           st.startPos.z - planetWorldPos.z,
@@ -711,13 +752,12 @@ function SpacecraftNavigator({
       st.orbitAngle += delta * 0.95;
     }
 
-    const destPos = pushOutsideObstacles(
-      new THREE.Vector3(
-        planetWorldPos.x + Math.cos(st.orbitAngle) * localOrbitRadius,
-        planetWorldPos.y + localHoverHeight + Math.sin(st.orbitAngle * 2) * 0.02,
-        planetWorldPos.z + Math.sin(st.orbitAngle) * localOrbitRadius
-      )
+    destPos.set(
+      planetWorldPos.x + Math.cos(st.orbitAngle) * localOrbitRadius,
+      planetWorldPos.y + Math.sin(st.orbitAngle * 2) * 0.015,
+      planetWorldPos.z + Math.sin(st.orbitAngle) * localOrbitRadius
     );
+    pushOutsideObstacles(destPos);
 
     if (!st.initialized) {
       ship.position.copy(destPos);
@@ -733,12 +773,12 @@ function SpacecraftNavigator({
     if (st.inTransit) {
       st.progress = Math.min(1, st.progress + delta / st.duration);
       const t = st.progress;
-      const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      const ease = t * t * t * (t * (t * 6 - 15) + 10);
 
       const dist = st.startPos.distanceTo(destPos);
-      const chord = new THREE.Vector3().subVectors(destPos, st.startPos);
-      const mid = new THREE.Vector3().addVectors(st.startPos, destPos).multiplyScalar(0.5);
-      const perp = new THREE.Vector3(-chord.z, 0, chord.x);
+      chord.subVectors(destPos, st.startPos);
+      mid.addVectors(st.startPos, destPos).multiplyScalar(0.5);
+      perp.set(-chord.z, 0, chord.x);
       if (perp.lengthSq() > 1e-6) {
         perp.normalize();
       } else {
@@ -748,76 +788,69 @@ function SpacecraftNavigator({
         perp.negate();
       }
       const lateralSweep = Math.min(5.2, Math.max(0.75, dist * 0.3));
-      const controlPt = pushOutsideObstacles(
-        mid.clone().addScaledVector(perp, lateralSweep)
-      );
+      controlPt.copy(mid).addScaledVector(perp, lateralSweep);
+      pushOutsideObstacles(controlPt);
       controlPt.y = Math.max(st.startPos.y, destPos.y, controlPt.y) + 0.24;
 
-      const evalTransferCurve = (u) => {
+      const evalTransferCurve = (u, out) => {
         const inv = 1 - u;
-        const rawPt = new THREE.Vector3(
+        out.set(
           inv * inv * st.startPos.x + 2 * inv * u * controlPt.x + u * u * destPos.x,
           inv * inv * st.startPos.y + 2 * inv * u * controlPt.y + u * u * destPos.y,
           inv * inv * st.startPos.z + 2 * inv * u * controlPt.z + u * u * destPos.z
         );
-        return pushOutsideObstacles(rawPt);
+        return pushOutsideObstacles(out);
       };
 
-      const currentPos = evalTransferCurve(ease);
-      const nextT = Math.min(1, ease + 0.025);
-      const aheadPos = evalTransferCurve(nextT);
+      evalTransferCurve(ease, currentPos);
+      const nextT = Math.min(1, ease + 0.06);
+      evalTransferCurve(nextT, aheadPos);
 
       if (aheadPos.distanceToSquared(currentPos) > 1e-6) {
-        const m = new THREE.Matrix4().lookAt(
-          currentPos,
-          aheadPos,
-          new THREE.Vector3(0, 1, 0)
-        );
-        const targetQuat = new THREE.Quaternion().setFromRotationMatrix(m);
-        ship.quaternion.slerp(targetQuat, Math.min(1, delta * 14));
+        mat4.lookAt(ship.position, aheadPos, up);
+        targetQuat.setFromRotationMatrix(mat4);
+        ship.quaternion.slerp(targetQuat, 1 - Math.exp(-delta * 6.0));
       }
 
-      ship.position.copy(currentPos);
-      st.lastPos.copy(currentPos);
+      ship.position.lerp(currentPos, 1 - Math.exp(-delta * 9.0));
+      st.lastPos.copy(ship.position);
 
       if (shipTransitRef) {
         shipTransitRef.current.inTransit = true;
         shipTransitRef.current.progress = ease;
-        shipTransitRef.current.shipPos.copy(currentPos);
+        shipTransitRef.current.shipPos.copy(ship.position);
         shipTransitRef.current.destPos.copy(planetWorldPos);
       }
 
-      const pts = [];
-      const steps = 32;
-      for (let i = 0; i <= steps; i += 1) {
-        const p = evalTransferCurve(i / steps);
-        pts.push([p.x, p.y, p.z]);
+      const posAttr = trajectoryLine.geometry.attributes.position;
+      const arr = posAttr.array;
+      for (let i = 0; i <= TRAJECTORY_STEPS; i += 1) {
+        evalTransferCurve(i / TRAJECTORY_STEPS, aheadPos);
+        const idx = i * 3;
+        arr[idx] = aheadPos.x;
+        arr[idx + 1] = aheadPos.y;
+        arr[idx + 2] = aheadPos.z;
       }
-      setTrajectoryCurve(pts);
+      posAttr.needsUpdate = true;
+      trajectoryLine.computeLineDistances();
+      trajectoryLine.visible = true;
 
       if (st.progress >= 1) {
         st.inTransit = false;
-        setTrajectoryCurve(null);
+        trajectoryLine.visible = false;
         if (shipTransitRef) {
           shipTransitRef.current.inTransit = false;
         }
       }
     } else {
-      ship.position.lerp(destPos, Math.min(1, delta * 8));
+      trajectoryLine.visible = false;
+      ship.position.lerp(destPos, 1 - Math.exp(-delta * 8));
 
-      const tangent = new THREE.Vector3(
-        -Math.sin(st.orbitAngle),
-        0,
-        Math.cos(st.orbitAngle)
-      ).normalize();
-      const aheadPos = ship.position.clone().add(tangent);
-      const m = new THREE.Matrix4().lookAt(
-        ship.position,
-        aheadPos,
-        new THREE.Vector3(0, 1, 0)
-      );
-      const targetQuat = new THREE.Quaternion().setFromRotationMatrix(m);
-      ship.quaternion.slerp(targetQuat, Math.min(1, delta * 8));
+      tangent.set(-Math.sin(st.orbitAngle), 0, Math.cos(st.orbitAngle)).normalize();
+      aheadPos.copy(ship.position).add(tangent);
+      mat4.lookAt(ship.position, aheadPos, up);
+      targetQuat.setFromRotationMatrix(mat4);
+      ship.quaternion.slerp(targetQuat, 1 - Math.exp(-delta * 8));
 
       if (shipTransitRef) {
         shipTransitRef.current.inTransit = false;
@@ -837,18 +870,7 @@ function SpacecraftNavigator({
 
   return (
     <>
-      {trajectoryCurve && (
-        <Line
-          points={trajectoryCurve}
-          color={isUfo ? '#c084fc' : '#f97316'}
-          lineWidth={2.2}
-          dashed
-          dashSize={0.28}
-          gapSize={0.14}
-          transparent
-          opacity={0.88}
-        />
-      )}
+      <primitive object={trajectoryLine} />
 
       {/* Spacecraft 3D Mesh at realistic miniature scale relative to planets (nose at -Z, tail at +Z) */}
       <group ref={shipGroupRef} scale={0.075}>
@@ -948,7 +970,8 @@ function CameraController({
     }
   }, [focusPlanet, planetObjectsRef, overviewPosition]);
 
-  useFrame((state, delta) => {
+  useFrame((state, rawDelta) => {
+    const delta = Math.min(rawDelta, 0.05);
     const controls = controlsRef.current;
     if (!controls) return;
 

@@ -20,8 +20,12 @@ async function request(path, options = {}) {
 
 export const api = {
   firehazrMetadata: () => request('/analytics/firehazr'),
+  firehazrPresets: () => request('/analytics/firehazr/presets'),
   predictFirehazr: (conditions, { signal } = {}) => request('/analytics/firehazr/predict', {
     method: 'POST', body: JSON.stringify(conditions), signal,
+  }),
+  interpretFirehazr: (payload, { signal } = {}) => request('/analytics/firehazr/interpret', {
+    method: 'POST', body: JSON.stringify(payload), signal,
   }),
   listInvestigations: async (params = {}) => {
     try {
@@ -92,6 +96,8 @@ export const api = {
       };
     }
   },
+
+  chatStatus: () => request('/chat/status'),
 
   ask: (question, optionsOrSessionId = {}) => {
     const opts =

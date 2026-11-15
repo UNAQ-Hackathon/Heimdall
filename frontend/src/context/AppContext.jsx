@@ -71,7 +71,7 @@ export function AppProvider({ children }) {
               m.id === pendingMsgId
                 ? {
                     ...m,
-                    text: `Error consulting Heimdall AI: ${err.message}`,
+                    text: `Error consulting Devin AI: ${err.message}`,
                     pending: false,
                   }
                 : m
@@ -99,8 +99,8 @@ export function AppProvider({ children }) {
           id: pendingMsgId,
           role: 'ai',
           text: chatSessionId
-            ? 'Heimdall AI analyzing NASA PSI archive…'
-            : 'Heimdall AI initializing NASA PSI combustion telemetry…',
+            ? 'Gemini AI analyzing NASA PSI archive…'
+            : 'Gemini AI querying NASA PSI combustion context…',
           pending: true,
         },
       ]);
@@ -125,6 +125,7 @@ export function AppProvider({ children }) {
                     ...m,
                     text: res.answer,
                     citations: res.citations,
+                    usage: res.usage ?? null,
                     pending: false,
                   }
                 : m
@@ -136,7 +137,7 @@ export function AppProvider({ children }) {
               m.id === pendingMsgId
                 ? {
                     ...m,
-                    text: 'Heimdall AI synthesizing NASA PSI parameters and bounds…',
+                    text: 'Devin AI synthesizing NASA PSI parameters and bounds…',
                     pending: true,
                   }
                 : m
@@ -148,13 +149,22 @@ export function AppProvider({ children }) {
         }
       } catch (err) {
         setChatLoading(false);
+        const isQuotaError =
+          /out_of_quota|billing_restricted|429|RESOURCE_EXHAUSTED|budget limit/i.test(err?.message ?? '');
+        const isHighDemand =
+          /503|high demand|UNAVAILABLE|overloaded/i.test(err?.message ?? '');
+        const text = isQuotaError
+          ? `Gemini API quota or token budget limit reached (${err.message}).`
+          : isHighDemand
+            ? 'Gemini is temporarily experiencing high demand (503). Please try again in a few seconds.'
+            : `Gemini API error: ${err.message}. Check that the API server and GEMINI_API_KEY are available.`;
         setChatMessages((prev) =>
           prev.map((m) =>
             m.id === pendingMsgId
               ? {
                   ...m,
-                  text: `Heimdall AI backend unavailable (${err.message}). Make sure the API is running on port 5000 (cd api && npm run dev).`,
-                  citations: [{ label: 'Saffire-III', studyId: 'psi-saffire-iii' }],
+                  text,
+                  isError: true,
                   pending: false,
                 }
               : m

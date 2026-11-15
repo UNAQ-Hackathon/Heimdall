@@ -219,6 +219,105 @@ export default function MissionHub() {
             </div>
           </div>
 
+          {/* Live Scenario-Driven PSI Ranking Preview */}
+          {rankedItems.length > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px',
+                padding: '8px 10px',
+                borderRadius: '8px',
+                background: 'rgba(15, 23, 42, 0.45)',
+                border: '1px solid var(--border-subtle)',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  fontSize: '10px',
+                  fontFamily: 'var(--font-mono)',
+                  color: '#94a3b8',
+                }}
+              >
+                <span>TOP PSI RANKING · {scenario.label.toUpperCase()}</span>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('ranking')}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#60a5fa',
+                    fontSize: '10px',
+                    fontFamily: 'var(--font-mono)',
+                    cursor: 'pointer',
+                    padding: 0,
+                  }}
+                >
+                  All ({rankedItems.length}) ↗
+                </button>
+              </div>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {rankedItems.slice(0, 3).map((item, idx) => (
+                  <button
+                    key={item._id ?? item.studyId ?? idx}
+                    type="button"
+                    onClick={() => navigate(`/study/${item.studyId ?? item._id}`)}
+                    style={{
+                      flex: '1 1 90px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '6px',
+                      padding: '5px 8px',
+                      borderRadius: '6px',
+                      background: '#0b1322',
+                      border: '1px solid #263449',
+                      color: '#e2e8f0',
+                      fontSize: '11px',
+                      fontFamily: 'var(--font-mono)',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      #{idx + 1} {item.acronym}
+                    </span>
+                    <strong style={{ color: '#60a5fa', fontSize: '10.5px' }}>
+                      {Math.round(item.ranking?.score ?? 0)}
+                    </strong>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Concise Mission & PSI Context in Main Sidebar */}
+          <div
+            style={{
+              border: '1px solid #263449',
+              borderRadius: '8px',
+              padding: '10px 12px',
+              background: '#0b1322',
+              fontSize: '11.5px',
+              lineHeight: 1.5,
+              color: '#cbd5e1',
+            }}
+          >
+            <strong style={{ display: 'block', color: '#93c5fd', marginBottom: '4px', fontSize: '12px' }}>
+              Why these NASA PSI fire tests matter
+            </strong>
+            <p style={{ margin: 0 }}>
+              In microgravity, flames lack buoyancy and form spherical diffusion clouds, making fire
+              prevention (<strong>BASS</strong>, <strong>Saffire</strong>, <strong>ACME</strong>),
+              detection (<strong>SAME</strong>), and suppression (<strong>FLEX</strong>) critical
+              for spacecraft, Moon bases (<strong>≥30% O₂, ≤10.2 psi</strong>), and Mars habitats
+              where 0g and 1g data bound partial-gravity risk.
+            </p>
+          </div>
+
           {/* Clean Segmented Mode Switcher: PSI Studies vs Fire Hazard Lab */}
           <div
             style={{
@@ -402,6 +501,42 @@ export default function MissionHub() {
                 </div>
               )}
 
+              <details
+                style={{
+                  border: '1px solid #263449',
+                  borderRadius: '8px',
+                  padding: '9px 12px',
+                  background: '#0b1322',
+                  fontSize: '11.5px',
+                  color: '#cbd5e1',
+                  lineHeight: 1.5,
+                }}
+              >
+                <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#93c5fd' }}>
+                  What are these NASA PSI investigations?
+                </summary>
+                <p style={{ margin: '8px 0 4px' }}>
+                  NASA&apos;s Physical Science Informatics (PSI) database groups microgravity fire
+                  research into three safety pillars:
+                </p>
+                <ul style={{ margin: '4px 0 0', paddingLeft: '16px', display: 'grid', gap: '4px' }}>
+                  <li>
+                    <strong>Prevention &amp; Flammability:</strong> <em>BASS / BASS-II</em> &amp;{' '}
+                    <em>Saffire-I/II/III</em> (solid fabrics/plastics in MSG/SPICE &amp; Cygnus);{' '}
+                    <em>ACME</em> (6 gas-flame tests in CIR, including <em>BRE</em>,{' '}
+                    <em>CFI-G</em> up to 85% O₂, and <em>E-FIELD Flames</em>).
+                  </li>
+                  <li>
+                    <strong>Detection:</strong> <em>SAME / SAME-R</em> (smoke aerosol sizing in
+                    MSG; instrument also used in <em>DAFT / DAFT-2</em> for dust).
+                  </li>
+                  <li>
+                    <strong>Suppression:</strong> <em>FLEX / FLEX-2</em> (liquid droplet burning in
+                    CIR/MDCA with CO₂ and He diluents).
+                  </li>
+                </ul>
+              </details>
+
               {/* Clean, Minimalist Study Cards */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {rankedItems.map(({ investigation: inv, score, breakdown }, idx) => {
@@ -493,10 +628,6 @@ export default function MissionHub() {
                           fontSize: '11.5px',
                           color: '#94a3b8',
                           lineHeight: 1.45,
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
                         }}
                       >
                         {audience === 'Engineer'
@@ -539,6 +670,38 @@ export default function MissionHub() {
           overflow: 'hidden',
         }}
       >
+        {/* Edge Tab Handle to Collapse / Expand Sidebar */}
+        <button
+          type="button"
+          aria-label={panelCollapsed ? 'Open sidebar' : 'Close sidebar'}
+          title={panelCollapsed ? 'Open sidebar' : 'Close sidebar'}
+          onClick={() => setPanelCollapsed(!panelCollapsed)}
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            zIndex: 30,
+            width: '20px',
+            height: '52px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(13, 19, 33, 0.9)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid var(--border-subtle)',
+            borderLeft: 'none',
+            borderRadius: '0 8px 8px 0',
+            color: '#94a3b8',
+            fontSize: '15px',
+            lineHeight: 1,
+            cursor: 'pointer',
+            boxShadow: '4px 0 14px rgba(0, 0, 0, 0.4)',
+          }}
+        >
+          {panelCollapsed ? '›' : '‹'}
+        </button>
+
         {/* Minimalist Top Bar Over 3D Scene */}
         <div
           style={{
@@ -555,37 +718,8 @@ export default function MissionHub() {
             flexWrap: 'wrap',
           }}
         >
-          {/* Left: Panel Toggle + Spacecraft Selector (Planet selection lives exclusively in the bottom dock) */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              padding: '5px 12px',
-              borderRadius: '9999px',
-              background: 'rgba(10, 15, 29, 0.82)',
-              backdropFilter: 'blur(12px)',
-              border: '1px solid var(--border-subtle)',
-              pointerEvents: 'auto',
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => setPanelCollapsed(!panelCollapsed)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: '#94a3b8',
-                fontSize: '11px',
-                fontFamily: 'var(--font-mono)',
-                cursor: 'pointer',
-                padding: '2px 6px',
-              }}
-            >
-              {panelCollapsed ? '☰ Panel' : '✕ Panel'}
-            </button>
-
-            <span style={{ width: '1px', height: '14px', background: 'var(--border-subtle)' }} />
+          {/* Left: Spacecraft Selector */}
+          <div style={{ pointerEvents: 'auto' }}>
             <SpacecraftSelector shipFile={shipFile} onSelect={setShipFile} />
           </div>
 
