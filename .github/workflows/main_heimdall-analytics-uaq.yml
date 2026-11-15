@@ -10,6 +10,7 @@ on:
       - 'main'
     paths:
       - 'analytics/**'
+      - '**/firehazr/**'
       - '.github/workflows/main_heimdall-analytics-uaq.yml'
   workflow_dispatch:
 
@@ -34,6 +35,13 @@ jobs:
           source antenv/bin/activate
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
+      - name: Copy firehazr module into analytics artifact
+        run: |
+          FIREHAZR_DIR=$(find . -maxdepth 3 -type d -name "firehazr" ! -path "./analytics/*" | head -n 1)
+          if [ -n "$FIREHAZR_DIR" ]; then
+            cp -r "$FIREHAZR_DIR" ./analytics/
+          fi
 
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v4
