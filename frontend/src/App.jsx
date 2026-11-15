@@ -7,8 +7,6 @@ import StudyDetailPage from './pages/StudyDetailPage.jsx';
 import PsiCatalogPage from './pages/PsiCatalogPage.jsx';
 import FireHazRPage from './pages/FireHazRPage.jsx';
 import ComparePage from './pages/ComparePage.jsx';
-import Habitat3DPage from './pages/Habitat3DPage.jsx';
-import ChatPage from './pages/ChatPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 
 export default function App() {
@@ -35,10 +33,6 @@ export default function App() {
 
         {/* Matrix comparison & Earth applications */}
         <Route path="compare" element={<ComparePage />} />
-
-        {/* Planetary Explorer & standalone Chat test view */}
-        <Route path="habitat" element={<Habitat3DPage />} />
-        <Route path="chat" element={<ChatPage />} />
 
         {/* Fallbacks */}
         <Route path="*" element={<NotFoundPage />} />

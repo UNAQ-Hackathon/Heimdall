@@ -426,9 +426,24 @@ export default function CopilotChat({ inline = false }) {
           flexDirection: 'column',
           gap: '10px',
           fontSize: '12px',
+          minHeight: '140px',
         }}
       >
-        {chatMessages.map((msg, idx) => (
+        {chatMessages.length === 0 ? (
+          <div
+            style={{
+              margin: 'auto',
+              textAlign: 'center',
+              padding: '18px 14px',
+              color: '#94a3b8',
+              fontSize: '11.5px',
+              lineHeight: 1.5,
+            }}
+          >
+            Ask a question about NASA PSI combustion investigations, mission fire-safety rankings, or FireHazR droplet predictions.
+          </div>
+        ) : (
+          chatMessages.map((msg, idx) => (
           <div
             key={msg.id ?? idx}
             style={{
@@ -457,6 +472,38 @@ export default function CopilotChat({ inline = false }) {
                 >
                   {renderFormattedText(msg.text)}
                 </p>
+                {msg.toolCalls && msg.toolCalls.length > 0 && (
+                  <div
+                    style={{
+                      marginTop: '6px',
+                      display: 'flex',
+                      gap: '6px',
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    {msg.toolCalls.map((t, i) => (
+                      <span
+                        key={i}
+                        title={t.ok ? 'Grounded tool result' : 'Tool reported an error'}
+                        style={{
+                          fontSize: '10px',
+                          fontFamily: 'var(--font-mono)',
+                          background: t.ok
+                            ? 'rgba(34, 197, 94, 0.12)'
+                            : 'rgba(239, 68, 68, 0.12)',
+                          border: t.ok
+                            ? '1px solid rgba(34, 197, 94, 0.3)'
+                            : '1px solid rgba(239, 68, 68, 0.3)',
+                          color: t.ok ? '#86efac' : '#fca5a5',
+                          borderRadius: '4px',
+                          padding: '2px 6px',
+                        }}
+                      >
+                        {t.ok ? '⚙' : '⚠'} {t.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 {msg.citations && msg.citations.length > 0 && (
                   <div
                     style={{
@@ -493,7 +540,8 @@ export default function CopilotChat({ inline = false }) {
               </div>
             )}
           </div>
-        ))}
+          ))
+        )}
       </div>
 
       {/* Input */}

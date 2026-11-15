@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import env from '../config/env.js';
 import HttpError from '../utils/http-error.js';
+import { AGENT_TOOL_DECLARATIONS, executeAgentTool } from './agent-tools.js';
 
 const { apiKey, apiBase, model } = env.devin;
 const gemini = env.gemini ?? {};
@@ -334,7 +335,9 @@ async function runDevinSessionPrompt(prompt, { sessionId, waitMs = 15000 } = {})
   };
 }
 
-async function chatWithGemini(messages, { temperature = 0.2 } = {}) {
+const MAX_TOOL_ROUNDS = 6;
+
+async function chatWithGemini(messages, { temperature = 0.2, useTools = false } = {}) {
   const systemText = messages
     .filter((m) => m.role === 'system')
     .map((m) => m.content)
@@ -346,59 +349,98 @@ async function chatWithGemini(messages, { temperature = 0.2 } = {}) {
       parts: [{ text: m.content }],
     }));
 
-  if (geminiBudget.usedTokens >= geminiBudget.limit) {
-    throw new HttpError(
-      429,
-      `Gemini API token budget limit reached (${geminiBudget.usedTokens.toLocaleString()}/${geminiBudget.limit.toLocaleString()} tokens).`
+  const toolCalls = [];
+  const usageTotals = { promptTokenCount: 0, candidatesTokenCount: 0, totalTokenCount: 0 };
+  let rounds = 0;
+  let content = '';
+
+  for (let round = 0; round <= MAX_TOOL_ROUNDS; round += 1) {
+    if (geminiBudget.usedTokens >= geminiBudget.limit) {
+      throw new HttpError(
+        429,
+        `Gemini API token budget limit reached (${geminiBudget.usedTokens.toLocaleString()}/${geminiBudget.limit.toLocaleString()} tokens).`
+      );
+    }
+
+    const res = await fetch(
+      `${gemini.apiBase}/v1beta/models/${encodeURIComponent(gemini.model)}:generateContent?key=${encodeURIComponent(gemini.apiKey)}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...(systemText ? { systemInstruction: { parts: [{ text: systemText }] } } : {}),
+          contents,
+          // On the last allowed round drop the tools so the model must answer.
+          ...(useTools && round < MAX_TOOL_ROUNDS
+            ? { tools: [{ functionDeclarations: AGENT_TOOL_DECLARATIONS }] }
+            : {}),
+          generationConfig: {
+            temperature,
+            maxOutputTokens: Math.max(128, Number(gemini.maxOutputTokens ?? 1024)),
+          },
+        }),
+      }
     );
+
+    if (!res.ok) {
+      const text = await res.text();
+      let msg = `HTTP ${res.status}`;
+      try {
+        const parsed = JSON.parse(text);
+        msg = parsed?.error?.message ?? msg;
+      } catch {
+        if (text) msg = text;
+      }
+      const status = res.status === 503 || res.status === 429 ? res.status : 502;
+      throw new HttpError(status, `Gemini API error ${res.status}: ${msg}`, { body: text });
+    }
+
+    const data = await res.json();
+    const usage = data.usageMetadata ?? null;
+    if (usage) {
+      usageTotals.promptTokenCount += Number(usage.promptTokenCount ?? 0);
+      usageTotals.candidatesTokenCount += Number(usage.candidatesTokenCount ?? 0);
+      usageTotals.totalTokenCount += Number(
+        usage.totalTokenCount ??
+          Number(usage.promptTokenCount ?? 0) + Number(usage.candidatesTokenCount ?? 0)
+      );
+    }
+
+    const parts = data.candidates?.[0]?.content?.parts ?? [];
+    const functionCalls = useTools ? parts.filter((p) => p.functionCall) : [];
+
+    if (functionCalls.length === 0 || round === MAX_TOOL_ROUNDS) {
+      content = parts
+        .map((p) => p.text ?? '')
+        .join('')
+        .trim();
+      rounds = round;
+      break;
+    }
+
+    contents.push({ role: 'model', parts });
+    const responseParts = [];
+    for (const part of functionCalls) {
+      const { name, args } = part.functionCall;
+      const result = await executeAgentTool(name, args ?? {});
+      toolCalls.push({
+        name,
+        args: args ?? {},
+        ok: result?.error == null,
+      });
+      responseParts.push({
+        functionResponse: { name, response: { content: result } },
+      });
+    }
+    contents.push({ role: 'user', parts: responseParts });
   }
 
-  const res = await fetch(
-    `${gemini.apiBase}/v1beta/models/${encodeURIComponent(gemini.model)}:generateContent?key=${encodeURIComponent(gemini.apiKey)}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...(systemText ? { systemInstruction: { parts: [{ text: systemText }] } } : {}),
-        contents,
-        generationConfig: {
-          temperature,
-          maxOutputTokens: Math.max(128, Number(gemini.maxOutputTokens ?? 1024)),
-        },
-      }),
-    }
-  );
-
-  if (!res.ok) {
-    const text = await res.text();
-    let msg = `HTTP ${res.status}`;
-    try {
-      const parsed = JSON.parse(text);
-      msg = parsed?.error?.message ?? msg;
-    } catch {
-      if (text) msg = text;
-    }
-    const status = res.status === 503 || res.status === 429 ? res.status : 502;
-    throw new HttpError(status, `Gemini API error ${res.status}: ${msg}`, { body: text });
-  }
-
-  const data = await res.json();
-  const usage = data.usageMetadata ?? null;
-  if (usage) {
-    const promptTok = Number(usage.promptTokenCount ?? 0);
-    const outTok = Number(usage.candidatesTokenCount ?? 0);
-    const totalTok = Number(usage.totalTokenCount ?? promptTok + outTok);
-    geminiBudget.promptTokens += promptTok;
-    geminiBudget.outputTokens += outTok;
-    geminiBudget.usedTokens += totalTok;
+  if (usageTotals.totalTokenCount > 0) {
+    geminiBudget.promptTokens += usageTotals.promptTokenCount;
+    geminiBudget.outputTokens += usageTotals.candidatesTokenCount;
+    geminiBudget.usedTokens += usageTotals.totalTokenCount;
     geminiBudget.requests += 1;
   }
-
-  const content =
-    data.candidates?.[0]?.content?.parts
-      ?.map((p) => p.text ?? '')
-      .join('')
-      .trim() ?? '';
 
   return {
     content,
@@ -407,10 +449,12 @@ async function chatWithGemini(messages, { temperature = 0.2 } = {}) {
     sessionUrl: null,
     sessionStatus: 'completed',
     baselineCount: 0,
-    usage,
+    usage: usageTotals.totalTokenCount > 0 ? usageTotals : null,
     tokenBudget: getGeminiTokenBudget(),
     model: gemini.model,
     provider: 'gemini',
+    toolCalls,
+    toolRounds: rounds,
   };
 }
 
@@ -418,9 +462,9 @@ async function chatWithGemini(messages, { temperature = 0.2 } = {}) {
  * AI client — uses Google AI Studio (Gemini) when GEMINI_API_KEY is set,
  * otherwise falls back to Devin API.
  */
-async function chat(messages, { temperature = 0.2, sessionId, waitMs } = {}) {
+async function chat(messages, { temperature = 0.2, sessionId, waitMs, useTools = false } = {}) {
   if (gemini.apiKey) {
-    return chatWithGemini(messages, { temperature });
+    return chatWithGemini(messages, { temperature, useTools });
   }
 
   if (isDevinSessionsApi()) {
@@ -549,6 +593,13 @@ const RAG_SYSTEM = [
   'Never invent experimental numbers or database records. If a requested measurement is missing, state that explicitly.',
 ].join(' ');
 
+const AGENT_SYSTEM = [
+  'You have tools that query the live system: search_investigations and get_investigation read the real PSI catalog, rank_investigations runs the transparent scoring engine, predict_burn_duration calls the FireHazR KNN model, list_mission_scenarios returns habitat presets.',
+  'For ANY numeric answer — test conditions, O2 %, pressure, burn durations, ranking scores — you MUST call the relevant tool instead of recalling values.',
+  'If a tool returns an error or a coverage abstention, report it verbatim and never substitute your own estimate.',
+  'When you rank, briefly explain the top factor contributions from the returned breakdown.',
+].join(' ');
+
 export async function answerQuestion(
   question,
   contextDocs = [],
@@ -619,13 +670,16 @@ export async function answerQuestion(
 
   const res = await chat(
     [
-      { role: 'system', content: `${RAG_SYSTEM} ${audienceNote}` },
+      {
+        role: 'system',
+        content: `${RAG_SYSTEM}${gemini.apiKey ? ` ${AGENT_SYSTEM}` : ''} ${audienceNote}`,
+      },
       {
         role: 'user',
         content: `${scenarioNote ? `${scenarioNote}\n\n` : ''}${mongoNote}\n\nNASA PSI Context:\n${context}\n\nUser Question: ${question}`,
       },
     ],
-    { sessionId }
+    { sessionId, useTools: true }
   );
 
   return {
@@ -640,6 +694,7 @@ export async function answerQuestion(
     provider: res.provider ?? (gemini.apiKey ? 'gemini' : 'devin'),
     usage: res.usage ?? null,
     tokenBudget: res.tokenBudget ?? (gemini.apiKey ? getGeminiTokenBudget() : null),
+    toolCalls: res.toolCalls ?? [],
   };
 }
 

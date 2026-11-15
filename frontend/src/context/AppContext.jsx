@@ -1,5 +1,4 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { CHAT_HISTORY } from '../services/mockData.js';
 import { api as backendApi } from '../services/api.js';
 import { SCENARIOS, DEFAULT_WEIGHTS, resolveScenarioKey } from './ScenarioContext.jsx';
 import { loadSavedShipFile, saveShipFile } from '../utils/spacecraft-storage.js';
@@ -28,8 +27,8 @@ export function AppProvider({ children }) {
     setShipFileState(resolved);
   }, []);
 
-  /* ── Shared Devin Copilot Chat State (single session across inline & modal) ── */
-  const [chatMessages, setChatMessages] = useState(CHAT_HISTORY);
+  /* ── Shared Copilot Chat State (single session across inline & modal) ── */
+  const [chatMessages, setChatMessages] = useState([]);
   const [chatLoading, setChatLoading] = useState(false);
   const [chatSessionId, setChatSessionId] = useState(null);
   const [chatSessionUrl, setChatSessionUrl] = useState(null);
@@ -132,6 +131,7 @@ export function AppProvider({ children }) {
                     ...m,
                     text: res.answer,
                     citations: res.citations,
+                    toolCalls: res.toolCalls ?? [],
                     usage: res.usage ?? null,
                     isError: res.status === 'unavailable',
                     pending: false,
@@ -189,7 +189,7 @@ export function AppProvider({ children }) {
     setChatSessionId(null);
     setChatSessionUrl(null);
     setChatSessionStatus(null);
-    setChatMessages(CHAT_HISTORY);
+    setChatMessages([]);
   }, [stopPolling]);
 
   const value = {

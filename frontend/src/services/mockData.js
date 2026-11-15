@@ -3,11 +3,9 @@
  * (`data/processed/psi-investigations.json`) and deterministic ranking (`ranking.js`).
  * Fully deterministic; zero invented numbers.
  */
-import { SCENARIOS, resolveScenarioKey } from '../context/scenarios.js';
 import {
   enrichInvestigationForUI,
   processedInvestigations,
-  rankLocalInvestigations,
 } from './ranking.js';
 
 // ─── Investigations (Real Processed PSI Dataset) ────────────────────
@@ -257,55 +255,3 @@ export const PLANETS = [
   { name: 'Uranus',   model: '/models/planetas/Urano.glb',    color: '#67e8f9', size: 0.96, distance: 48.0, au: '19.19 AU', orbitSpeed: 0.0005, initialAngle: 0.4 },
   { name: 'Neptune',  model: '/models/planetas/Neptuno.glb',  color: '#6366f1', size: 0.92, distance: 60.0, au: '30.07 AU', orbitSpeed: 0.0003, initialAngle: 4.9 },
 ];
-
-// ─── Deterministic Ranking Engine (mirrors api/src/services/ranking.service.js) ──
-
-export function rankInvestigations(scenarioOrKey, weights = {}, categoryFilter = 'all') {
-  const scenarioObj =
-    typeof scenarioOrKey === 'string'
-      ? SCENARIOS[resolveScenarioKey(scenarioOrKey)] ?? SCENARIOS.moon
-      : scenarioOrKey ?? SCENARIOS.moon;
-
-  const ranked = rankLocalInvestigations(
-    { ...scenarioObj, category: categoryFilter },
-    weights
-  );
-
-  return ranked.map((r) => r.investigation);
-}
-
-// ─── Chat Initial History ───────────────────────────────────────────
-
-export const CHAT_HISTORY = [
-  {
-    role: 'user',
-    text: '"Which PSI studies apply to a ≥30% O₂, ≤10.2 psi lunar habitat?"',
-  },
-  {
-    role: 'ai',
-    text: 'Because PSI contains no direct partial-gravity (0.165g) combustion data, lunar habitat fire risk is bounded between **microgravity** and **1g** baselines. **BRE** and **Flame Design** (ACME in CIR) and **FLEX-2** (CIR/MDCA) tested elevated oxygen up to 30–50% O₂, **CFI-G** (ACME) reached up to 85% O₂ from the burner, and **E-FIELD Flames** (ACME) serves as an experimental body-force proxy for partial gravity.',
-    citations: [
-      { label: 'BRE', studyId: 'acme-bre' },
-      { label: 'E-FIELD Flames', studyId: 'acme-e-field' },
-      { label: 'CFI-G', studyId: 'acme-cfi-g' },
-    ],
-  },
-];
-
-export const api = {
-  listInvestigations: async () => ({
-    data: INVESTIGATIONS,
-    total: INVESTIGATIONS.length,
-  }),
-  getInvestigation: async (id) => {
-    const inv = INVESTIGATIONS.find((i) => i.id === id || i.psiId === id);
-    if (!inv) throw new Error(`Investigation "${id}" not found`);
-    return inv;
-  },
-  rank: async (scenarioKey, weights, category = 'all') => ({
-    data: rankInvestigations(scenarioKey, weights, category),
-  }),
-  getComparisonMatrix: async () => COMPARISON_MATRIX,
-  getEarthApplications: async () => EARTH_APPLICATIONS,
-  getCrossFindings: async () => CROSS_FINDINGS,
-};

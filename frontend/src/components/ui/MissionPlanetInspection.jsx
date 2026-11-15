@@ -8,7 +8,6 @@ export default function MissionPlanetInspection({
   body,
   onClose,
   onOpenTestbench,
-  onEnterIssAirlock,
 }) {
   const [zoneId, setZoneId] = useState('temperate');
   const planet =
@@ -41,7 +40,6 @@ export default function MissionPlanetInspection({
         onZoneChange={setZoneId}
         onClose={onClose}
         onOpenTestbench={onOpenTestbench}
-        onEnterIssAirlock={onEnterIssAirlock}
       />
     </section>
   );
