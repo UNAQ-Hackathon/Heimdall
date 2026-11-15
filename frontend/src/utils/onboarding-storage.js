@@ -13,7 +13,7 @@ export const TOUR_STEPS = [
     highlights: [
       'Selecting habitats updates cabin O₂/psi context & PSI study rankings',
       'Adjusting gas, pressure & droplet meters updates FLEX coverage live',
-      'Engineer vs Student mode, Compare & Earth, and Gemini AI adapt everywhere',
+      'Engineer vs Student mode, Parametric Comparison, and Gemini AI adapt everywhere',
     ],
   },
   {
@@ -105,10 +105,10 @@ export const TOUR_STEPS = [
     route: '/compare',
     target: '[data-tour="compare-controls"]',
     mobileTab: '3d',
-    badge: '8 OF 9 · COMPARE & EARTH',
-    title: 'Compare & Earth: 0g vs 1g Matrix & Spin-Offs',
+    badge: '8 OF 9 · PARAMETRIC COMPARISON',
+    title: 'Parametric Comparison: Regimes, Matrix & Spin-Offs',
     description:
-      'Use presets or pick any 2–3 studies side-by-side, toggle Show Differences Only, switch tabs for the Conditions Matrix, and inspect Earth Spin-Offs.',
+      'Use presets or pick any 2–3 studies side-by-side, toggle Show Differences Only, switch tabs for the Conditions Matrix, the O₂–pressure regime map, and Earth Spin-Offs.',
     changes:
       'Study selectors and Show Differences Only isolate diverging fuels, O₂ ranges, hardware, and sensors for focused CSV export.',
     why:

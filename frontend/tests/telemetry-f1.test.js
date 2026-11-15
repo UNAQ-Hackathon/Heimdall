@@ -26,7 +26,7 @@ test('enrichInvestigationForUI resolves non-empty id even from partial MongoDB s
   assert.equal(enriched.id, 'acme-cfi-g');
   assert.equal(enriched.acronym, 'CFI-G');
   assert.equal(enriched.psiId, 'PSI-ACME-CFI-G');
-  assert.equal(enriched.conditions?.oxygenMaxPct, 85);
+  assert.equal(enriched.conditions?.oxygenMaxPct, 39.97);
 });
 
 test('filterTelemetryStudies filters by oxygen regime, pillar, fuel, hardware, and query', () => {
@@ -91,10 +91,10 @@ test('computeTelemetryKPIs computes exact deltas without inventing missing value
   assert.equal(kpis.co2Pct, co2Run.co2Pct);
   assert.equal(kpis.pressureMmhg, co2Run.pressureMmhg);
   assert.equal(kpis.diameterMm, co2Run.diameterMm);
-  assert.equal(kpis.flowVelocity, 0);
+  assert.equal(kpis.flowVelocity, 0.026);
 
   const cfiG = enrichedStudies.find((s) => s.acronym === 'CFI-G');
   const cfiKpis = computeTelemetryKPIs({ study: cfiG });
   assert.equal(cfiKpis.flowVelocity, null);
-  assert.equal(cfiKpis.o2Value, 85);
+  assert.equal(cfiKpis.o2Value, 37.165);
 });

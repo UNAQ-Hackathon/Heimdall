@@ -1,10 +1,22 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  CartesianGrid,
+  Cell,
+  ReferenceDot,
+  ResponsiveContainer,
+  Scatter,
+  ScatterChart,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { useApp } from '../context/AppContext.jsx';
 import { COMPARISON_MATRIX, CROSS_FINDINGS, EARTH_APPLICATIONS, INVESTIGATIONS } from '../services/mockData.js';
 import { api } from '../services/api.js';
 import {
   buildPsiDatasetCsv,
+  CATEGORY_STYLE,
   getHardwareFamily,
   summarizeInvestigationDifferences,
 } from '../services/psi-catalog.js';
@@ -124,6 +136,24 @@ function formatOxygenRange(conditions = {}) {
     : `${bounds.lo}% O₂`;
 }
 
+const REGIME_MARKERS = [
+  { x: 14.7, y: 21, label: 'ISS CABIN', color: '#7dd3fc', anchor: 'top' },
+  { x: 10.2, y: 30, label: 'LUNAR HAB', color: '#fbbf24', anchor: 'right' },
+  { x: 4.3, y: 100, label: 'EVA SUIT', color: '#fb7185', anchor: 'bottom' },
+];
+
+function RegimeTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null;
+  const p = payload[0].payload;
+  return (
+    <div className="compare-chart-tooltip">
+      <div style={{ fontWeight: 700, color: '#f8fafc' }}>{p.name}</div>
+      <div>O₂ tested: {p.o2Range}</div>
+      <div>Chamber pressure: {p.pressure} psi</div>
+    </div>
+  );
+}
+
 function OxygenBar({ minPct, maxPct }) {
   if (minPct == null || maxPct == null) return null;
   const left = Math.max(0, Math.min(100, Number(minPct)));
@@ -162,6 +192,18 @@ export default function ComparePage() {
   const [compareIds, setCompareIds] = useState(['BASS-II', 'Saffire-III', 'SoFIE']);
   const [dataSource, setDataSource] = useState('loading');
   const navigate = useNavigate();
+  const comparatorRef = useRef(null);
+  const matrixRef = useRef(null);
+  const earthRef = useRef(null);
+
+  useEffect(() => {
+    if (activeView === 'all') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    const target = { comparator: comparatorRef, matrix: matrixRef, earth: earthRef }[activeView]?.current;
+    target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [activeView]);
 
   useEffect(() => {
     let cancelled = false;
@@ -196,6 +238,34 @@ export default function ComparePage() {
   const comparisonDigest = useMemo(
     () => summarizeInvestigationDifferences(selectedStudies),
     [selectedStudies]
+  );
+
+  const regimePoints = useMemo(
+    () =>
+      investigations
+        .filter((s) => s?.dataAvailable !== false && s?.conditions?.pressurePsi != null)
+        .map((s) => {
+          const bounds = getOxygenBounds(s.conditions);
+          if (!bounds) return null;
+          return {
+            name: s.acronym ?? s.psiId ?? s.title,
+            category: s.category ?? 'prevention',
+            pressure: Number(s.conditions.pressurePsi),
+            o2: bounds.nominal ?? (bounds.lo + bounds.hi) / 2,
+            o2Range: bounds.lo !== bounds.hi ? `${bounds.lo}–${bounds.hi}%` : `${bounds.lo}%`,
+          };
+        })
+        .filter(Boolean),
+    [investigations]
+  );
+
+  const o2Envelope = useMemo(
+    () =>
+      investigations
+        .map((s) => ({ study: s, bounds: s?.dataAvailable !== false ? getOxygenBounds(s.conditions) : null }))
+        .filter((entry) => entry.bounds)
+        .sort((a, b) => b.bounds.hi - a.bounds.hi || a.bounds.lo - b.bounds.lo),
+    [investigations]
   );
 
   const filteredMatrix = useMemo(() => {
@@ -386,11 +456,11 @@ export default function ComparePage() {
               <span className="compare-hero__dot" aria-hidden="true" />
               NASA PSI ARCHIVE · {isStudent ? 'STUDENT GUIDED LEARNING VIEW' : 'ENGINEER PARAMETRIC VIEW'}
             </div>
-            <h1>Compare PSI Studies &amp; Earth Safety Impact</h1>
+            <h1>PSI Cross-Study Parametric Analysis</h1>
             <p>
               {isStudent
                 ? 'Explore plain-language takeaways explaining what each space fire test studied and how those discoveries protect homes and firefighters on Earth.'
-                : 'Compare combustion testbeds side-by-side, inspect O₂/pressure variables & sensors, and trace microgravity findings to engineering standards.'}
+                : 'Align PSI investigations row-by-row, map tested O₂/pressure envelopes against habitat &amp; suit regimes, and trace microgravity findings to terrestrial fire standards.'}
             </p>
           </div>
 
@@ -421,7 +491,7 @@ export default function ComparePage() {
 
         {/* 1. Side-by-Side Aligned Comparator */}
         {showComparator && (
-          <section className="compare-section" aria-label="Interactive side-by-side study comparator">
+          <section ref={comparatorRef} className="compare-section" aria-label="Interactive side-by-side study comparator">
             <div data-tour="compare-controls" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div className="compare-section__head">
                 <div>
@@ -602,7 +672,7 @@ export default function ComparePage() {
 
         {/* 2. Parametric Conditions Matrix */}
         {showMatrix && (
-          <section className="compare-section" aria-label="Microgravity experiment comparison matrix">
+          <section ref={matrixRef} className="compare-section" aria-label="Microgravity experiment comparison matrix">
             <div className="compare-section__head">
               <div>
                 <div className="compare-section__eyebrow" style={{ color: '#38bdf8' }}>
@@ -777,6 +847,113 @@ export default function ComparePage() {
         {/* 3. Earth Spin-Off Applications & Cross-Study Findings (All Details Visible) */}
         {showEarth && (
           <>
+            <section ref={earthRef} className="compare-section" aria-label="Oxygen and pressure regime map">
+              <div className="compare-section__head">
+                <div>
+                  <div className="compare-section__eyebrow" style={{ color: '#f59e0b' }}>
+                    PARAMETRIC ENVELOPE · MEASURED PSI CONDITIONS
+                  </div>
+                  <h2 className="compare-section__title">O₂–Pressure Regime Map &amp; Tested Envelopes</h2>
+                  <p className="compare-section__sub">
+                    Each point is a PSI investigation plotted at its tested oxidizer fraction and chamber pressure. Dashed markers show
+                    the ISS cabin norm (21% O₂ / 14.7 psi), the lunar-habitat regime (≥30% O₂ / ≤10.2 psi), and the EVA suit loop (100% O₂ / 4.3 psi).
+                  </p>
+                </div>
+              </div>
+
+              <div className="compare-chart-grid">
+                <div className="compare-chart-card">
+                  <div className="compare-chart-card__label">OXIDIZER FRACTION vs CHAMBER PRESSURE</div>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <ScatterChart margin={{ top: 16, right: 26, bottom: 8, left: 0 }}>
+                      <CartesianGrid stroke="#162036" />
+                      <XAxis
+                        type="number"
+                        dataKey="pressure"
+                        domain={[0, 16]}
+                        name="Pressure"
+                        unit=" psi"
+                        tick={{ fill: '#94a3b8', fontSize: 11 }}
+                        tickLine={false}
+                        axisLine={{ stroke: '#263449' }}
+                        label={{ value: 'Chamber pressure (psi)', position: 'insideBottom', offset: -4, fill: '#64748b', fontSize: 10.5 }}
+                      />
+                      <YAxis
+                        type="number"
+                        dataKey="o2"
+                        domain={[0, 100]}
+                        name="O₂"
+                        unit="%"
+                        tick={{ fill: '#94a3b8', fontSize: 11 }}
+                        tickLine={false}
+                        axisLine={{ stroke: '#263449' }}
+                        label={{ value: 'O₂ (%)', angle: -90, position: 'insideLeft', fill: '#64748b', fontSize: 10.5 }}
+                      />
+                      <Tooltip cursor={{ strokeDasharray: '3 3', stroke: '#334155' }} content={<RegimeTooltip />} />
+                      <Scatter data={regimePoints} isAnimationActive={false}>
+                        {regimePoints.map((point) => (
+                          <Cell
+                            key={point.name}
+                            fill={CATEGORY_STYLE[point.category]?.color ?? '#38bdf8'}
+                            fillOpacity={0.85}
+                          />
+                        ))}
+                      </Scatter>
+                      {REGIME_MARKERS.map((marker) => (
+                        <ReferenceDot
+                          key={marker.label}
+                          x={marker.x}
+                          y={marker.y}
+                          r={5}
+                          fill="none"
+                          stroke={marker.color}
+                          strokeWidth={1.6}
+                          strokeDasharray="3 3"
+                          label={{
+                            value: marker.label,
+                            position: marker.anchor,
+                            fill: marker.color,
+                            fontSize: 9.5,
+                            fontFamily: 'var(--font-mono)',
+                          }}
+                        />
+                      ))}
+                    </ScatterChart>
+                  </ResponsiveContainer>
+                  <div className="compare-chart-card__legend">
+                    {Object.entries(CATEGORY_STYLE).map(([key, meta]) => (
+                      <span key={key}>
+                        <span className="compare-chart-dot" style={{ background: meta.color }} />
+                        {meta.label}
+                      </span>
+                    ))}
+                    <span style={{ color: '#64748b' }}>Nominal O₂ per study · hover for tested span</span>
+                  </div>
+                </div>
+
+                <div className="compare-chart-card">
+                  <div className="compare-chart-card__label">TESTED O₂ ENVELOPE PER STUDY (min → max)</div>
+                  <div className="compare-o2-list">
+                    {o2Envelope.map(({ study, bounds }) => (
+                      <div key={study.psiId ?? study.acronym} className="compare-o2-list__row">
+                        <span className="compare-o2-list__name" title={study.title}>{study.acronym ?? study.psiId}</span>
+                        <OxygenBar minPct={bounds.lo} maxPct={bounds.hi} />
+                        <span className="compare-o2-list__val">
+                          {bounds.lo === bounds.hi ? `${bounds.lo}%` : `${bounds.lo}–${bounds.hi}%`}
+                        </span>
+                      </div>
+                    ))}
+                    {o2Envelope.length === 0 && (
+                      <span style={{ color: '#64748b', fontSize: '12px' }}>No measured O₂ envelopes in this dataset.</span>
+                    )}
+                  </div>
+                  <div className="compare-chart-card__legend">
+                    <span style={{ color: '#64748b' }}>White tick = 21% Earth sea-level air reference</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
             <section className="compare-section" aria-label="Earth spin-off applications">
               <div className="compare-section__head">
                 <div>

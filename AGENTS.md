@@ -9,7 +9,7 @@ AI-powered dashboard for NASA PSI combustion-science investigations (spacecraft 
 | `frontend/` | React 19 + Vite 8 + Three.js (R3F) + Recharts — port 5173 |
 | `api/` | Node + Express 5 + Mongoose REST API — port 5000 |
 | `analytics/` | Python + FastAPI analytics engine — port 8000 |
-| `data/` | PSI ingestion: `raw/` → `ingestion/` → `processed/` → `npm run seed` (in api/) |
+| `data/` | PSI ingestion: `raw/` → `ingestion/` → `processed/` → `npm run seed` (in api/). The NASA PSI "Experimental table" CSV exports stay OUTSIDE the repo (`data/raw/psi-tables/`, gitignored — currently in `~/Downloads/nasa/experiments`); `ingestion/psi-tables.js` merges per-run measurements into `experimentRuns`, measured `conditions` ranges (O₂ min/max, pressure median, flow median — physically bounded, never extrapolated), and `series` curves with per-series PSI provenance, and skips gracefully when the CSVs are absent. PSI-142 (bibliographic summary) and PSI-181 (Pb-Sn microscopy, not fire safety) are intentionally skipped. Values that can't parse to a real number (e.g. "LOW O2", "Insignificant", "3400%") are dropped, never guessed. `api/scripts/enrich-mongo-psi.js` mirrors the canonical processed records into the MongoDB `investigations` collection (respecting its $jsonSchema validator: mongo `status` stays `ingested`/`catalog_only`, canonical status travels in `psiStatus`), so MongoDB is the complete live data source |
 | `assets3d/` | `.blend` sources → exported `.gltf` → copy to `frontend/public/models/` |
 | `docs/` | Project docs + README assets |
 

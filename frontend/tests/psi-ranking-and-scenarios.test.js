@@ -48,7 +48,7 @@ test('processed PSI dataset includes all 23 required investigations and verified
   assert.equal(flex.series.length, 6);
   assert.equal(
     flex.series.reduce((sum, s) => sum + s.samples.length, 0),
-    258
+    260
   );
 
   const sofie = processedInvestigations.find((i) => i.acronym === 'SoFIE');
@@ -69,7 +69,7 @@ test('processed PSI dataset includes all 23 required investigations and verified
   assert.equal(flex2.fuelType, 'droplet');
 
   const cfiG = processedInvestigations.find((i) => i.acronym === 'CFI-G');
-  assert.equal(cfiG.conditions.oxygenPct, 85);
+  assert.equal(cfiG.conditions.oxygenPct, 37.165);
   assert.ok(cfiG.hardware.includes('CIR/ACME'));
 
   const eField = processedInvestigations.find((i) => i.acronym === 'E-FIELD Flames');

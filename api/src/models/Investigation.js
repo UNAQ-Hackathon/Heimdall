@@ -56,6 +56,7 @@ const investigationSchema = new Schema(
     sensors: [String],
     series: [seriesSchema],
     seriesSource: String,
+    experimentRuns: Number,      // rows in the PSI experimental table for this study
     earthApplications: [String],
     // AI-generated (Devin SWE) — always marked with provenance
     aiSummary: String,
