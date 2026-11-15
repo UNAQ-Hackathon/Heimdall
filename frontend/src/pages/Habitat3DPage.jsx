@@ -77,7 +77,19 @@ export default function Habitat3DPage() {
           {selection ? 'ENVIRONMENT INSPECTION' : 'GLOBAL VIEW / SELECT THE MODEL'}
         </div>
         {panelSelection && panelSelection.planetId === planetId && (
-          <PlanetAnalysisPanel key={`${planetId}:${panelSelection.zoneId}`} planet={planet} zone={zone} closing={!selection} onClose={closePanel} />
+          <PlanetAnalysisPanel
+            key={`${planetId}:${panelSelection.zoneId}`}
+            planet={planet}
+            zone={zone}
+            closing={!selection}
+            onClose={closePanel}
+            onSelectPlanet={(nextId) => {
+              setPlanetId(nextId);
+              const nextSelection = { planetId: nextId, zoneId: null, point: null };
+              setSelection(nextSelection);
+              setPanelSelection(nextSelection);
+            }}
+          />
         )}
       </div>
       {planetId === 'earth' ? (

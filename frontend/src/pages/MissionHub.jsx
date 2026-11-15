@@ -1,28 +1,37 @@
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import MissionPlanetInspection from '../components/ui/MissionPlanetInspection.jsx';
-import { useNavigate } from 'react-router-dom';
-import SolarSystemScene, { SHIP_CATALOG } from '../components/three/SolarSystemScene.jsx';
+import FireHazRPage from './FireHazRPage.jsx';
+import FireHazrPredictor from '../components/ui/FireHazrPredictor.jsx';
+import SpacecraftSelector from '../components/ui/SpacecraftSelector.jsx';
+import SolarSystemScene from '../components/three/SolarSystemScene.jsx';
 import { SCENARIOS, useApp } from '../context/AppContext.jsx';
-import { rankInvestigations, PLANETS } from '../services/mockData.js';
+import { api } from '../services/api.js';
+import { FACTOR_LABELS, rankLocalInvestigations } from '../services/ranking.js';
+import { PLANETS } from '../services/mockData.js';
+import '../styles/mission-hub.css';
 
 const SCENARIO_TO_PLANET = {
+  earth: 'Earth',
   iss: 'Earth',
-  lunarBase: 'Moon',
-  rover: 'Moon',
-  spacesuit: 'Earth',
+  moon: 'Moon',
   mars: 'Mars',
+  suit: 'Earth',
 };
 
-const selectStyle = {
-  width: '100%',
-  border: '1px solid #1e293b',
-  color: '#f1f5f9',
-  fontSize: '12px',
-  fontWeight: 500,
-  padding: '7px 10px',
-  cursor: 'pointer',
-  outline: 'none',
+const FACTOR_COLORS = {
+  atmosphereMatch: '#38bdf8',
+  gravityMatch: '#a78bfa',
+  dataRichness: '#34d399',
+  documentation: '#fbbf24',
 };
+
+const CATEGORIES = [
+  { id: 'all', label: 'All' },
+  { id: 'prevention', label: 'Prevention' },
+  { id: 'detection', label: 'Detection' },
+  { id: 'suppression', label: 'Suppression' },
+];
 
 export default function MissionHub() {
   const {
@@ -40,20 +49,49 @@ export default function MissionHub() {
     setChatOpen,
   } = useApp();
 
+  const [searchParams] = useSearchParams();
   const [paused, setPaused] = useState(false);
   const [weightsOpen, setWeightsOpen] = useState(false);
   const [panelCollapsed, setPanelCollapsed] = useState(false);
-  const [shipFile, setShipFile] = useState('Nave_Azul_LowPoly.glb');
+  const [activeTab, setActiveTab] = useState(() => {
+    const tab = searchParams.get('tab');
+    return ['ranking', 'whatif', 'prediction'].includes(tab) ? tab : 'prediction';
+  });
+  const [shipFile, setShipFile] = useState('naveAzulNuevo.glb');
   const navigate = useNavigate();
   const targetRef = useRef(null);
+
+  useEffect(() => {
+    const qPlanet = searchParams.get('planet');
+    if (qPlanet) setFocusPlanet(qPlanet);
+    const qScenario = searchParams.get('scenario');
+    if (qScenario) setScenarioKey(qScenario);
+  }, [searchParams, setFocusPlanet, setScenarioKey]);
+
   const closeInspection = useCallback(() => {
     setFocusPlanet(null);
     targetRef.current?.focus({ preventScroll: true });
   }, [setFocusPlanet]);
 
-  const ranked = useMemo(() => {
-    return rankInvestigations(scenarioKey, weights, category);
-  }, [scenarioKey, weights, category]);
+  const localRanked = useMemo(
+    () => rankLocalInvestigations({ ...scenario, category }, weights),
+    [scenario, category, weights]
+  );
+
+  const [rankedItems, setRankedItems] = useState(localRanked);
+
+  useEffect(() => {
+    setRankedItems(localRanked);
+    let cancelled = false;
+    api.rank({ ...scenario, category }, weights).then((res) => {
+      if (!cancelled && Array.isArray(res?.results)) {
+        setRankedItems(res.results);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [scenario, category, weights, localRanked]);
 
   const activePlanetObj = useMemo(
     () => PLANETS.find((p) => p.name === focusPlanet) ?? null,
@@ -67,363 +105,430 @@ export default function MissionHub() {
   };
 
   return (
-    <div
-      className="mission-hub"
-      style={{
-        display: 'flex',
-        width: '100%',
-        height: 'calc(100vh - 80px)',
-        overflow: 'hidden',
-        position: 'relative',
-      }}
-    >
-      {/* ── Left Minimalist Low-Poly Analytical Panel ── */}
-      <div
-        className="mission-hub__studies"
-        style={{
-          width: panelCollapsed ? '0px' : '420px',
-          minWidth: panelCollapsed ? '0px' : '400px',
-          height: '100%',
-          flexShrink: 0,
-          position: 'relative',
-          transition: 'width 0.35s cubic-bezier(0.16, 1, 0.3, 1), min-width 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
-          zIndex: 25,
-        }}
-      >
-        <div
-          className="lowpoly-surface mission-hub__studies-content"
+    <div className="mission-hub">
+      {/* Left Minimalist Analytical Panel */}
+      {!panelCollapsed && (
+        <aside
           style={{
-            width: '420px',
+            width: 'min(420px, 100%)',
+            minWidth: 0,
+            flexShrink: 0,
             height: '100%',
             overflowY: 'auto',
             padding: '18px 20px',
-            borderRight: '1px solid #18263e',
-            backgroundColor: '#070b15',
+            borderRight: '1px solid var(--border-subtle)',
+            backgroundColor: 'var(--bg-panel)',
             display: 'flex',
             flexDirection: 'column',
             gap: '14px',
-            transform: panelCollapsed ? 'translateX(-100%)' : 'translateX(0)',
-            opacity: panelCollapsed ? 0 : 1,
-            transition: 'transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease',
-            pointerEvents: panelCollapsed ? 'none' : 'auto',
+            zIndex: 25,
           }}
         >
-          {/* NASA Mission Header */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {/* Minimalist Scenario Switcher + Environment Summary */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {/* Quick 1-Click Scenario Pills */}
+            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+              {Object.entries(SCENARIOS).map(([key, s]) => {
+                const sKey = s.id ?? key;
+                const active = scenarioKey === sKey;
+                return (
+                  <button
+                    key={sKey}
+                    type="button"
+                    onClick={() => handleScenarioChange(sKey)}
+                    style={{
+                      padding: '5px 10px',
+                      borderRadius: '9999px',
+                      fontSize: '11px',
+                      fontWeight: active ? 600 : 500,
+                      border: active
+                        ? '1px solid rgba(56, 189, 248, 0.5)'
+                        : '1px solid var(--border-subtle)',
+                      background: active
+                        ? 'rgba(56, 189, 248, 0.16)'
+                        : 'rgba(15, 23, 42, 0.6)',
+                      color: active ? '#f8fafc' : '#94a3b8',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {s.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Active Scenario Title + Compact Inline Environment Metrics */}
             <div
               style={{
                 display: 'flex',
-                justifyContent: 'space-between',
                 alignItems: 'center',
-                fontSize: '10px',
-                fontFamily: 'var(--font-mono)',
-                color: '#64748b',
-                letterSpacing: '0.8px',
+                justifyContent: 'space-between',
+                gap: '8px',
+                padding: '10px 12px',
+                borderRadius: '10px',
+                background: 'rgba(15, 23, 42, 0.55)',
+                border: '1px solid var(--border-subtle)',
               }}
             >
-              <span style={{ color: '#60a5fa', fontWeight: 600 }}>
-                ▲ NASA PSI // {scenario.sysId}
-              </span>
-              <span>0g–1g BOUNDED</span>
-            </div>
+              <div>
+                <div style={{ fontSize: '15px', fontWeight: 700, color: '#f8fafc' }}>
+                  {scenario.label}
+                </div>
+                <div style={{ fontSize: '10.5px', color: '#64748b', marginTop: '2px' }}>
+                  {scenario.assumedAtmosphere
+                    ? 'Assumed same as lunar (30% O₂, 10.2 psi)'
+                    : scenario.partialGravity
+                      ? `Bounded between 0g & 1g (${scenario.gravityG}g)`
+                      : 'Empirical NASA PSI reference envelope'}
+                </div>
+              </div>
 
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-              <h1
+              <div
                 style={{
-                  fontSize: '20px',
-                  fontWeight: 700,
-                  color: '#f8fafc',
-                  margin: 0,
-                  letterSpacing: '-0.2px',
-                }}
-              >
-                {scenario.label}
-              </h1>
-              <span
-                style={{
-                  fontSize: '11px',
+                  display: 'flex',
+                  gap: '6px',
                   fontFamily: 'var(--font-mono)',
-                  color: '#94a3b8',
+                  fontSize: '10.5px',
                 }}
               >
-                ▲ {ranked.length} studies
-              </span>
+                <span
+                  style={{
+                    padding: '3px 7px',
+                    borderRadius: '6px',
+                    background: 'rgba(15, 23, 42, 0.9)',
+                    border: '1px solid var(--border-subtle)',
+                    color: '#cbd5e1',
+                  }}
+                >
+                  {scenario.gravityDisplay ?? scenario.gravity}
+                </span>
+                <span
+                  style={{
+                    padding: '3px 7px',
+                    borderRadius: '6px',
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    color: '#fca5a5',
+                    fontWeight: 600,
+                  }}
+                >
+                  {scenario.oxygenDisplay ?? `${scenario.oxygenPct}% O₂`}
+                </span>
+              </div>
             </div>
-
-            {/* Faceted Environment Telemetry Pills */}
-            <details className="mission-disclosure">
-              <summary>Mission environment</summary>
-            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '2px' }}>
-              <span
-                className="tri-pill"
-                style={{
-                  fontSize: '11px',
-                  fontFamily: 'var(--font-mono)',
-                  background: '#0d1424',
-                  border: '1px solid #1e293b',
-                  color: '#cbd5e1',
-                  padding: '3px 9px',
-                }}
-              >
-                ▸ {scenario.gravity}
-              </span>
-              <span
-                className="tri-pill"
-                style={{
-                  fontSize: '11px',
-                  fontFamily: 'var(--font-mono)',
-                  background: '#0d1424',
-                  border: '1px solid #1e293b',
-                  color: '#cbd5e1',
-                  padding: '3px 9px',
-                }}
-              >
-                ▸ {scenario.pressurePsi} psi
-              </span>
-              <span
-                className="tri-pill"
-                style={{
-                  fontSize: '11px',
-                  fontFamily: 'var(--font-mono)',
-                  background: 'rgba(252, 61, 33, 0.12)',
-                  border: '1px solid rgba(252, 61, 33, 0.35)',
-                  color: '#fca5a5',
-                  padding: '3px 9px',
-                }}
-              >
-                {scenario.oxygenPct}% O₂
-              </span>
-            </div>
-            </details>
           </div>
 
-          {/* ── Dropdown Filters Row ── */}
-          <details className="mission-disclosure">
-            <summary>Filters and ranking</summary>
+          {/* Clean Segmented Mode Switcher: PSI Studies vs Fire Hazard Lab */}
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '1fr 1fr auto',
-              gap: '8px',
-              alignItems: 'end',
-              paddingTop: '8px',
-              borderTop: '1px solid #152036',
+              gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+              gap: '4px',
+              padding: '3px',
+              borderRadius: '9px',
+              background: 'rgba(8, 13, 26, 0.85)',
+              border: '1px solid var(--border-subtle)',
             }}
           >
-            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span
-                style={{
-                  fontSize: '10px',
-                  fontFamily: 'var(--font-mono)',
-                  color: '#64748b',
-                }}
-              >
-                ▲ MISSION SCENARIO
-              </span>
-              <select
-                className="tri-select"
-                value={scenarioKey}
-                onChange={(e) => handleScenarioChange(e.target.value)}
-                style={selectStyle}
-              >
-                {Object.values(SCENARIOS).map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.label} ({s.oxygenPct}% O₂)
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span
-                style={{
-                  fontSize: '10px',
-                  fontFamily: 'var(--font-mono)',
-                  color: '#64748b',
-                }}
-              >
-                ▲ CATEGORY
-              </span>
-              <select
-                className="tri-select"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                style={selectStyle}
-              >
-                <option value="all">All Categories</option>
-                <option value="prevention">Prevention</option>
-                <option value="detection">Detection</option>
-                <option value="suppression">Suppression</option>
-              </select>
-            </label>
-
             <button
               type="button"
-              className="tri-pill"
-              onClick={() => setWeightsOpen(!weightsOpen)}
-              title="Adjust ranking weights"
+              onClick={() => setActiveTab('ranking')}
               style={{
-                height: '33px',
-                padding: '0 10px',
-                background: weightsOpen ? 'rgba(11, 61, 145, 0.4)' : '#0b1324',
-                border: weightsOpen ? '1px solid #4f8ef7' : '1px solid #1e293b',
-                color: '#cbd5e1',
-                fontSize: '11px',
-                fontFamily: 'var(--font-mono)',
+                padding: '7px 10px',
+                borderRadius: '7px',
+                fontSize: '12px',
+                fontWeight: 600,
+                background:
+                  activeTab === 'ranking' ? 'rgba(59, 130, 246, 0.2)' : 'transparent',
+                border:
+                  activeTab === 'ranking'
+                    ? '1px solid rgba(59, 130, 246, 0.4)'
+                    : '1px solid transparent',
+                color: activeTab === 'ranking' ? '#f8fafc' : '#94a3b8',
                 cursor: 'pointer',
               }}
             >
-              ▲ %
+              Studies ({rankedItems.length})
             </button>
-          </div>
-
-          {/* Expandable Weights Drawer */}
-          {weightsOpen && (
-            <div
-              className="tri-card"
+            <button
+              type="button"
+              className="mission-predictor-tab"
+              aria-pressed={activeTab === 'prediction'}
+              onClick={() => setActiveTab('prediction')}
+            >
+              Predictor
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('whatif')}
               style={{
-                padding: '10px 12px',
+                padding: '7px 10px',
+                borderRadius: '7px',
+                fontSize: '12px',
+                fontWeight: 600,
+                background:
+                  activeTab === 'whatif' ? 'rgba(245, 158, 11, 0.18)' : 'transparent',
+                border:
+                  activeTab === 'whatif'
+                    ? '1px solid rgba(245, 158, 11, 0.45)'
+                    : '1px solid transparent',
+                color: activeTab === 'whatif' ? '#fbbf24' : '#94a3b8',
+                cursor: 'pointer',
                 display: 'flex',
-                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
                 gap: '6px',
               }}
             >
-              <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
-                ▲ RANKING WEIGHTS
-              </span>
-              {Object.entries(weights).map(([wKey, val]) => (
-                <div
-                  key={wKey}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    fontSize: '11px',
-                  }}
-                >
-                  <span style={{ color: '#cbd5e1', textTransform: 'capitalize' }}>
-                    {wKey.replace(/([A-Z])/g, ' $1')}
-                  </span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <input
-                      type="range"
-                      min="5"
-                      max="50"
-                      value={val}
-                      onChange={(e) => setWeights({ ...weights, [wKey]: Number(e.target.value) })}
-                      style={{ width: '80px', accentColor: '#4f8ef7' }}
-                    />
-                    <span
-                      style={{
-                        fontFamily: 'var(--font-mono)',
-                        color: '#60a5fa',
-                        width: '28px',
-                        textAlign: 'right',
-                      }}
-                    >
-                      {val}%
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          </details>
-
-          {/* ── Minimalist Faceted Ranked Investigations List ── */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {ranked.map((inv) => (
-              <details key={inv.id} className="tri-card mission-study">
-                {/* Header */}
-                <summary>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ color: '#4f8ef7', fontSize: '10px' }}>▲</span>
-                    <span style={{ fontSize: '15px', fontWeight: 700, color: '#f8fafc' }}>
-                      {inv.name}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: '10px',
-                        fontFamily: 'var(--font-mono)',
-                        color: '#64748b',
-                      }}
-                    >
-                      {inv.facility}
-                    </span>
-                  </div>
-                  <span
-                    className="tri-pill"
-                    style={{
-                      fontSize: '11px',
-                      fontFamily: 'var(--font-mono)',
-                      fontWeight: 600,
-                      color: '#34d399',
-                      background: 'rgba(52, 211, 153, 0.1)',
-                      border: '1px solid rgba(52, 211, 153, 0.22)',
-                      padding: '2px 7px',
-                    }}
-                  >
-                    {inv.matchScore}% match
-                  </span>
-                </div>
-
-                </summary>
-                <div className="mission-study__body">
-                {/* Key Telemetry Metadata */}
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: '8px',
-                    flexWrap: 'wrap',
-                    fontSize: '10.5px',
-                    fontFamily: 'var(--font-mono)',
-                    color: '#94a3b8',
-                  }}
-                >
-                  <span>▸ {inv.oxygenRange}</span>
-                  <span>·</span>
-                  <span>{inv.ambientPressure}</span>
-                  <span>·</span>
-                  <span>{inv.fuelGeometry}</span>
-                </div>
-
-                {/* Concise Summary */}
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: '12px',
-                    color: '#cbd5e1',
-                    lineHeight: 1.45,
-                  }}
-                >
-                  {audience === 'Engineer' ? inv.aiSummary.engineer : inv.aiSummary.student}
-                </p>
-
-                {/* Subtle Footer */}
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    fontSize: '10.5px',
-                    fontFamily: 'var(--font-mono)',
-                    color: '#64748b',
-                    paddingTop: '2px',
-                  }}
-                >
-                  <span>{inv.runsArchived} flight runs</span>
-                  <button type="button" className="mission-study__link" onClick={() => navigate(`/study/${inv.id}`)}>Inspect study</button>
-                </div>
-                </div>
-              </details>
-            ))}
+              3D Lab
+            </button>
           </div>
-        </div>
-      </div>
 
-      {/* ── Right 3D Solar System Area ── */}
+          {activeTab === 'prediction' ? (
+            <FireHazrPredictor />
+          ) : activeTab === 'whatif' ? (
+            <FireHazRPage compact />
+          ) : (
+            <>
+              {/* Minimalist Category Pills + Weights Button (only shown in Studies tab) */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '6px',
+                }}
+              >
+                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                  {CATEGORIES.map((cat) => {
+                    const active = category === cat.id;
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setCategory(cat.id)}
+                        style={{
+                          padding: '4px 9px',
+                          borderRadius: '6px',
+                          fontSize: '11px',
+                          border: active
+                            ? '1px solid rgba(59, 130, 246, 0.4)'
+                            : '1px solid transparent',
+                          background: active
+                            ? 'rgba(59, 130, 246, 0.16)'
+                            : 'rgba(15, 23, 42, 0.5)',
+                          color: active ? '#f8fafc' : '#94a3b8',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {cat.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setWeightsOpen(!weightsOpen)}
+                  title="Adjust ranking weights"
+                  style={{
+                    padding: '4px 9px',
+                    borderRadius: '6px',
+                    background: weightsOpen
+                      ? 'rgba(59, 130, 246, 0.18)'
+                      : 'rgba(15, 23, 42, 0.6)',
+                    border: weightsOpen
+                      ? '1px solid rgba(59, 130, 246, 0.45)'
+                      : '1px solid var(--border-subtle)',
+                    color: weightsOpen ? '#60a5fa' : '#94a3b8',
+                    fontSize: '10.5px',
+                    fontFamily: 'var(--font-mono)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Weights
+                </button>
+              </div>
+
+              {weightsOpen && (
+                <div
+                  className="tri-card"
+                  style={{
+                    padding: '10px 12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '7px',
+                  }}
+                >
+                  {Object.entries(weights).map(([wKey, val]) => (
+                    <div
+                      key={wKey}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        fontSize: '11px',
+                      }}
+                    >
+                      <span style={{ color: '#cbd5e1' }}>
+                        {FACTOR_LABELS[wKey] ?? wKey}
+                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          step="5"
+                          value={val}
+                          onChange={(e) =>
+                            setWeights({ ...weights, [wKey]: Number(e.target.value) })
+                          }
+                          style={{ width: '90px', accentColor: '#3b82f6' }}
+                        />
+                        <span
+                          style={{
+                            fontFamily: 'var(--font-mono)',
+                            color: '#60a5fa',
+                            width: '28px',
+                            textAlign: 'right',
+                          }}
+                        >
+                          {val}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Clean, Minimalist Study Cards */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {rankedItems.map(({ investigation: inv, score, breakdown }, idx) => {
+                  const pct = Math.round(score * 100);
+                  return (
+                    <div
+                      key={inv.psiId ?? inv.id}
+                      onClick={() => navigate(`/study/${inv.id}`)}
+                      className="tri-card"
+                      style={{
+                        padding: '13px 15px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '8px',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '7px', minWidth: 0 }}>
+                          <span
+                            style={{
+                              color: '#64748b',
+                              fontSize: '10.5px',
+                              fontFamily: 'var(--font-mono)',
+                            }}
+                          >
+                            {idx + 1}.
+                          </span>
+                          <span style={{ fontSize: '13.5px', fontWeight: 700, color: '#f8fafc' }}>
+                            {inv.acronym ?? inv.name}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: '11px',
+                              color: '#64748b',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {inv.hardware ?? inv.facility}
+                          </span>
+                        </div>
+                        <span
+                          style={{
+                            fontSize: '10.5px',
+                            fontFamily: 'var(--font-mono)',
+                            fontWeight: 600,
+                            color: '#34d399',
+                            background: 'rgba(16, 185, 129, 0.1)',
+                            border: '1px solid rgba(16, 185, 129, 0.22)',
+                            borderRadius: '6px',
+                            padding: '2px 7px',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {scenario.partialGravity
+                            ? `${Math.max(10, pct - 7)}%–${Math.min(100, pct + 5)}%`
+                            : `${pct}%`}
+                        </span>
+                      </div>
+
+                      {breakdown?.length > 0 && (
+                        <div className="score-bar-container" style={{ height: '4px' }}>
+                          {breakdown.map((b) => (
+                            <div
+                              key={b.factor}
+                              className="score-bar-segment"
+                              title={`${b.factor}: +${(b.contribution * 100).toFixed(0)}%`}
+                              style={{
+                                width: `${Math.max(3, b.contribution * 100)}%`,
+                                backgroundColor: FACTOR_COLORS[b.factor] ?? '#3b82f6',
+                              }}
+                            />
+                          ))}
+                        </div>
+                      )}
+
+                      <p
+                        style={{
+                          margin: 0,
+                          fontSize: '11.5px',
+                          color: '#94a3b8',
+                          lineHeight: 1.45,
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {audience === 'Engineer'
+                          ? inv.aiSummary?.engineer
+                          : inv.aiSummary?.student}
+                      </p>
+
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          fontSize: '10px',
+                          fontFamily: 'var(--font-mono)',
+                          color: '#64748b',
+                        }}
+                      >
+                        <span>
+                          O₂ {inv.oxygenRange} · {inv.ambientPressure}
+                        </span>
+                        <span style={{ color: '#60a5fa' }}>Details →</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </aside>
+      )}
+
+      {/* Right 3D Solar System Area */}
       <div
         className="mission-hub__explorer"
         style={{
@@ -431,221 +536,168 @@ export default function MissionHub() {
           position: 'relative',
           height: '100%',
           background: '#040711',
+          overflow: 'hidden',
         }}
       >
-        {/* Single Clean Faceted Collapse Handle */}
-        <button
-          onClick={() => setPanelCollapsed(!panelCollapsed)}
-          title={panelCollapsed ? 'Open PSI Studies Panel' : 'Collapse Panel'}
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '0px',
-            transform: 'translateY(-50%)',
-            zIndex: 35,
-            background: 'rgba(11, 18, 33, 0.92)',
-            border: '1px solid #1e293b',
-            borderLeft: 'none',
-            clipPath: 'polygon(0 0, 100% 6px, 100% calc(100% - 6px), 0 100%)',
-            padding: '12px 6px',
-            color: '#94a3b8',
-            cursor: 'pointer',
-          }}
-        >
-          {panelCollapsed ? '▸' : '◂'}
-        </button>
-
-        {/* Minimalist Top Bar Over 3D Scene (Dropdown + Orbit Distance + Controls) */}
+        {/* Minimalist Top Bar Over 3D Scene */}
         <div
           style={{
             position: 'absolute',
             top: '14px',
             left: '16px',
             right: '16px',
-            zIndex: 10,
+            zIndex: 15,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             pointerEvents: 'none',
+            gap: '10px',
+            flexWrap: 'wrap',
           }}
         >
-          {/* Target Body Dropdown */}
+          {/* Left: Panel Toggle + Spacecraft Selector (Planet selection lives exclusively in the bottom dock) */}
           <div
-            className="tri-card"
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
+              gap: '10px',
               padding: '5px 12px',
+              borderRadius: '9999px',
+              background: 'rgba(10, 15, 29, 0.82)',
+              backdropFilter: 'blur(12px)',
+              border: '1px solid var(--border-subtle)',
               pointerEvents: 'auto',
             }}
           >
-            <span
-              style={{
-                fontSize: '10px',
-                fontFamily: 'var(--font-mono)',
-                color: '#fc3d21',
-              }}
-            >
-              ▲
-            </span>
-            <span
-              style={{
-                fontSize: '10px',
-                fontFamily: 'var(--font-mono)',
-                color: '#64748b',
-              }}
-            >
-              ORBIT TARGET:
-            </span>
-            <select
-              ref={targetRef}
-              aria-label="Planet to explore"
-              value={focusPlanet ?? ''}
-              onChange={(e) => setFocusPlanet(e.target.value || null)}
+            <button
+              type="button"
+              onClick={() => setPanelCollapsed(!panelCollapsed)}
               style={{
                 background: 'transparent',
                 border: 'none',
-                color: '#f8fafc',
-                fontSize: '12px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                outline: 'none',
-              }}
-            >
-              <option value="" style={{ background: '#0b1221' }}>
-                Solar System Overview (0–30.1 AU)
-              </option>
-              {PLANETS.map((p) => (
-                <option key={p.name} value={p.name} style={{ background: '#0b1221' }}>
-                  {p.name === 'Sol' ? 'Sun (Sol)' : p.name} · {p.au}
-                </option>
-              ))}
-            </select>
-            {activePlanetObj && (
-              <span
-                style={{
-                  fontSize: '10px',
-                  fontFamily: 'var(--font-mono)',
-                  color: '#38bdf8',
-                  borderLeft: '1px solid #1e293b',
-                  paddingLeft: '8px',
-                }}
-              >
-                {activePlanetObj.au}
-              </span>
-            )}
-
-            {SHIP_CATALOG.length > 0 && (
-              <>
-                <span
-                  style={{
-                    fontSize: '10px',
-                    fontFamily: 'var(--font-mono)',
-                    color: '#64748b',
-                    borderLeft: '1px solid #1e293b',
-                    paddingLeft: '8px',
-                  }}
-                >
-                  CRAFT:
-                </span>
-                <select
-                  value={shipFile}
-                  onChange={(e) => setShipFile(e.target.value)}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: '#93c5fd',
-                    fontSize: '11.5px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    outline: 'none',
-                  }}
-                >
-                  {SHIP_CATALOG.map((ship) => (
-                    <option
-                      key={ship.id}
-                      value={ship.id}
-                      style={{ background: '#0b1221' }}
-                    >
-                      {ship.label}
-                    </option>
-                  ))}
-                </select>
-              </>
-            )}
-          </div>
-
-          {/* Minimalist Orbit Controls */}
-          <div style={{ display: 'flex', gap: '8px', pointerEvents: 'auto' }}>
-            <button
-              className="tri-pill"
-              onClick={() => setPaused(!paused)}
-              style={{
+                color: '#94a3b8',
                 fontSize: '11px',
                 fontFamily: 'var(--font-mono)',
-                background: 'rgba(11, 18, 33, 0.9)',
-                border: '1px solid #1e293b',
-                color: '#cbd5e1',
-                padding: '6px 12px',
+                cursor: 'pointer',
+                padding: '2px 6px',
+              }}
+            >
+              {panelCollapsed ? '☰ Panel' : '✕ Panel'}
+            </button>
+
+            <span style={{ width: '1px', height: '14px', background: 'var(--border-subtle)' }} />
+            <SpacecraftSelector shipFile={shipFile} onSelect={setShipFile} />
+          </div>
+
+          {/* Right: Pause Orbits */}
+          <div style={{ display: 'flex', gap: '8px', pointerEvents: 'auto' }}>
+            <button
+              type="button"
+              onClick={() => setPaused(!paused)}
+              style={{
+                background: 'rgba(10, 15, 29, 0.82)',
+                backdropFilter: 'blur(12px)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: '9999px',
+                padding: '6px 13px',
+                color: paused ? '#fbbf24' : '#cbd5e1',
+                fontSize: '11px',
+                fontWeight: 500,
                 cursor: 'pointer',
               }}
             >
-              {paused ? '▸ Resume Orbit' : '⏸ Pause Orbit'}
+              {paused ? 'Resume Orbits' : 'Pause Orbits'}
             </button>
-            {focusPlanet && (
+          </div>
+        </div>
+
+        {/* Bottom Floating Quick-Travel Planet Dock */}
+        <div
+          ref={targetRef}
+          tabIndex={-1}
+          aria-label="Planet to explore"
+          style={{
+            position: 'absolute',
+            bottom: '16px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 15,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            padding: '4px 8px',
+            borderRadius: '9999px',
+            background: 'rgba(10, 15, 29, 0.82)',
+            backdropFilter: 'blur(12px)',
+            border: '1px solid var(--border-subtle)',
+            maxWidth: '94%',
+            overflowX: 'auto',
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setFocusPlanet(null)}
+            style={{
+              padding: '4px 10px',
+              borderRadius: '9999px',
+              fontSize: '11px',
+              fontWeight: !focusPlanet ? 600 : 400,
+              border: 'none',
+              background: !focusPlanet ? 'rgba(56, 189, 248, 0.2)' : 'transparent',
+              color: !focusPlanet ? '#38bdf8' : '#94a3b8',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Overview
+          </button>
+          {PLANETS.map((p) => {
+            const active = focusPlanet === p.name;
+            return (
               <button
-                className="tri-pill"
-                onClick={() => setFocusPlanet(null)}
+                key={p.name}
+                type="button"
+                onClick={() => setFocusPlanet(active ? null : p.name)}
                 style={{
+                  padding: '4px 9px',
+                  borderRadius: '9999px',
                   fontSize: '11px',
-                  fontFamily: 'var(--font-mono)',
-                  background: 'rgba(11, 61, 145, 0.5)',
-                  border: '1px solid #4f8ef7',
-                  color: '#f8fafc',
-                  padding: '6px 12px',
+                  fontWeight: active ? 600 : 400,
+                  border: 'none',
+                  background: active ? 'rgba(56, 189, 248, 0.22)' : 'transparent',
+                  color: active ? '#f8fafc' : '#94a3b8',
                   cursor: 'pointer',
+                  whiteSpace: 'nowrap',
                 }}
               >
-                ▲ Overview
+                {p.name === 'Sol' ? 'Sun' : p.name}
               </button>
-            )}
-          </div>
+            );
+          })}
         </div>
 
         {/* 3D Solar System Canvas */}
-        <div className="mission-planet-layout">
-          <div className="mission-planet-layout__scene">
-            <SolarSystemScene paused={paused} panelCollapsed={panelCollapsed} shipFile={shipFile} />
-          </div>
-          {activePlanetObj && <MissionPlanetInspection key={activePlanetObj.name} body={activePlanetObj} onClose={closeInspection} />}
+        <div
+          className="mission-hub__canvas"
+          style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}
+        >
+          <SolarSystemScene
+            paused={paused}
+            panelCollapsed={panelCollapsed}
+            shipFile={shipFile}
+          />
         </div>
 
-        {/* Subtle Faceted Bottom-Right Copilot Pill when Chat is Closed */}
-        {!chatOpen && (
-          <button
-            type="button"
-            className="tri-card"
-            onClick={() => setChatOpen(true)}
-            style={{
-              position: 'absolute',
-              bottom: '18px',
-              right: '20px',
-              zIndex: 25,
-              padding: '8px 16px',
-              color: '#f8fafc',
-              fontSize: '12px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+        {/* Planet Surface & Landing Inspection Drawer */}
+        {activePlanetObj && (
+          <MissionPlanetInspection
+            body={activePlanetObj}
+            onClose={closeInspection}
+            onOpenTestbench={() => {
+              setPanelCollapsed(false);
+              setActiveTab('whatif');
             }}
-          >
-            <span style={{ color: '#fc3d21', fontSize: '10px' }}>▲</span>
-            <span>Ask Heimdall Copilot</span>
-          </button>
+          />
         )}
       </div>
     </div>

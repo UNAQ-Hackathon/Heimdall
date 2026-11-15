@@ -4,10 +4,13 @@ import { getSolarPlanetId } from '../three/solar-system-model.js';
 import { EARTH_ZONES } from '../three/planet-analysis.js';
 import PlanetAnalysisPanel from './PlanetAnalysisPanel.jsx';
 
-export default function MissionPlanetInspection({ body, onClose }) {
+export default function MissionPlanetInspection({ body, onClose, onOpenTestbench }) {
   const [zoneId, setZoneId] = useState('temperate');
   const planet = getPlanetModel(getSolarPlanetId(body.model));
-  const zone = planet.id === 'earth' ? EARTH_ZONES.find(({ id }) => id === zoneId) : undefined;
+  const zone =
+    planet.id === 'earth'
+      ? EARTH_ZONES.find(({ id }) => id === zoneId) ?? EARTH_ZONES[2]
+      : undefined;
 
   useEffect(() => {
     const handleKey = (event) => {
@@ -18,16 +21,19 @@ export default function MissionPlanetInspection({ body, onClose }) {
   }, [onClose]);
 
   return (
-    <section className="mission-inspection" aria-label={`${planet.label} environment inspection`}>
-      {planet.id === 'earth' && (
-        <label className="mission-inspection__zone">
-          Earth zone
-          <select className="tri-select" value={zoneId} onChange={(event) => setZoneId(event.target.value)}>
-            {EARTH_ZONES.map(({ id, label }) => <option key={id} value={id}>{label}</option>)}
-          </select>
-        </label>
-      )}
-      <PlanetAnalysisPanel key={`${planet.id}:${zoneId}`} planet={planet} zone={zone} onClose={onClose} />
+    <section
+      className="mission-inspection"
+      aria-label={`${planet.label} environment inspection`}
+    >
+      <PlanetAnalysisPanel
+        key={`${planet.id}:${zoneId}`}
+        planet={planet}
+        zone={zone}
+        zoneId={zoneId}
+        onZoneChange={setZoneId}
+        onClose={onClose}
+        onOpenTestbench={onOpenTestbench}
+      />
     </section>
   );
 }

@@ -70,6 +70,7 @@ export default function ComparePage() {
 
         <button
           onClick={() => setHighlightDiff(!highlightDiff)}
+          aria-pressed={highlightDiff}
           style={{
             fontSize: '11px',
             fontFamily: 'var(--font-mono)',
@@ -84,7 +85,7 @@ export default function ComparePage() {
             gap: '6px',
           }}
         >
-          <span>●</span> Differential Highlight Active
+          Highlight differences
         </button>
       </div>
 

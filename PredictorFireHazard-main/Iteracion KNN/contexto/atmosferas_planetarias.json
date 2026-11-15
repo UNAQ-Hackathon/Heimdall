@@ -1,0 +1,244 @@
+{
+  "version": 1,
+  "alcance": "Contexto físico sobre atmósferas exteriores. No son observaciones de combustión ni entradas del KNN FLEX.",
+  "fecha_consulta": "2026-11-14",
+  "fuente_metodologia": "https://nssdc.gsfc.nasa.gov/planetary/factsheet/fact_notes.html",
+  "notas": [
+    "Las composiciones son aproximaciones por volumen publicadas por NASA NSSDCA. Son parciales y pueden no sumar 100 por redondeo, incertidumbre y mezcla de cifras mayores con trazas; no renormalizar sin documentarlo.",
+    "Un gas ausente de un registro no debe interpretarse como 0%. null indica valor no comparable, no indicado o no aplicable. Para los gigantes no se asigna presión superficial.",
+    "Mercurio y Luna tienen exosferas; no se asignan porcentajes comparables a una mezcla atmosférica. La presión se reporta como cota o estimación con su referencia.",
+    "Presión parcial nominal = presión total absoluta multiplicada por la fracción molar de O₂. La comparación Tierra–Marte es aproximada, no una predicción de ignición."
+  ],
+  "cuerpos": [
+    {
+      "id": "mercury",
+      "nombre": "Mercurio",
+      "tipo": "Planeta rocoso con exosfera",
+      "composicion_volumen_pct": null,
+      "gravedad_media_m_s2": 3.7,
+      "presion_superficial_kPa": {
+        "valor": 5e-13,
+        "tipo": "cota superior aproximada",
+        "referencia": "Exosfera junto a la superficie"
+      },
+      "temperatura_K": null,
+      "comportamiento": "Exosfera muy tenue con sodio y magnesio; también oxígeno atómico, hidrógeno, potasio y otras especies. Su composición se reporta como abundancias de columna y varía con lugar y hora.",
+      "limite_flex": "Exterior fuera de dominio: una especie de oxígeno medida en la exosfera no implica una atmósfera con O₂ molecular; los datos no se representan con fracciones FLEX.",
+      "fuente": "https://nssdc.gsfc.nasa.gov/planetary/factsheet/mercuryfact.html",
+      "es_planeta": true,
+      "es_exterior": true,
+      "usar_en_entrenamiento_flex": false,
+      "estado_flex": "fuera_de_dominio",
+      "referencia_gravedad": "Superficie, media sin rotación"
+    },
+    {
+      "id": "venus",
+      "nombre": "Venus",
+      "tipo": "Planeta rocoso",
+      "composicion_volumen_pct": {
+        "CO2": 96.5,
+        "N2": 3.5
+      },
+      "gravedad_media_m_s2": 8.87,
+      "presion_superficial_kPa": {
+        "valor": 9200,
+        "tipo": "aproximación",
+        "referencia": "Superficie"
+      },
+      "temperatura_K": {
+        "valor": 737,
+        "referencia": "Media indicada en la ficha de la atmósfera"
+      },
+      "comportamiento": "Atmósfera densa. El CO₂ contribuye al efecto invernadero y hay nubes de ácido sulfúrico.",
+      "limite_flex": "Exterior fuera de dominio: presión y composición muy distintas de FLEX. El CO₂ mayoritario no reemplaza al O₂ para la combustión de las gotas FLEX.",
+      "fuente": "https://nssdc.gsfc.nasa.gov/planetary/factsheet/venusfact.html",
+      "es_planeta": true,
+      "es_exterior": true,
+      "usar_en_entrenamiento_flex": false,
+      "estado_flex": "fuera_de_dominio",
+      "referencia_gravedad": "Superficie, media sin rotación"
+    },
+    {
+      "id": "earth",
+      "nombre": "Tierra",
+      "tipo": "Planeta rocoso",
+      "composicion_volumen_pct": {
+        "N2": 78.08,
+        "O2": 20.95,
+        "Ar": 0.934,
+        "CO2": 0.042
+      },
+      "gravedad_media_m_s2": 9.82,
+      "presion_superficial_kPa": {
+        "valor": 101.4,
+        "tipo": "referencia nominal",
+        "referencia": "Superficie"
+      },
+      "temperatura_K": {
+        "valor": 288,
+        "referencia": "Media indicada en la ficha de la atmósfera"
+      },
+      "comportamiento": "Valores de composición para aire seco. El vapor de agua varía. En gravedad terrestre la flotabilidad mueve gases calientes y modifica la forma de la llama.",
+      "limite_flex": "Exterior fuera de dominio: el aire seco tiene similitud con mezclas O₂–N₂ de FLEX; esa similitud no valida trasladar resultados de gotas en microgravedad a la superficie terrestre.",
+      "fuente": "https://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html",
+      "es_planeta": true,
+      "es_exterior": true,
+      "usar_en_entrenamiento_flex": false,
+      "estado_flex": "fuera_de_dominio",
+      "referencia_gravedad": "Superficie, media sin rotación",
+      "presion_parcial_o2_aprox_kPa": 21.24
+    },
+    {
+      "id": "mars",
+      "nombre": "Marte",
+      "tipo": "Planeta rocoso",
+      "composicion_volumen_pct": {
+        "CO2": 95.1,
+        "N2": 2.59,
+        "Ar": 1.94,
+        "O2": 0.16,
+        "CO": 0.06
+      },
+      "gravedad_media_m_s2": 3.73,
+      "presion_superficial_kPa": {
+        "valor": 0.636,
+        "tipo": "referencia nominal",
+        "referencia": "Radio medio",
+        "rango_estacional_kPa": [
+          0.4,
+          0.87
+        ]
+      },
+      "temperatura_K": {
+        "valor": 214,
+        "referencia": "Media indicada en la ficha de la atmósfera"
+      },
+      "comportamiento": "Atmósfera tenue, dominada por CO₂. Su presión cambia con la estación y el sitio; los vientos pueden levantar grandes tormentas de polvo.",
+      "limite_flex": "Exterior fuera de dominio: pO₂ nominal ≈ 1 Pa, gravedad parcial y química distinta. Un hábitat presurizado tendría su propia mezcla, no la exterior.",
+      "fuente": "https://nssdc.gsfc.nasa.gov/planetary/factsheet/marsfact.html",
+      "es_planeta": true,
+      "es_exterior": true,
+      "usar_en_entrenamiento_flex": false,
+      "estado_flex": "fuera_de_dominio",
+      "referencia_gravedad": "Superficie, media sin rotación",
+      "presion_parcial_o2_aprox_kPa": 0.001018
+    },
+    {
+      "id": "jupiter",
+      "nombre": "Júpiter",
+      "tipo": "Gigante gaseoso",
+      "composicion_volumen_pct": {
+        "H2": 89.8,
+        "He": 10.2,
+        "CH4": 0.3
+      },
+      "gravedad_media_m_s2": 25.92,
+      "presion_superficial_kPa": null,
+      "temperatura_K": {
+        "valor": 165,
+        "referencia": "Nivel atmosférico de 1 bar"
+      },
+      "comportamiento": "Atmósfera rica en H₂ y He; contiene metano y amoniaco en proporciones menores. Presión y temperatura cambian con la profundidad.",
+      "limite_flex": "El hidrógeno y el metano pueden actuar como combustibles en sistemas con oxidante; su presencia no demuestra que exista oxígeno molecular suficiente ni propagación de fuego. El helio no cumple el papel del O₂.",
+      "fuente": "https://nssdc.gsfc.nasa.gov/planetary/factsheet/jupiterfact.html",
+      "es_planeta": true,
+      "es_exterior": true,
+      "usar_en_entrenamiento_flex": false,
+      "estado_flex": "fuera_de_dominio",
+      "referencia_gravedad": "Nivel atmosférico de 1 bar, media sin rotación"
+    },
+    {
+      "id": "saturn",
+      "nombre": "Saturno",
+      "tipo": "Gigante gaseoso",
+      "composicion_volumen_pct": {
+        "H2": 96.3,
+        "He": 3.25,
+        "CH4": 0.45
+      },
+      "gravedad_media_m_s2": 11.19,
+      "presion_superficial_kPa": null,
+      "temperatura_K": {
+        "valor": 134,
+        "referencia": "Nivel atmosférico de 1 bar"
+      },
+      "comportamiento": "Atmósfera superior rica en H₂, con He y metano. Tiene corrientes de chorro y un patrón hexagonal en la región polar norte.",
+      "limite_flex": "El hidrógeno y el metano pueden actuar como combustibles en sistemas con oxidante; su presencia no demuestra que exista oxígeno molecular suficiente ni propagación de fuego. El helio no cumple el papel del O₂.",
+      "fuente": "https://nssdc.gsfc.nasa.gov/planetary/factsheet/saturnfact.html",
+      "es_planeta": true,
+      "es_exterior": true,
+      "usar_en_entrenamiento_flex": false,
+      "estado_flex": "fuera_de_dominio",
+      "referencia_gravedad": "Nivel atmosférico de 1 bar, media sin rotación"
+    },
+    {
+      "id": "uranus",
+      "nombre": "Urano",
+      "tipo": "Gigante helado",
+      "composicion_volumen_pct": {
+        "H2": 82.5,
+        "He": 15.2,
+        "CH4": 2.3
+      },
+      "gravedad_media_m_s2": 9.01,
+      "presion_superficial_kPa": null,
+      "temperatura_K": {
+        "valor": 76,
+        "referencia": "Nivel atmosférico de 1 bar"
+      },
+      "comportamiento": "El metano atmosférico absorbe luz roja, contribuyendo al tono azul verdoso. El inventario de hielos del interior es distinto de la composición atmosférica.",
+      "limite_flex": "El hidrógeno y el metano pueden actuar como combustibles en sistemas con oxidante; su presencia no demuestra que exista oxígeno molecular suficiente ni propagación de fuego. El helio no cumple el papel del O₂.",
+      "fuente": "https://nssdc.gsfc.nasa.gov/planetary/factsheet/uranusfact.html",
+      "es_planeta": true,
+      "es_exterior": true,
+      "usar_en_entrenamiento_flex": false,
+      "estado_flex": "fuera_de_dominio",
+      "referencia_gravedad": "Nivel atmosférico de 1 bar, media sin rotación"
+    },
+    {
+      "id": "neptune",
+      "nombre": "Neptuno",
+      "tipo": "Gigante helado",
+      "composicion_volumen_pct": {
+        "H2": 80,
+        "He": 19,
+        "CH4": 1.5
+      },
+      "gravedad_media_m_s2": 11.27,
+      "presion_superficial_kPa": null,
+      "temperatura_K": {
+        "valor": 72,
+        "referencia": "Nivel atmosférico de 1 bar"
+      },
+      "comportamiento": "Atmósfera rica en H₂ y He con metano; los vientos transportan nubes y la composición no es uniforme en toda su profundidad.",
+      "limite_flex": "El hidrógeno y el metano pueden actuar como combustibles en sistemas con oxidante; su presencia no demuestra que exista oxígeno molecular suficiente ni propagación de fuego. El helio no cumple el papel del O₂.",
+      "fuente": "https://nssdc.gsfc.nasa.gov/planetary/factsheet/neptunefact.html",
+      "es_planeta": true,
+      "es_exterior": true,
+      "usar_en_entrenamiento_flex": false,
+      "estado_flex": "fuera_de_dominio",
+      "referencia_gravedad": "Nivel atmosférico de 1 bar, media sin rotación"
+    },
+    {
+      "id": "moon",
+      "nombre": "Luna",
+      "tipo": "Satélite rocoso con exosfera",
+      "composicion_volumen_pct": null,
+      "gravedad_media_m_s2": 1.62,
+      "presion_superficial_kPa": {
+        "valor": 3e-13,
+        "tipo": "estimación nocturna",
+        "referencia": "Exosfera junto a la superficie"
+      },
+      "temperatura_K": null,
+      "comportamiento": "Exosfera muy tenue con He, Ne, H₂ y Ar entre las especies estimadas. Abundancias variables.",
+      "limite_flex": "Exterior fuera de dominio: exosfera y gravedad lunar (~0.165 g). Un hábitat lunar presurizado tiene atmósfera propia y gravedad parcial, a diferencia de FLEX en órbita.",
+      "fuente": "https://nssdc.gsfc.nasa.gov/planetary/factsheet/moonfact.html",
+      "es_planeta": false,
+      "es_exterior": true,
+      "usar_en_entrenamiento_flex": false,
+      "estado_flex": "fuera_de_dominio",
+      "referencia_gravedad": "Superficie, media sin rotación"
+    }
+  ]
+}

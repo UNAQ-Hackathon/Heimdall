@@ -17,6 +17,7 @@ build/
 # Data (large/raw exports stay local)
 data/raw/*
 !data/raw/.gitkeep
+!data/raw/psi-investigations.json
 
 # Blender
 *.blend1

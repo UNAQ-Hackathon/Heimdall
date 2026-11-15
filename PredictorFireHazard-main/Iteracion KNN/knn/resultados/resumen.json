@@ -1,0 +1,150 @@
+{
+  "n_filas_crudas": 274,
+  "n_filas": 258,
+  "n_excluidas": 16,
+  "n_grupos": 79,
+  "n_configuraciones": 324,
+  "objetivo": "Burn time; s",
+  "fuente": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-69",
+  "publicacion_unidades": "https://ntrs.nasa.gov/citations/20150023456",
+  "sha256_entrada": "37c88ce8ae9391b7544ff630a45ce87543d04d317cdbfbed104fe7d5c27e1b96",
+  "agrupado": {
+    "n": 258,
+    "n_grupos": 79,
+    "n_dentro_rango": 189,
+    "mae_s": 3.422654781503491,
+    "rmse_s": 4.824539213840562,
+    "sesgo_s": 1.1800778922659656,
+    "mae_baseline_s": 6.098992248062015,
+    "rmse_baseline_s": 7.917909637224702,
+    "mae_baseline_mezcla_s": 5.793372093023256,
+    "rmse_baseline_mezcla_s": 7.393675565785466,
+    "mae_anterior_s": 3.1697526105771177,
+    "rmse_anterior_s": 4.385466404098667
+  },
+  "solo_dentro_rango": {
+    "agrupado": {
+      "n": 189,
+      "n_grupos": 63,
+      "n_dentro_rango": 189,
+      "mae_s": 3.1607001714584197,
+      "rmse_s": 4.606543302905028,
+      "sesgo_s": 0.7189647589010763,
+      "mae_baseline_s": 6.045978835978836,
+      "rmse_baseline_s": 7.967275031563265,
+      "mae_baseline_mezcla_s": 5.347830687830688,
+      "rmse_baseline_mezcla_s": 6.973198350692116,
+      "mae_anterior_s": 3.0696095921682867,
+      "rmse_anterior_s": 4.43654962586191
+    },
+    "cronologico": {
+      "n": 3,
+      "n_grupos": 2,
+      "n_dentro_rango": 3,
+      "mae_s": 3.6828198293570757,
+      "rmse_s": 4.723437632685698,
+      "sesgo_s": 1.5032074450953463,
+      "mae_baseline_s": 2.7000000000000006,
+      "rmse_baseline_s": 3.9314967463634845,
+      "mae_baseline_mezcla_s": 4.066666666666666,
+      "rmse_baseline_mezcla_s": 5.373391232111555,
+      "mae_anterior_s": 4.148090577383345,
+      "rmse_anterior_s": 5.381403098656436
+    }
+  },
+  "validacion_temporal": {
+    "inicio_prueba": "2011-09-21",
+    "n_entrenamiento": 210,
+    "n_prueba": 48,
+    "n_purgadas": 0,
+    "mezcla_entrenamiento": {
+      "O₂/N₂": 91,
+      "CO₂": 118,
+      "He": 1
+    },
+    "mezcla_prueba": {
+      "He": 45,
+      "O₂/N₂": 3
+    },
+    "config": {
+      "k": 5,
+      "pesos": "inversa2",
+      "distancia": "euclidiana",
+      "espacio": "fracciones",
+      "vecindario": "combustible"
+    },
+    "n": 48,
+    "n_grupos": 16,
+    "n_dentro_rango": 3,
+    "mae_s": 5.632833047765062,
+    "rmse_s": 7.258395009339727,
+    "sesgo_s": 5.3182774033940525,
+    "mae_baseline_s": 4.414583333333334,
+    "rmse_baseline_s": 5.4263055264762485,
+    "mae_baseline_mezcla_s": 5.162499999999999,
+    "rmse_baseline_mezcla_s": 6.239758275232569,
+    "mae_anterior_s": 6.080184023114465,
+    "rmse_anterior_s": 7.321660786530878
+  },
+  "modelo_final": {
+    "k": 5,
+    "pesos": "inversa2",
+    "distancia": "euclidiana",
+    "espacio": "fracciones",
+    "vecindario": "combustible"
+  },
+  "mejor_busqueda_por_vecindario": {
+    "global": {
+      "config": {
+        "k": 3,
+        "pesos": "inversa2",
+        "distancia": "euclidiana",
+        "espacio": "fracciones",
+        "vecindario": "global"
+      },
+      "mae_s": 3.274170378407325,
+      "rmse_s": 4.5312580593032585
+    },
+    "combustible": {
+      "config": {
+        "k": 5,
+        "pesos": "inversa2",
+        "distancia": "euclidiana",
+        "espacio": "fracciones",
+        "vecindario": "combustible"
+      },
+      "mae_s": 3.2433362666117005,
+      "rmse_s": 4.410002336394356
+    },
+    "mezcla": {
+      "config": {
+        "k": 5,
+        "pesos": "inversa2",
+        "distancia": "euclidiana",
+        "espacio": "fracciones",
+        "vecindario": "mezcla"
+      },
+      "mae_s": 3.354575722559635,
+      "rmse_s": 4.527316141393358
+    }
+  },
+  "mezcla": {
+    "O₂/N₂": 94,
+    "CO₂": 118,
+    "He": 46
+  },
+  "gases": [
+    "O₂",
+    "N₂",
+    "CO₂",
+    "He"
+  ],
+  "notas": [
+    "Validación agrupada anidada 5 × 4. La búsqueda final por cuatro cortes solo elige el artefacto para inferencia.",
+    "Corte temporal usa fechas reales; purga del entrenamiento los grupos compartidos con el periodo final.",
+    "KNN previo = k=3, euclidiana, peso inverso y bolsa global. Reajustado en las mismas particiones.",
+    "Mediana global o mediana por combustible y mezcla, con retroceso a combustible o global.",
+    "La evaluación mide todos los casos retenidos y reporta cuántos pasarían el filtro de rango de la inferencia.",
+    "Duración registrada incluye extinción, disrupción y finalización. No es un criterio de seguridad ni un simulador planetario."
+  ]
+}

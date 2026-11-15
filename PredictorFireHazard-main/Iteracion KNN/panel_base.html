@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flame in Freefall · Laboratorio KNN</title>
+<style>
+:root{color-scheme:dark;--bg:#10141f;--panel:#1b2231;--line:#344157;--text:#eff2fa;--muted:#b8c3d5;--accent:#ffc18b;--link:#9bddff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,sans-serif}
+main{max-width:1200px;margin:auto;padding:32px clamp(16px,4vw,56px) 48px}
+h1,h2,p{margin:0 0 12px}h1{font-size:clamp(34px,5vw,58px);line-height:1.06;letter-spacing:-.045em}
+h2{font-size:1.3rem}header{padding-bottom:20px;border-bottom:1px solid var(--line);margin-bottom:20px}
+header p{max-width:74ch}.brand{color:var(--accent);font-size:.8rem;font-weight:750;letter-spacing:.09em;text-transform:uppercase}
+a{color:var(--link)}.muted{color:var(--muted)}.links{display:flex;gap:14px;flex-wrap:wrap}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:14px;align-items:start;margin-bottom:16px}
+.card{border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:17px;min-width:0}
+form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.wide{grid-column:1/-1}label{display:grid;gap:4px;font-size:.9rem;color:var(--muted);min-width:0}
+select,input,button{font:inherit;color:var(--text);background:#263247;border:1px solid #546483;border-radius:6px;
+padding:8px 10px;min-width:0;max-width:100%}button{cursor:pointer}button[type=submit]{background:var(--accent);color:#21150b;font-weight:700}
+a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--link);outline-offset:3px}
+.definition{border-left:3px solid var(--accent);padding-left:10px;color:var(--muted)}
+.scroll{overflow:auto}table{width:100%;border-collapse:collapse;font-size:.9rem;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+.validation{margin-bottom:16px}.validation .scroll{margin-bottom:10px}
+.figures{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+figure{margin:0;background:var(--panel);padding:10px;border-radius:8px}figure img{display:block;width:100%;height:auto;border-radius:5px}
+figcaption{padding:8px 2px 0}.big{font-size:1.6rem;color:var(--accent);font-weight:700}
+.atmosphere{margin-top:16px}.atmosphere select{max-width:16rem}.atmosphere dl{display:grid;grid-template-columns:minmax(0,11rem) minmax(0,1fr);gap:8px;margin:14px 0}.atmosphere dd{margin:0}
+@media(max-width:800px){.grid,.figures{grid-template-columns:1fr}}
+</style>
+</head>
+<body><main>
+<header>
+<div class="brand">Flame in Freefall · NASA Space Apps</div>
+<h1>Laboratorio KNN</h1>
+<p>Explora cómo estima el modelo la duración registrada de las gotas FLEX a partir de su combustible, presión, mezcla inicial y diámetro. La estimación muestra los ensayos que la sustentan.</p>
+<div class="links">
+<a href="https://psi.nasa.gov/physci/repo/data/investigations/PSI-69">Datos NASA FLEX</a>
+<a href="Fuentes%20NASA%20y%20decisiones.md">Fuentes y decisiones</a>
+<a href="knn/resultados/resumen.json">Métricas de evaluación</a>
+<a href="#figuras">Gráficas</a>
+<a href="#atmosferas">Atmósferas planetarias</a>
+</div>
+</header>
+<section class="card validation">
+ <h2>Cómo rindió el modelo</h2>
+ <p id="summary" class="muted"></p>
+ <div class="scroll"><table>
+  <thead><tr><th scope="col">Evaluación</th><th scope="col">KNN iterado</th><th scope="col">KNN fijo de 3 vecinos</th><th scope="col">Mediana global</th></tr></thead>
+  <tbody id="metrics"></tbody>
+ </table></div>
+ <p class="muted">Error absoluto medio en segundos; menor es mejor. Las configuraciones se eligieron dentro de los datos de entrenamiento de cada evaluación. Probar muchos ajustes no garantiza mejorar fuera de muestra.</p>
+ <p id="coverage" class="definition"></p>
+</section>
+<div class="grid">
+ <section class="card">
+ <h2>Condiciones iniciales</h2>
+ <p class="muted">Solo metanol o heptano de FLEX. Las fracciones molares son números entre 0 y 1.</p>
+ <form id="query">
+ <label class="wide">Combustible<select id="fuel"><option value="Methanol">Metanol</option><option value="Heptane">Heptano</option></select></label>
+ <label>Presión total (mmHg)<input id="presion_mmhg" type="number" step="any" min="0" value="765" required></label>
+ <label>Diámetro inicial (mm)<input id="diametro_mm" type="number" step="any" min="0" value="1.8" required></label>
+ <label>Oxígeno O₂<input id="o2_fraccion" type="number" step="any" min="0" max="1" value="0.21" required></label>
+ <label>Nitrógeno N₂<input id="n2_fraccion" type="number" step="any" min="0" max="1" value="0.79" required></label>
+ <label>Dióxido de carbono CO₂<input id="co2_fraccion" type="number" step="any" min="0" max="1" value="0" required></label>
+ <label>Helio He<input id="he_fraccion" type="number" step="any" min="0" max="1" value="0" required></label>
+ <button class="wide" type="submit">Estimar y ver vecinos</button>
+ </form>
+ </section>
+ <section class="card">
+ <h2>Resultado y evidencia</h2>
+ <p id="config" class="muted"></p>
+ <p id="result" class="big" aria-live="polite"></p>
+ <p id="support" class="muted"></p>
+ <div class="scroll">
+ <table><thead><tr><th scope="col">Ensayo</th><th scope="col">Mezcla</th><th scope="col">Observado (s)</th><th scope="col">Distancia</th><th scope="col">Peso</th></tr></thead><tbody id="evidence"></tbody></table>
+ </div>
+ <p class="definition" style="margin:14px 0 0">El tiempo incluye distintos motivos de fin de prueba. El modelo no predice autoextinción total, accidentes en cabina ni incendios en otros planetas.</p>
+ </section>
+</div>
+<section class="card" id="figuras">
+ <h2>Explorar resultados</h2>
+ <p class="muted">Las figuras resumen observaciones y validación. Pulsa una figura para verla al tamaño original.</p>
+ <div id="figures" class="figures"></div>
+</section>
+<section class="card atmosphere" id="atmosferas">
+ <h2>Atmósferas del Sistema Solar</h2>
+ <p class="muted">Composición y referencias físicas de NASA. Estos datos describen el exterior y se mantienen fuera de la predicción FLEX.</p>
+ <label>Cuerpo<select id="planet"></select></label>
+ <dl>
+  <dt>Tipo</dt><dd id="planet-type"></dd>
+  <dt>Gases principales</dt><dd id="planet-gases"></dd>
+  <dt>Presión superficial</dt><dd id="planet-pressure"></dd>
+  <dt>Temperatura</dt><dd id="planet-temperature"></dd>
+  <dt>Gravedad</dt><dd id="planet-gravity"></dd>
+ </dl>
+ <p id="planet-behavior"></p>
+ <p id="planet-limit" class="definition"></p>
+ <div class="links"><a id="planet-source" href="https://nssdc.gsfc.nasa.gov/planetary/planetfact.html">Ficha NASA</a><a href="contexto/atmosferas_y_combustion.md">Comparación y método</a></div>
+</section>
+</main>
+<script id="datos" type="application/json">__DATOS_KNN__</script>
+<script>
+'use strict';
+const {modelo:m,graficas,contexto,resumen}=JSON.parse(document.getElementById('datos').textContent);
+const $=id=>document.getElementById(id);
+const fmt=(v,d=2)=>new Intl.NumberFormat('es-MX',{maximumFractionDigits:d}).format(v);
+const keys=['presion_mmhg','o2_fraccion','n2_fraccion','co2_fraccion','he_fraccion','diametro_mm'];
+const c=m.config;
+function tableRow(target, values){
+ const tr=document.createElement('tr');
+ for(const v of values){
+  const td=document.createElement('td');td.textContent=v;tr.append(td);
+ }
+ $(target).append(tr);
+}
+$('summary').textContent=fmt(resumen.n_configuraciones,0)+' configuraciones · '+fmt(resumen.n_filas,0)+' ensayos útiles en '+fmt(resumen.n_grupos,0)+' grupos.';
+for(const [label,metrics] of [
+ ['Grupos de ensayo retenidos',resumen.agrupado],
+ ['Últimos '+resumen.validacion_temporal.n_prueba+' ensayos',resumen.validacion_temporal],
+]) tableRow('metrics',[label,...['mae_s','mae_anterior_s','mae_baseline_s'].map(key=>fmt(metrics[key])+' s')]);
+const temporal=resumen.validacion_temporal;
+$('coverage').textContent='Solo '+temporal.n_dentro_rango+' de '+temporal.n_prueba+' ensayos del corte cronológico cumplían los rangos conocidos con los datos anteriores. El error de la tabla incluye los '+temporal.n_prueba+' ensayos para medir el cambio de condiciones; el estimador interactivo rechaza entradas fuera de rango.';
+const mix=x=>x[3]>0&&x[4]>0?'CO₂ + He':x[3]>0?'CO₂':x[4]>0?'He':'O₂/N₂';
+const family=({global:'global',combustible:'mismo combustible',mezcla:'mismo combustible y mezcla'});
+$('config').textContent='k = '+c.k+' · pesos '+c.pesos+' · distancia '+c.distancia+' · '+c.espacio+' · '+family[c.vecindario];
+function estimate(f,x){
+ if(!x.every(Number.isFinite)||x[0]<=0||x[5]<=0||x.slice(1,5).some(v=>v<0||v>1)||Math.abs(x.slice(1,5).reduce((a,b)=>a+b,0)-1)>.025)
+   throw new Error('Revisa presión, diámetro y gases. Las fracciones deben sumar 1, con tolerancia de redondeo 0.025.');
+ const mixture=mix(x),a=m.soporte[f+' | '+mixture];
+ if(!a||x.some((v,i)=>v<a.min[i]-1e-8||v>a.max[i]+1e-8))
+   throw new Error('Estas condiciones están fuera de los rangos FLEX de ese combustible y mezcla.');
+ const feature=[...x,Number(f==='Heptane')];
+ if(c.espacio==='parciales')for(let i=1;i<=4;i++)feature[i]*=x[0];
+ const z=feature.map((v,i)=>(v-m.centro[i])/m.escala[i]);
+ const all=m.ensayos.map((trial,i)=>({trial,i,y:m.y[i]}));
+ const fuel=all.filter(n=>n.trial.fuel===f), gas=fuel.filter(n=>n.trial.mezcla===mixture);
+ const available=pool=>pool.length>=3&&new Set(pool.map(n=>n.trial.grupo)).size>=2;
+ const [pool,scope]=c.vecindario==='mezcla'&&available(gas)?[gas,'mezcla']:
+    c.vecindario!=='global'&&available(fuel)?[fuel,'combustible']:[all,'global'];
+ const neighbors=pool.map(n=>{
+    const deltas=m.x[n.i].map((v,i)=>Math.abs(v-z[i]));
+    return {...n,d:c.distancia==='manhattan'?deltas.reduce((a,b)=>a+b,0):Math.hypot(...deltas)};
+ }).sort((a,b)=>a.d-b.d||a.i-b.i).slice(0,c.k);
+ const exact=neighbors.some(n=>n.d<1e-12);
+ for(const n of neighbors)n.w=c.pesos==='uniforme'?1:exact?Number(n.d<1e-12):1/Math.max(n.d,1e-12)**(c.pesos==='inversa2'?2:1);
+ const total=neighbors.reduce((sum,n)=>sum+n.w,0);
+ for(const n of neighbors)n.w/=total;
+ return {value:neighbors.reduce((sum,n)=>sum+n.w*n.y,0),neighbors:neighbors.filter(n=>n.w>0),a,scope,mixture};
+}
+function show(){
+ $('evidence').replaceChildren();
+ try{
+  const x=keys.map(k=>$(k).valueAsNumber);
+  const {value,neighbors,a,scope,mixture}=estimate($('fuel').value,x);
+  $('result').textContent=fmt(value)+' s';
+  $('support').textContent=mixture+' · Vecindario efectivo: '+family[scope]+'. '+a.n+' ensayos de referencia para ese combustible y mezcla. pO₂ '+fmt(x[0]*x[1])+' mmHg. Estar en los rangos individuales no prueba que esa combinación se haya ensayado.';
+  for(const n of neighbors){
+    tableRow('evidence',['#'+n.trial.prueba+' · '+n.trial.identificador,n.trial.mezcla,fmt(n.y),fmt(n.d,4),fmt(100*n.w,1)+' %']);
+  }
+ }catch(error){$('result').textContent='Sin estimación';$('support').textContent=error.message;}
+}
+$('query').addEventListener('submit',event=>{event.preventDefault();show();});
+$('query').addEventListener('input',()=>{$('result').textContent='Condiciones modificadas';$('support').textContent='Pulsa Estimar y ver vecinos.';$('evidence').replaceChildren();});
+for(const f of graficas){
+ const figure=document.createElement('figure'),link=document.createElement('a'),img=document.createElement('img'),caption=document.createElement('figcaption');
+ link.href=f.path;img.src=f.path;img.alt=f.title;img.loading='lazy';
+ caption.textContent=f.title;link.append(img);figure.append(link,caption);$('figures').append(figure);
+}
+function planet(){
+ const body=contexto.cuerpos.find(b=>b.id===$('planet').value);
+ const comp=body.composicion_volumen_pct;
+ const num=new Intl.NumberFormat('es-MX',{maximumSignificantDigits:5});
+ const pressure=body.presion_superficial_kPa;
+ const temp=body.temperatura_K;
+ const species={CO2:'CO₂',N2:'N₂',O2:'O₂',H2:'H₂',CH4:'CH₄',NH3:'NH₃'};
+ $('planet-type').textContent=body.tipo;
+ $('planet-gases').textContent=comp?Object.entries(comp).map(([gas,v])=>(species[gas]??gas)+' '+num.format(v)+' %').join(' · '):'Exosfera; abundancias sin porcentajes comparables.';
+ $('planet-pressure').textContent=pressure?num.format(pressure.valor)+' kPa · '+pressure.tipo+' ('+pressure.referencia+')':'Sin presión superficial comparable.';
+ $('planet-temperature').textContent=temp?num.format(temp.valor)+' K · '+temp.referencia:'Varía; consulta la ficha.';
+ $('planet-gravity').textContent=num.format(body.gravedad_media_m_s2)+' m/s² · '+body.referencia_gravedad;
+ $('planet-behavior').textContent=body.comportamiento;
+ $('planet-limit').textContent=body.limite_flex;
+ $('planet-source').href=body.fuente;
+}
+contexto.cuerpos.forEach(b=>$('planet').add(new Option(b.nombre,b.id)));
+$('planet').value='earth';
+$('planet').addEventListener('change',planet);
+planet();
+show();
+</script>
+</body></html>

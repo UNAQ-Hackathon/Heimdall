@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flame in Freefall · Microgravedad</title>
+<style>
+:root{color-scheme:dark;--bg:#0d1018;--panel:#171c28;--border:#30394a;--text:#f0f3f9;--muted:#b5bfd0;--accent:#ffb066;--blue:#8ad8ff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,sans-serif}
+main{max-width:1260px;margin:auto;padding:32px clamp(16px,4vw,58px) 50px}
+header{border-bottom:1px solid var(--border);padding-bottom:24px;margin-bottom:26px}
+header p{max-width:72ch}
+h1{font-size:clamp(32px,6vw,62px);line-height:1.03;letter-spacing:-.05em;margin:8px 0 14px}
+h2,h3,p{margin:0 0 12px} h2{font-size:1.3rem} h3{font-size:1rem}
+.kicker{color:var(--accent);font-size:.77rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+.muted,small{color:var(--muted)} a{color:var(--blue)} strong{font-weight:700}
+.band,.grid{display:grid;gap:14px}.band{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:18px}
+.grid{grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);margin-bottom:18px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px;min-width:0}
+.metric{display:block;font-size:clamp(23px,3vw,34px);font-weight:700;font-variant-numeric:tabular-nums}
+.metric-name{color:var(--muted);font-size:.86rem}.pills{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+label{display:grid;gap:4px;color:var(--muted);font-size:.9rem}
+select,input,button{background:#202838;color:var(--text);border:1px solid #48556d;border-radius:7px;padding:8px 11px;font:inherit;min-width:0;max-width:100%}
+button{cursor:pointer} button:hover{border-color:var(--accent)}
+button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
+.chart{display:block;width:100%;height:auto;max-height:400px;background:#111520;border:1px solid #273246;border-radius:9px}
+.scroll{overflow:auto;max-height:420px} table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:.86rem}
+td,th{padding:8px 9px;border-bottom:1px solid #344055;text-align:left;vertical-align:top}
+thead th{position:sticky;top:0;background:#1e2635}
+.conditions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.conditions label:first-child{grid-column:1/-1}
+.notice{border-left:3px solid var(--accent);padding-left:12px;margin:12px 0;color:var(--muted)}
+.links{display:flex;gap:16px;flex-wrap:wrap} .bottom{margin-top:18px}
+@media(max-width:780px){.grid{grid-template-columns:1fr}.band{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+</head>
+<body><main>
+<header>
+<div class="kicker">NASA Space Apps Challenge · Combustión en microgravedad</div>
+<h1>Flame in Freefall</h1>
+<p>Explora qué tan bien se puede estimar la duración de combustión de gotas de metanol y heptano usando las condiciones iniciales de los ensayos FLEX.</p>
+<div class="links"><a href="https://www.spaceappschallenge.org/2026/challenges/flame-in-freefall/">Reto de NASA</a><a href="https://doi.org/10.60555/mbq8-0451">Datos FLEX · PSI-69</a><a href="https://ntrs.nasa.gov/citations/20150023456">Informe técnico NASA</a></div>
+</header>
+<section class="band" aria-label="Resultados de validación">
+ <div class="card"><span class="metric-name">Ensayos evaluados</span><strong id="n" class="metric"></strong></div>
+ <div class="card"><span class="metric-name">Grupos de ensayo</span><strong id="groups" class="metric"></strong></div>
+ <div class="card"><span class="metric-name">Error absoluto medio</span><strong id="mae" class="metric"></strong></div>
+ <div class="card"><span class="metric-name">Error de referencia</span><strong id="baseline" class="metric"></strong></div>
+</section>
+<div class="grid">
+ <section class="card">
+  <h2>Duración observada y estimada</h2>
+  <p id="veredicto" class="muted"></p>
+  <p id="temporal" class="notice"></p>
+  <div class="pills">
+   <label>Combustible<select id="fuel"><option value="">Todos</option></select></label>
+   <label>Orden de la tabla<select id="sort"><option value="error">Mayor error absoluto</option><option value="time">Mayor duración observada</option><option value="date">Grupo de ensayo</option></select></label>
+  </div>
+  <svg id="chart" class="chart" viewBox="0 0 600 380" role="img" aria-labelledby="charttitle chartdesc"><title id="charttitle">Duración observada frente a la estimada</title><desc id="chartdesc">Cada punto representa un ensayo. La diagonal representa coincidencia exacta; hay una tabla equivalente debajo.</desc></svg>
+  <p id="subset" class="muted" aria-live="polite" style="margin-top:12px"></p>
+  <div class="scroll" tabindex="0" role="region" aria-label="Tabla de validación">
+  <table><thead><tr><th scope="col">Ensayo / grupo</th><th scope="col">Combustible</th><th scope="col">Observado (s)</th><th scope="col">Estimado (s)</th><th scope="col">Error (s)</th></tr></thead><tbody id="trials"></tbody></table>
+  </div>
+ </section>
+ <section class="card">
+  <h2>Ensayos comparables</h2>
+  <p class="muted">Elige un ensayo y ordénalos por similitud de sus condiciones iniciales. Se compara el mismo combustible y se excluye su grupo experimental.</p>
+  <label>Ensayo de referencia<select id="anchor"></select></label>
+  <p id="cond" class="notice"></p>
+  <div class="scroll" tabindex="0" role="region" aria-label="Ensayos comparables">
+   <table><thead><tr><th scope="col">Ensayo</th><th scope="col">Distancia</th><th scope="col">Observado (s)</th></tr></thead><tbody id="neighbors"></tbody></table>
+  </div>
+  <p class="muted" style="margin-top:12px"><small>Distancia euclidiana tras escalar presión, diámetro y fracciones de gases por su amplitud observada. El orden indica similitud experimental, no nivel de riesgo.</small></p>
+ <h3>Estimar duración para otras condiciones</h3>
+ <p class="muted"><small>Carga las condiciones del ensayo de referencia y ajusta los valores. Introduce fracciones de gases entre 0 y 1.</small></p>
+ <form id="predict" class="conditions">
+  <label>Combustible<select id="predfuel"><option value="Methanol">Metanol</option><option value="Heptane">Heptano</option></select></label>
+  <label>Presión (mmHg)<input id="presion_mmhg" type="number" step="any" min="0" required></label>
+  <label>Diámetro inicial (mm)<input id="diametro_mm" type="number" step="any" min="0" required></label>
+  <label>O₂<input id="o2_fraccion" type="number" step="any" min="0" max="1" required></label>
+  <label>N₂<input id="n2_fraccion" type="number" step="any" min="0" max="1" required></label>
+  <label>CO₂<input id="co2_fraccion" type="number" step="any" min="0" max="1" required></label>
+  <label>He<input id="he_fraccion" type="number" step="any" min="0" max="1" required></label>
+  <button id="load" type="button">Cargar ensayo</button><button type="submit">Estimar</button>
+ </form>
+ <p id="estimate" class="notice" aria-live="polite"></p>
+  <h3>Qué significa el resultado</h3>
+  <p id="limits" class="muted">La duración integra ensayos que terminaron de distintas maneras. La estimación no identifica cuándo se extingue una llama por sí sola y no establece un límite de seguridad. Solo se evaluó dentro de FLEX.</p>
+ </section>
+</div>
+<section class="card"><h2>Catálogo de tablas experimentales</h2>
+ <p class="muted" id="inventory"></p>
+ <div class="scroll" tabindex="0" role="region" aria-label="Catálogo de experimentos">
+ <table><thead><tr><th scope="col">Fuente NASA</th><th scope="col">Tabla</th><th scope="col">Filas</th><th scope="col">Uso</th></tr></thead><tbody id="catalog"></tbody></table></div>
+</section>
+<p class="bottom muted"><small>Prototipo de análisis experimental. Los valores estimados de la gráfica corresponden a ensayos retenidos durante la validación. Consulta el resumen de entrenamiento para conocer el método y la referencia exactos.</small></p>
+</main>
+<script id="panel-data" type="application/json">__PANEL_DATA__</script>
+<script>
+const data=JSON.parse(document.getElementById('panel-data').textContent);
+const {rows,summary,catalog,model}=data;
+const $=id=>document.getElementById(id);
+const fmt=(n,d=2)=>new Intl.NumberFormat('es-MX',{maximumFractionDigits:d}).format(n);
+const seconds=n=>fmt(n)+' s';
+function cell(value) {const td=document.createElement('td'); td.textContent=value; return td;}
+function row(target, values) {const tr=document.createElement('tr'); for(const v of values) tr.append(v instanceof Node?v:cell(v)); target.append(tr);}
+function opt(select,value,label){const option=new Option(label,value);select.add(option);}
+function avg(a){return a.reduce((s,n)=>s+n,0)/a.length;}
+const label=r=>r.identificador+(r.prueba?' · #'+r.prueba:'');
+$('n').textContent=fmt(rows.length,0);
+$('groups').textContent=fmt(new Set(rows.map(r=>r.grupo)).size,0);
+$('mae').textContent=seconds(summary.mae_s);
+$('baseline').textContent=seconds(summary.mae_baseline_s);
+const diff=summary.mae_baseline_s-summary.mae_s;
+$('veredicto').textContent=diff>0
+   ? 'En esta validación, el predictor reduce el error medio en '+seconds(diff)+' frente a la referencia.'
+   : 'En esta validación, el predictor no mejora el error medio frente a la referencia.';
+const temporal=summary.validacion_temporal;
+if(temporal){
+ const outcome=temporal.mae_s>temporal.mae_baseline_s?' La referencia fue más precisa en ese corte.':'';
+ $('temporal').textContent='Al reservar los últimos '+fmt(temporal.n_prueba,0)+' ensayos en orden cronológico: '+seconds(temporal.mae_s)+' de error medio frente a '+seconds(temporal.mae_baseline_s)+' de la referencia.'+outcome;
+} else $('temporal').hidden=true;
+[...new Set(rows.map(r=>r.fuel))].sort().forEach(f=>opt($('fuel'),f,f));
+function svg(tag, attrs, children, parent=$('chart')){
+ const el=document.createElementNS('http://www.w3.org/2000/svg',tag);
+ for(const [k,v] of Object.entries(attrs)) el.setAttribute(k,v);
+ if(typeof children==='string') el.textContent=children;
+ parent.append(el); return el;
+}
+const pointsGroup=svg('g',{},null);
+function chart(view) {
+ pointsGroup.replaceChildren();
+ const max=Math.max(1,...view.flatMap(r=>[r.observado_s,r.estimado_s]))*1.04;
+ const left=66, right=575, top=20, bottom=321;
+ const x=v=>left+v/max*(right-left), y=v=>bottom-v/max*(bottom-top);
+ const draw=(tag,attr,text)=>svg(tag,attr,text,pointsGroup);
+ for(let i=0;i<=5;i++){
+  const v=i*max/5;
+  draw('line',{x1:x(v),y1:top,x2:x(v),y2:bottom,stroke:'#2b374b'});
+  draw('line',{x1:left,y1:y(v),x2:right,y2:y(v),stroke:'#2b374b'});
+  draw('text',{x:x(v),y:343,fill:'#b5bfd0','font-size':13,'text-anchor':'middle'},fmt(v,1));
+  draw('text',{x:58,y:y(v)+4,fill:'#b5bfd0','font-size':13,'text-anchor':'end'},fmt(v,1));
+ }
+ draw('line',{x1:left,y1:bottom,x2:right,y2:top,stroke:'#b5bfd0','stroke-dasharray':'6 5','stroke-width':2});
+ draw('text',{x:320,y:370,fill:'#f0f3f9','text-anchor':'middle','font-size':15},'Observado (s)');
+ draw('text',{x:15,y:171,fill:'#f0f3f9','text-anchor':'middle',transform:'rotate(-90 15 171)','font-size':15},'Estimado (s)');
+ for(const r of view) {
+  const px=x(r.observado_s),py=y(r.estimado_s),methanol=r.fuel.toLowerCase().includes('methanol');
+  const point=methanol
+   ? draw('circle',{cx:px,cy:py,r:4,fill:'#ffb066',opacity:.8})
+   : draw('rect',{x:px-3.6,y:py-3.6,width:7.2,height:7.2,fill:'#8ad8ff',opacity:.8});
+  svg('title',{},label(r)+' · '+r.fuel+' · '+seconds(r.observado_s)+' observado, '+seconds(r.estimado_s)+' estimado',point);
+ }
+}
+function render() {
+ const view=rows.filter(r=>!$('fuel').value||r.fuel===$('fuel').value);
+ const comparisons={
+  error:(a,b)=>Math.abs(b.error_s)-Math.abs(a.error_s),
+  time:(a,b)=>b.observado_s-a.observado_s,
+  date:(a,b)=>a.grupo.localeCompare(b.grupo)
+ };
+ view.sort(comparisons[$('sort').value]); chart(view);
+ $('trials').replaceChildren();
+ view.forEach(r=>row($('trials'),[label(r)+' / '+r.grupo,r.fuel,fmt(r.observado_s),fmt(r.estimado_s),fmt(r.error_s)]));
+ $('subset').textContent=view.length+' ensayos · Error medio: '+seconds(avg(view.map(r=>Math.abs(r.error_s))))+' · Círculos: metanol · Cuadrados: heptano.';
+}
+const keys=['presion_mmhg','o2_fraccion','n2_fraccion','co2_fraccion','he_fraccion','diametro_mm'];
+const ranges=keys.map(k=>{
+ const x=rows.map(r=>r[k]).filter(Number.isFinite);
+ return x.length?Math.max(...x)-Math.min(...x)||1:1;
+});
+rows.forEach((r,i)=>opt($('anchor'),i,label(r)+' · '+r.fuel));
+function compare(){
+ const r=rows[Number($('anchor').value)];
+ const d=(a,b)=>Math.hypot(...keys.map((k,i)=>(a[k]-b[k])/ranges[i]));
+ $('cond').textContent=r.fuel+' · '+fmt(r.diametro_mm)+' mm · '+fmt(r.presion_mmhg)+' mmHg · O₂ '+fmt(100*r.o2_fraccion)+' % · '+seconds(r.observado_s)+' observado.';
+ $('neighbors').replaceChildren();
+ rows.filter(a=>a.fuel===r.fuel&&a.grupo!==r.grupo&&keys.every(k=>Number.isFinite(a[k])&&Number.isFinite(r[k])))
+  .map(a=>[a,d(r,a)]).sort((a,b)=>a[1]-b[1]).slice(0,8)
+  .forEach(([a,distance])=>row($('neighbors'),[label(a),fmt(distance,3),fmt(a.observado_s)]));
+ if(!$('neighbors').children.length)row($('neighbors'),['No hay ensayos comparables','—','—']);
+}
+catalog.sort((a,b)=>(a.use===b.use?Number(b.rows)-Number(a.rows):a.use==='Modelo de duración'?-1:1));
+for(const c of catalog) {
+ const td=cell(''),a=document.createElement('a');
+ a.href=c.url;a.textContent=c.id;td.append(a);
+ row($('catalog'),[td,c.name,fmt(c.rows,0),c.duplicate?'Copia idéntica; solo consulta':c.use]);
+}
+function loadConditions(){
+ const r=rows[Number($('anchor').value)];
+ $('predfuel').value=r.fuel;
+ keys.forEach(k=>$(k).value=r[k]??'');
+ $('estimate').textContent='Condiciones listas para estimar.';
+}
+$('load').addEventListener('click',loadConditions);
+$('predict').addEventListener('input',()=>{$('estimate').textContent='Condiciones modificadas. Pulsa Estimar.';});
+$('predict').addEventListener('submit',event=>{
+ event.preventDefault();
+ const f=$('predfuel').value,x=keys.map(k=>$(k).valueAsNumber);
+ const status=$('estimate');
+ if(!x.every(Number.isFinite)||x[0]<=0||x[5]<=0||x.slice(1,5).some(v=>v<0||v>1)||Math.abs(x.slice(1,5).reduce((s,v)=>s+v,0)-1)>.025){
+  status.textContent='Revise presión, diámetro y fracciones de gases. Las fracciones deben sumar 1 (tolerancia de redondeo: 0.025).';return;
+ }
+ const gas=x[3]&&x[4]?'CO₂ + He':x[3]?'CO₂':x[4]?'He':'O₂/N₂';
+ const range=model.soporte[f+' | '+gas];
+ if(!range||x.some((v,i)=>v<range.min[i]-1e-8||v>range.max[i]+1e-8)){
+  status.textContent='Fuera de los rangos ensayados para ese combustible y mezcla. No se genera una estimación.';return;
+ }
+ const z=[...x,Number(f==='Heptane')].map((v,i)=>(v-model.centro?.[i])/model.escala?.[i]);
+ let estimate, evidence='';
+ if(model.tipo==='mediana')estimate=model.valor;
+ else if(model.tipo.startsWith('regresion'))estimate=Math.max(0,model.intercepto+z.reduce((a,v,i)=>a+v*model.coef[i],0));
+ else {
+  const nearest=model.x.map((row,i)=>({d:Math.hypot(...row.map((v,j)=>v-z[j])),y:model.y[i],trial:model.ensayos?.[i]}))
+    .sort((a,b)=>a.d-b.d).slice(0,model.k);
+  const exact=nearest.filter(n=>n.d<1e-12);
+  estimate=exact.length?avg(exact.map(n=>n.y)):nearest.reduce((a,n)=>a+n.y/n.d,0)/nearest.reduce((a,n)=>a+1/n.d,0);
+  const used=exact.length?exact:nearest;
+  if(used.every(n=>n.trial))evidence=' Ensayos usados: '+used.map(n=>'#'+n.trial.prueba+' '+n.trial.identificador).join(', ')+'.';
+ }
+ status.textContent='Duración estimada: '+seconds(estimate)+' · Modelo final '+model.tipo+'. Dentro de los rangos individuales; la combinación exacta puede no haberse ensayado.'+evidence;
+});
+$('inventory').textContent=fmt(catalog.length,0)+' archivos tabulares. Los protocolos se conservan por separado; el modelo solo usa FLEX.';
+$('fuel').addEventListener('change',render); $('sort').addEventListener('change',render);
+$('anchor').addEventListener('change',compare); render();compare();loadConditions();
+</script></body></html>

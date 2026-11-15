@@ -1,39 +1,31 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { CHAT_HISTORY } from '../services/mockData.js';
 import { api as backendApi } from '../services/api.js';
+import { SCENARIOS, DEFAULT_WEIGHTS, resolveScenarioKey } from './ScenarioContext.jsx';
 
-/* ── Scenario definitions ── */
-export const SCENARIOS = {
-  iss:       { id: 'iss',       label: 'ISS / Earth',          code: 'LB-01', sysId: 'HMDL-ISS-ALPHA',    gravity: '0g (microgravity)', gravityVal: 0,     oxygenPct: 21,  pressurePsi: 14.7,  planet: 'Tierra' },
-  lunarBase: { id: 'lunarBase', label: 'Lunar Base',           code: 'LB-01', sysId: 'HMDL-LUNAR-ALPHA',  gravity: '0.166g',            gravityVal: 0.166, oxygenPct: 34,  pressurePsi: 10.2,  planet: 'Luna'   },
-  rover:     { id: 'rover',     label: 'Pressurized Rover',    code: 'RV-03', sysId: 'HMDL-ROVER-GAMMA',  gravity: '0.166g',            gravityVal: 0.166, oxygenPct: 30,  pressurePsi: 10.2,  planet: 'Luna'   },
-  spacesuit: { id: 'spacesuit', label: 'Spacesuit',            code: 'SU-02', sysId: 'HMDL-SUIT-BETA',    gravity: '0g (microgravity)', gravityVal: 0,     oxygenPct: 100, pressurePsi: 4.3,   planet: 'Tierra' },
-  mars:      { id: 'mars',      label: 'Mars',                 code: 'MR-04', sysId: 'HMDL-MARS-DELTA',   gravity: '0.38g',             gravityVal: 0.38,  oxygenPct: 30,  pressurePsi: 10.2,  planet: 'Marte'  },
-};
+export { SCENARIOS, DEFAULT_WEIGHTS, resolveScenarioKey };
 
 export const AUDIENCES = ['Student', 'Engineer'];
 
 const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
-  const [scenarioKey, setScenarioKey]   = useState('lunarBase');
-  const [audience, setAudience]         = useState('Engineer');
-  const [category, setCategory]         = useState('all');
-  const [chatOpen, setChatOpen]         = useState(false);
-  const [focusPlanet, setFocusPlanet]   = useState(null);
-  const [weights, setWeights]           = useState({
-    oxygenConc: 25,
-    pressure:   20,
-    airflow:    20,
-    fuelType:   20,
-    gravity:    15,
-  });
+  const [scenarioKey, setScenarioKeyState] = useState('moon');
+  const [audience, setAudience] = useState('Engineer');
+  const [category, setCategory] = useState('all');
+  const [chatOpen, setChatOpen] = useState(false);
+  const [focusPlanet, setFocusPlanet] = useState(null);
+  const [weights, setWeights] = useState(DEFAULT_WEIGHTS);
+
+  const setScenarioKey = useCallback((nextKey) => {
+    setScenarioKeyState(resolveScenarioKey(nextKey));
+  }, []);
 
   /* ── Shared Devin Copilot Chat State (single session across inline & modal) ── */
-  const [chatMessages, setChatMessages]       = useState(CHAT_HISTORY);
-  const [chatLoading, setChatLoading]         = useState(false);
-  const [chatSessionId, setChatSessionId]     = useState(null);
-  const [chatSessionUrl, setChatSessionUrl]   = useState(null);
+  const [chatMessages, setChatMessages] = useState(CHAT_HISTORY);
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatSessionId, setChatSessionId] = useState(null);
+  const [chatSessionUrl, setChatSessionUrl] = useState(null);
   const [chatSessionStatus, setChatSessionStatus] = useState(null);
   const pollTimerRef = useRef(null);
 
@@ -79,7 +71,7 @@ export function AppProvider({ children }) {
               m.id === pendingMsgId
                 ? {
                     ...m,
-                    text: `Error polling Devin session: ${err.message}`,
+                    text: `Error consulting Heimdall AI: ${err.message}`,
                     pending: false,
                   }
                 : m
@@ -96,7 +88,7 @@ export function AppProvider({ children }) {
       const userText = rawText?.trim();
       if (!userText || chatLoading) return;
 
-      const activeScenario = SCENARIOS[scenarioKey];
+      const activeScenario = SCENARIOS[scenarioKey] ?? SCENARIOS.moon;
       const pendingMsgId = `ai-${Date.now()}`;
 
       setChatLoading(true);
@@ -107,8 +99,8 @@ export function AppProvider({ children }) {
           id: pendingMsgId,
           role: 'ai',
           text: chatSessionId
-            ? 'Sending query to active Devin SWE-2-Medium session…'
-            : 'Starting Devin SWE-2-Medium session (first reply takes ~20–45s)…',
+            ? 'Heimdall AI analyzing NASA PSI archive…'
+            : 'Heimdall AI initializing NASA PSI combustion telemetry…',
           pending: true,
         },
       ]);
@@ -144,7 +136,7 @@ export function AppProvider({ children }) {
               m.id === pendingMsgId
                 ? {
                     ...m,
-                    text: `Devin session active (${res.sessionStatus ?? 'running'}). Generating PSI analysis…`,
+                    text: 'Heimdall AI synthesizing NASA PSI parameters and bounds…',
                     pending: true,
                   }
                 : m
@@ -161,8 +153,8 @@ export function AppProvider({ children }) {
             m.id === pendingMsgId
               ? {
                   ...m,
-                  text: `Devin API unavailable (${err.message}). Make sure the backend is running on port 5000 (cd api && npm run dev).`,
-                  citations: [{ label: 'Saffire-III', studyId: 'saffire-iii' }],
+                  text: `Heimdall AI backend unavailable (${err.message}). Make sure the API is running on port 5000 (cd api && npm run dev).`,
+                  citations: [{ label: 'Saffire-III', studyId: 'psi-saffire-iii' }],
                   pending: false,
                 }
               : m
@@ -183,12 +175,19 @@ export function AppProvider({ children }) {
   }, [stopPolling]);
 
   const value = {
-    scenarioKey, scenario: SCENARIOS[scenarioKey], setScenarioKey,
-    audience, setAudience,
-    category, setCategory,
-    chatOpen, setChatOpen,
-    focusPlanet, setFocusPlanet,
-    weights, setWeights,
+    scenarioKey,
+    scenario: SCENARIOS[scenarioKey] ?? SCENARIOS.moon,
+    setScenarioKey,
+    audience,
+    setAudience,
+    category,
+    setCategory,
+    chatOpen,
+    setChatOpen,
+    focusPlanet,
+    setFocusPlanet,
+    weights,
+    setWeights,
     chatMessages,
     chatLoading,
     chatSessionId,

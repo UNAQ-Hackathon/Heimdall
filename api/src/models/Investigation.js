@@ -19,9 +19,22 @@ const investigationSchema = new Schema(
     acronym: String,           // BASS, Saffire, FLEX, ACME...
     objective: String,
     fuel: String,
+    fuelType: {
+      type: String,
+      enum: ['solid', 'gas', 'droplet', 'aerosol', null],
+      default: null,
+    },
+    hardware: String,          // CIR/ACME, CIR/MDCA, MSG with SPICE flow duct, etc.
+    category: {
+      type: String,
+      enum: ['prevention', 'detection', 'suppression'],
+      default: 'prevention',
+    },
     gravityLevel: { type: String, enum: ['microgravity', 'lunar', 'martian', '1g', 'unknown'], default: 'unknown' },
     conditions: {
       oxygenPct: Number,       // O2 concentration %
+      oxygenMinPct: Number,    // Min tested O2 % if range is known
+      oxygenMaxPct: Number,    // Max tested O2 % if range is known
       pressurePsi: Number,
       flowVelocity: Number,    // m/s
       ambient: String,         // e.g. "ISS cabin air"
