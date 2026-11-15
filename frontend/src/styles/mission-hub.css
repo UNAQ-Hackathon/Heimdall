@@ -140,6 +140,11 @@
   inset: 0;
 }
 
+.mission-hub__canvas canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
 .score-bar-container {
   display: flex;
   width: 100%;
@@ -261,8 +266,8 @@
   }
 
   .mission-hub__explorer--inspecting .mission-hub__stage {
-    flex: 0 0 clamp(190px, 32dvh, 260px);
-    height: clamp(190px, 32dvh, 260px);
+    flex: 0 0 clamp(190px, 34dvh, 270px);
+    height: clamp(190px, 34dvh, 270px);
     border-bottom: 1px solid var(--border-subtle);
   }
 
