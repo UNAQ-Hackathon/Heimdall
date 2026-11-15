@@ -1,5 +1,6 @@
 import { Outlet, NavLink, Link, useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext.jsx';
+import { useSound } from '../../context/SoundContext.jsx';
 import HeimdallLogo from '../ui/HeimdallLogo.jsx';
 import CopilotChat from '../ui/CopilotChat.jsx';
 import nasaLogo from '../../../../docs/assets/nasa-logo.png';
@@ -21,6 +22,7 @@ function isNavItemActive(pathname, { to, matchPaths }) {
 
 export default function AppLayout() {
   const { chatOpen, setChatOpen, audience, setAudience } = useApp();
+  const { muted, toggleMuted } = useSound();
   const { pathname } = useLocation();
 
   return (
@@ -70,6 +72,30 @@ export default function AppLayout() {
               </button>
             ))}
           </div>
+
+          <button
+            type="button"
+            className="app-header__sound"
+            aria-label={muted ? 'Unmute sound (M)' : 'Mute sound (M)'}
+            title={muted ? 'Unmute sound (M)' : 'Mute sound (M)'}
+            aria-pressed={!muted}
+            onClick={toggleMuted}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M11 5 6 9H3v6h3l5 4z" fill="currentColor" stroke="none" />
+              {muted ? (
+                <>
+                  <line x1="16" y1="9" x2="21" y2="14" />
+                  <line x1="21" y1="9" x2="16" y2="14" />
+                </>
+              ) : (
+                <>
+                  <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+                  <path d="M18.5 5.5a9 9 0 0 1 0 13" />
+                </>
+              )}
+            </svg>
+          </button>
 
           <button type="button" className="app-header__copilot" aria-label="Toggle Gemini AI assistant" aria-pressed={chatOpen} onClick={() => setChatOpen(!chatOpen)}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">

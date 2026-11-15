@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { CHAT_HISTORY } from '../services/mockData.js';
 import { api as backendApi } from '../services/api.js';
 import { SCENARIOS, DEFAULT_WEIGHTS, resolveScenarioKey } from './ScenarioContext.jsx';
+import { useSound } from './SoundContext.jsx';
 import { loadSavedShipFile, saveShipFile } from '../utils/spacecraft-storage.js';
 
 export { SCENARIOS, DEFAULT_WEIGHTS, resolveScenarioKey };
@@ -11,6 +11,7 @@ export const AUDIENCES = ['Student', 'Engineer'];
 const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
+  const sfx = useSound();
   const [scenarioKey, setScenarioKeyState] = useState('moon');
   const [audience, setAudience] = useState('Engineer');
   const [category, setCategory] = useState('all');
@@ -28,8 +29,8 @@ export function AppProvider({ children }) {
     setShipFileState(resolved);
   }, []);
 
-  /* ── Shared Devin Copilot Chat State (single session across inline & modal) ── */
-  const [chatMessages, setChatMessages] = useState(CHAT_HISTORY);
+  /* ── Shared Copilot Chat State (single session across inline & modal) ── */
+  const [chatMessages, setChatMessages] = useState([]);
   const [chatLoading, setChatLoading] = useState(false);
   const [chatSessionId, setChatSessionId] = useState(null);
   const [chatSessionUrl, setChatSessionUrl] = useState(null);
@@ -56,6 +57,7 @@ export function AppProvider({ children }) {
 
           if (statusRes.status === 'completed' && statusRes.answer) {
             stopPolling();
+            sfx?.play('chat-receive');
             setChatLoading(false);
             setChatMessages((prev) =>
               prev.map((m) =>
@@ -87,13 +89,14 @@ export function AppProvider({ children }) {
         }
       }, 3500);
     },
-    [stopPolling]
+    [stopPolling, sfx]
   );
 
   const sendChatMessage = useCallback(
     async (rawText) => {
       const userText = rawText?.trim();
       if (!userText || chatLoading) return;
+      sfx?.play('chat-send');
 
       const activeScenario = SCENARIOS[scenarioKey] ?? SCENARIOS.moon;
       const pendingMsgId = `ai-${Date.now()}`;
@@ -113,17 +116,59 @@ export function AppProvider({ children }) {
       ]);
 
       try {
-        const res = await backendApi.ask(userText, {
-          sessionId: chatSessionId,
-          audience,
-          scenario: activeScenario,
-        });
+        const applyStep = (event, data) => {
+          setChatMessages((prev) =>
+            prev.map((m) => {
+              if (m.id !== pendingMsgId) return m;
+              if (event === 'delta') {
+                // First token replaces the "working…" placeholder, then appends.
+                return {
+                  ...m,
+                  text: (m.streamStarted ? m.text : '') + (data.text ?? ''),
+                  streamStarted: true,
+                };
+              }
+              const steps = [...(m.steps ?? [])];
+              if (event === 'tool_call') {
+                steps.push({ name: data.name, argsLabel: data.argsLabel ?? '', status: 'running' });
+              } else if (event === 'tool_result') {
+                const idx = steps.map((s) => s.status).lastIndexOf('running');
+                if (idx !== -1) {
+                  steps[idx] = {
+                    ...steps[idx],
+                    status: data.ok ? 'done' : 'failed',
+                    summary: data.summary ?? '',
+                    detail: data.detail ?? [],
+                  };
+                }
+              }
+              return { ...m, steps };
+            })
+          );
+        };
+
+        let res;
+        try {
+          res = await backendApi.askStream(
+            userText,
+            { sessionId: chatSessionId, audience, scenario: activeScenario },
+            applyStep
+          );
+        } catch {
+          // Stream failed (proxy/network) — fall back to the plain request.
+          res = await backendApi.ask(userText, {
+            sessionId: chatSessionId,
+            audience,
+            scenario: activeScenario,
+          });
+        }
 
         if (res.sessionId) setChatSessionId(res.sessionId);
         if (res.sessionUrl) setChatSessionUrl(res.sessionUrl);
         if (res.sessionStatus) setChatSessionStatus(res.sessionStatus);
 
         if ((res.status === 'completed' || res.status === 'unavailable') && res.answer) {
+          sfx?.play('chat-receive');
           setChatLoading(false);
           setChatMessages((prev) =>
             prev.map((m) =>
@@ -132,6 +177,7 @@ export function AppProvider({ children }) {
                     ...m,
                     text: res.answer,
                     citations: res.citations,
+                    toolCalls: res.toolCalls ?? [],
                     usage: res.usage ?? null,
                     isError: res.status === 'unavailable',
                     pending: false,
@@ -180,7 +226,7 @@ export function AppProvider({ children }) {
         );
       }
     },
-    [audience, chatLoading, chatSessionId, scenarioKey, startPolling]
+    [audience, chatLoading, chatSessionId, scenarioKey, startPolling, sfx]
   );
 
   const resetChatSession = useCallback(() => {
@@ -189,7 +235,7 @@ export function AppProvider({ children }) {
     setChatSessionId(null);
     setChatSessionUrl(null);
     setChatSessionStatus(null);
-    setChatMessages(CHAT_HISTORY);
+    setChatMessages([]);
   }, [stopPolling]);
 
   const value = {

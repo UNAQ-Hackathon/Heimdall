@@ -14,7 +14,6 @@ export default function PlanetAnalysisPanel({
   onClose,
   onSelectPlanet,
   onOpenTestbench,
-  onEnterIssAirlock,
 }) {
   const titleRef = useRef(null);
   const appCtx = useApp();
@@ -215,26 +214,6 @@ export default function PlanetAnalysisPanel({
             : 'Interactive 3D low-poly landscape · Drag to look around'}
         </figcaption>
       </figure>
-
-      {planet.id === 'iss' && onEnterIssAirlock && (
-        <button
-          type="button"
-          onClick={onEnterIssAirlock}
-          style={{
-            width: '100%',
-            padding: '8px 12px',
-            borderRadius: '8px',
-            border: '1px solid rgba(56, 189, 248, 0.45)',
-            background: 'rgba(56, 189, 248, 0.16)',
-            color: '#e0f2fe',
-            fontSize: '11.5px',
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
-        >
-          Board ISS · Expand Airlock &amp; Lab View
-        </button>
-      )}
 
       {/* Surface Gravity & Distance Pills */}
       <div

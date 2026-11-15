@@ -426,9 +426,24 @@ export default function CopilotChat({ inline = false }) {
           flexDirection: 'column',
           gap: '10px',
           fontSize: '12px',
+          minHeight: '140px',
         }}
       >
-        {chatMessages.map((msg, idx) => (
+        {chatMessages.length === 0 ? (
+          <div
+            style={{
+              margin: 'auto',
+              textAlign: 'center',
+              padding: '18px 14px',
+              color: '#94a3b8',
+              fontSize: '11.5px',
+              lineHeight: 1.5,
+            }}
+          >
+            Ask a question about NASA PSI combustion investigations, mission fire-safety rankings, or FireHazR droplet predictions.
+          </div>
+        ) : (
+          chatMessages.map((msg, idx) => (
           <div
             key={msg.id ?? idx}
             style={{
@@ -457,6 +472,115 @@ export default function CopilotChat({ inline = false }) {
                 >
                   {renderFormattedText(msg.text)}
                 </p>
+                {msg.steps && msg.steps.length > 0 && (
+                  <div
+                    style={{
+                      marginTop: '6px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '3px',
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: '10px',
+                      borderLeft: '2px solid rgba(129, 140, 248, 0.35)',
+                      paddingLeft: '7px',
+                    }}
+                  >
+                    {msg.steps.map((s, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'baseline',
+                          gap: '5px',
+                          opacity: s.status === 'running' ? 1 : 0.82,
+                        }}
+                      >
+                        <span
+                          style={{
+                            color:
+                              s.status === 'running'
+                                ? '#93c5fd'
+                                : s.status === 'failed'
+                                  ? '#fca5a5'
+                                  : '#86efac',
+                            flexShrink: 0,
+                            animation:
+                              s.status === 'running' ? 'heimdall-pulse 1s ease-in-out infinite' : 'none',
+                          }}
+                        >
+                          {s.status === 'running' ? '◌' : s.status === 'failed' ? '✕' : '✓'}
+                        </span>
+                        <span style={{ color: '#cbd5e1' }}>
+                          {s.name}
+                          {s.argsLabel ? (
+                            <span style={{ color: '#64748b' }}>({s.argsLabel})</span>
+                          ) : null}
+                        </span>
+                        {s.summary ? (
+                          <span style={{ color: '#64748b' }}>→ {s.summary}</span>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {msg.steps?.some((s) => s.detail?.length > 0) && (
+                  <div
+                    style={{
+                      marginTop: '4px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '2px',
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: '9.5px',
+                      color: '#64748b',
+                      borderLeft: '2px solid rgba(34, 197, 94, 0.25)',
+                      paddingLeft: '7px',
+                    }}
+                  >
+                    {msg.steps
+                      .filter((s) => s.detail?.length > 0)
+                      .map((s, i) => (
+                        <div key={i}>
+                          <span style={{ color: '#475569' }}>└ {s.name}: </span>
+                          {s.detail.join('  ·  ')}
+                        </div>
+                      ))}
+                  </div>
+                )}
+                {(!msg.steps || msg.steps.length === 0) &&
+                  msg.toolCalls &&
+                  msg.toolCalls.length > 0 && (
+                  <div
+                    style={{
+                      marginTop: '6px',
+                      display: 'flex',
+                      gap: '6px',
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    {msg.toolCalls.map((t, i) => (
+                      <span
+                        key={i}
+                        title={t.ok ? 'Grounded tool result' : 'Tool reported an error'}
+                        style={{
+                          fontSize: '10px',
+                          fontFamily: 'var(--font-mono)',
+                          background: t.ok
+                            ? 'rgba(34, 197, 94, 0.12)'
+                            : 'rgba(239, 68, 68, 0.12)',
+                          border: t.ok
+                            ? '1px solid rgba(34, 197, 94, 0.3)'
+                            : '1px solid rgba(239, 68, 68, 0.3)',
+                          color: t.ok ? '#86efac' : '#fca5a5',
+                          borderRadius: '4px',
+                          padding: '2px 6px',
+                        }}
+                      >
+                        {t.ok ? '⚙' : '⚠'} {t.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 {msg.citations && msg.citations.length > 0 && (
                   <div
                     style={{
@@ -493,7 +617,8 @@ export default function CopilotChat({ inline = false }) {
               </div>
             )}
           </div>
-        ))}
+          ))
+        )}
       </div>
 
       {/* Input */}

@@ -266,3 +266,208 @@ export function summarizeInvestigationDifferences(studies = []) {
 
   return { similarities, differences };
 }
+
+export const CATALOG_PILLAR_GUIDE = [
+  {
+    id: 'all',
+    label: 'All Studies',
+    shortLabel: 'All',
+    description: 'Every spacecraft combustion experiment in the archive',
+    color: '#94a3b8',
+  },
+  {
+    id: 'prevention',
+    label: 'Prevent Fires',
+    shortLabel: 'Prevent',
+    description: 'How easily materials catch fire and sustain a flame',
+    color: '#38bdf8',
+  },
+  {
+    id: 'detection',
+    label: 'Detect Smoke',
+    shortLabel: 'Detect',
+    description: 'How smoke particles and flame light trigger alarms',
+    color: '#fbbf24',
+  },
+  {
+    id: 'suppression',
+    label: 'Suppress Flames',
+    shortLabel: 'Suppress',
+    description: 'How gas mixtures and airflow put out fires',
+    color: '#34d399',
+  },
+];
+
+export const CATALOG_FUEL_OPTIONS = [
+  { id: 'all', label: 'All materials' },
+  { id: 'solid', label: 'Solid materials (plastics, fabrics)' },
+  { id: 'droplet', label: 'Liquid fuel droplets (methanol, heptane)' },
+  { id: 'gas', label: 'Flammable gases (methane, ethylene)' },
+  { id: 'aerosol', label: 'Smoke particles and aerosols' },
+];
+
+export const CATALOG_HARDWARE_OPTIONS = [
+  { id: 'all', label: 'All spacecraft test chambers' },
+  { id: 'acme', label: 'CIR / ACME — Gas burner rack' },
+  { id: 'mdca', label: 'CIR / MDCA — Droplet test rig' },
+  { id: 'msg', label: 'ISS MSG — Glovebox flow duct' },
+  { id: 'saffire', label: 'Cygnus / Saffire — Full-scale spacecraft fire' },
+  { id: 'same', label: 'SAME Pegasor — Smoke and aerosol suite' },
+];
+
+export const CATALOG_DATA_OPTIONS = [
+  { id: 'all', label: 'All archive status' },
+  { id: 'published', label: 'Published PSI test conditions' },
+  { id: 'series', label: 'Empirical curve runs (FLEX, 258 samples)' },
+  { id: 'upcoming', label: 'Upcoming Lunar missions (LUCI / FM2)' },
+];
+
+/**
+ * Extracts verified O2 bounds and human-readable label for a single study without guessing values.
+ */
+export function getStudyOxygenBounds(study) {
+  const cond = study?.conditions ?? {};
+  const candidates = [cond.oxygenMinPct, cond.oxygenPct, cond.oxygenMaxPct].filter((v) =>
+    Number.isFinite(v)
+  );
+  if (candidates.length === 0) {
+    return {
+      minPct: null,
+      maxPct: null,
+      nominalPct: null,
+      label: study?.oxygenRange || 'Pending publication',
+    };
+  }
+  const minPct = Math.min(...candidates);
+  const maxPct = Math.max(...candidates);
+  const nominalPct = Number.isFinite(cond.oxygenPct) ? cond.oxygenPct : null;
+  const label =
+    study?.oxygenRange ||
+    (minPct === maxPct ? `${minPct}% O₂` : `${minPct}% – ${maxPct}% O₂`);
+  return { minPct, maxPct, nominalPct, label };
+}
+
+/**
+ * Classifies a study's verified telemetry depth: empirical curves, published condition bounds, or upcoming lunar gap.
+ */
+export function getStudyTelemetryTier(study) {
+  if (study?.dataAvailable === false || study?.status === 'upcoming') {
+    return 'upcoming';
+  }
+  const hasSeries = Array.isArray(study?.series)
+    ? study.series.some((s) => Array.isArray(s?.samples) && s.samples.length > 0)
+    : false;
+  return hasSeries ? 'empirical' : 'published';
+}
+
+/**
+ * Summarizes strictly verified experimental series samples attached to an investigation.
+ */
+export function getStudySeriesStats(study) {
+  const rawSeries = Array.isArray(study?.series) ? study.series : [];
+  const seriesSummaries = rawSeries
+    .map((series, index) => {
+      const rawSamples = Array.isArray(series?.samples) ? series.samples : [];
+      const points = rawSamples
+        .map((pt) => {
+          if (Array.isArray(pt) && pt.length >= 2) {
+            const x = Number(pt[0]);
+            const y = Number(pt[1]);
+            return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
+          }
+          if (pt && typeof pt === 'object') {
+            const x = Number(pt.x);
+            const y = Number(pt.y);
+            return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
+          }
+          return null;
+        })
+        .filter(Boolean);
+
+      if (points.length === 0) return null;
+      const xs = points.map((p) => p.x);
+      const ys = points.map((p) => p.y);
+      return {
+        name: series.name || `series-${index}`,
+        label: series.label || series.name || `Series ${index + 1}`,
+        unit: series.unit || '',
+        xLabel: series.xLabel || 'Parameter',
+        count: points.length,
+        minX: Math.min(...xs),
+        maxX: Math.max(...xs),
+        minY: Math.min(...ys),
+        maxY: Math.max(...ys),
+        points,
+      };
+    })
+    .filter(Boolean);
+
+  const sampleCount = seriesSummaries.reduce((sum, s) => sum + s.count, 0);
+  return {
+    seriesCount: seriesSummaries.length,
+    sampleCount,
+    seriesSummaries,
+  };
+}
+
+/**
+ * Aggregates general archive telemetry and condition coverage across filtered PSI studies.
+ */
+export function summarizeCatalogOverview(items = []) {
+  const byCategory = { prevention: 0, detection: 0, suppression: 0 };
+  const telemetryCounts = {
+    empiricalStudies: 0,
+    empiricalSamples: 0,
+    publishedStudies: 0,
+    upcomingStudies: 0,
+  };
+  const o2Values = [];
+  const pressureValues = [];
+  const hardwareSet = new Set();
+  let earthApplicationsCount = 0;
+
+  items.forEach((inv) => {
+    if (inv.category && Object.hasOwn(byCategory, inv.category)) {
+      byCategory[inv.category] += 1;
+    }
+
+    const tier = getStudyTelemetryTier(inv);
+    if (tier === 'upcoming') {
+      telemetryCounts.upcomingStudies += 1;
+    } else if (tier === 'empirical') {
+      telemetryCounts.empiricalStudies += 1;
+      telemetryCounts.publishedStudies += 1;
+      telemetryCounts.empiricalSamples += getStudySeriesStats(inv).sampleCount;
+    } else {
+      telemetryCounts.publishedStudies += 1;
+    }
+
+    const cond = inv.conditions ?? {};
+    [cond.oxygenMinPct, cond.oxygenPct, cond.oxygenMaxPct].forEach((val) => {
+      if (Number.isFinite(val)) o2Values.push(val);
+    });
+    if (Number.isFinite(cond.pressurePsi)) {
+      pressureValues.push(cond.pressurePsi);
+    }
+    if (inv.hardware) hardwareSet.add(inv.hardware);
+    if (Array.isArray(inv.earthApplications)) {
+      earthApplicationsCount += inv.earthApplications.length;
+    }
+  });
+
+  return {
+    total: items.length,
+    byCategory,
+    telemetryCounts,
+    oxygenSpan: {
+      minPct: o2Values.length ? Math.min(...o2Values) : null,
+      maxPct: o2Values.length ? Math.max(...o2Values) : null,
+    },
+    pressureSpan: {
+      minPsi: pressureValues.length ? Math.min(...pressureValues) : null,
+      maxPsi: pressureValues.length ? Math.max(...pressureValues) : null,
+    },
+    hardwareCount: hardwareSet.size,
+    earthApplicationsCount,
+  };
+}

@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import FireHazrResultChart from '../components/charts/FireHazrResultChart.jsx';
 import FlameVisualization, { TEST_SUBJECT_OPTIONS } from '../components/three/FlameVisualization.jsx';
 import FlexCoverageMap from '../components/ui/FlexCoverageMap.jsx';
 import { useApp } from '../context/AppContext.jsx';
+import { useSound } from '../context/SoundContext.jsx';
 import { api } from '../services/api.js';
 import { FLAME_COMPARISON } from '../services/mockData.js';
 import {
@@ -360,6 +361,7 @@ function MeterSlider({
 
 export default function FireHazRPage({ compact = false, embedded = false }) {
   const { scenario, focusPlanet, audience } = useApp();
+  const sfx = useSound();
   const isStudent = audience === 'Student';
   const [form, setForm] = useState(EXAMPLE);
   const [mixtureMode, setMixtureMode] = useState(() => inferMixture(EXAMPLE));
@@ -503,6 +505,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
     event.preventDefault();
     const validationError = validateFireHazRForm(form);
     if (validationError) {
+      sfx?.play('ui-deny');
       setError(validationError);
       setResponse(null);
       setInterpretation(null);
@@ -510,6 +513,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
       return;
     }
     setLoading(true);
+    sfx?.play('predict-start');
     setError('');
     setResponse(null);
     setInterpretation(null);
@@ -524,7 +528,9 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
     try {
       const resData = await api.predictFirehazr(conditions);
       setResponse(resData);
+      sfx?.play(resData?.result?.aceptado ? 'predict-success' : 'predict-abstain');
     } catch (err) {
+      sfx?.play('predict-error');
       setError(err.message);
     } finally {
       setLoading(false);
@@ -567,6 +573,31 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
       : effectiveSuitState === 'flames'
         ? { label: `GROWING FLAMES (${o2Pct}% O₂)`, color: '#f59e0b' }
         : { label: `NOMINAL (<25% O₂)`, color: '#10b981' };
+
+  // Chamber audio: ignition whoosh into a looping fire crackle that scales with
+  // O2, a flashover rumble + alarm tone on burn-out, silence when nominal.
+  const prevHazardRef = useRef(effectiveSuitState);
+  useEffect(() => {
+    if (!sfx) return;
+    const prev = prevHazardRef.current;
+    prevHazardRef.current = effectiveSuitState;
+    if (effectiveSuitState === 'flames') {
+      if (prev !== 'flames') sfx.play('fire-ignition');
+      sfx.startLoop('fire', Math.min(1, 0.3 + (o2Pct / 100) * 0.85));
+    } else if (effectiveSuitState === 'burned') {
+      if (prev !== 'burned') {
+        sfx.play('flashover');
+        sfx.play('alarm');
+      }
+      sfx.startLoop('fire', 1);
+    } else {
+      sfx.stopLoop('fire');
+    }
+  }, [effectiveSuitState, o2Pct, sfx]);
+
+  const stopLoopRef = useRef(sfx?.stopLoop);
+  stopLoopRef.current = sfx?.stopLoop;
+  useEffect(() => () => stopLoopRef.current?.('fire'), []);
 
   return (
     <section
@@ -800,7 +831,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
             padding: '7px 10px',
             borderRadius: '6px',
             background: '#080f1c',
-            border: '1px solid #1e293b',
+            border: '1px solid var(--audience-border, #1e293b)',
             fontSize: '10px',
             fontFamily: 'var(--font-mono)',
             fontVariantNumeric: 'tabular-nums',
@@ -808,7 +839,8 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
           }}
         >
           <span style={{ color: '#cbd5e1', whiteSpace: 'nowrap' }}>
-            CHAMBER · <strong>{o2Pct}% O₂</strong> / {n2Pct}% N₂
+            {isStudent ? 'SPACE CABIN AIR · ' : 'CHAMBER · '}
+            <strong>{o2Pct}% O₂</strong> / {n2Pct}% N₂
             {Number(form.co2_fraction) > 0 ? ` / ${Math.round(Number(form.co2_fraction) * 100)}% CO₂` : ''}
             {Number(form.he_fraction) > 0 ? ` / ${Math.round(Number(form.he_fraction) * 100)}% He` : ''}
           </span>
@@ -823,13 +855,33 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
               border: flexBoundsOk ? '1px solid rgba(52, 211, 153, 0.35)' : '1px solid rgba(251, 191, 36, 0.35)',
             }}
           >
-            {flexBoundsOk
-              ? `In FLEX support (${liveCoverage.distance?.toFixed(2)} ≤ ${liveCoverage.limit?.toFixed(2)})`
-              : liveCoverage.distance != null
-                ? `Gap (${liveCoverage.distance.toFixed(2)} > ${liveCoverage.limit?.toFixed(2)})`
-                : 'Out of FLEX range'}
+            {isStudent
+              ? flexBoundsOk
+                ? 'Matches real ISS data'
+                : 'Beyond tested droplet data'
+              : flexBoundsOk
+                ? `In FLEX support (${liveCoverage.distance?.toFixed(2)} ≤ ${liveCoverage.limit?.toFixed(2)})`
+                : liveCoverage.distance != null
+                  ? `Gap (${liveCoverage.distance.toFixed(2)} > ${liveCoverage.limit?.toFixed(2)})`
+                  : 'Out of FLEX range'}
           </span>
         </div>
+
+        {isStudent && (
+          <div
+            style={{
+              padding: '8px 10px',
+              borderRadius: '7px',
+              background: 'rgba(16, 185, 129, 0.08)',
+              border: '1px solid rgba(52, 211, 153, 0.28)',
+              fontSize: '11.5px',
+              color: '#d1fae5',
+              lineHeight: 1.45,
+            }}
+          >
+            <strong>Student Tip:</strong> Slide oxygen higher to watch how spacecraft hazard levels escalate, or add CO₂ to see why fire suppressants quench space flames.
+          </div>
+        )}
 
         {!compact ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>

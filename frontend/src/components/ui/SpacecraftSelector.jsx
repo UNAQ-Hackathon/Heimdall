@@ -3,6 +3,7 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import { SHIP_CATALOG, getShipUrl } from '../three/SolarSystemScene.jsx';
 import { normalizeModel } from '../three/normalize-model.js';
+import { useSound } from '../../context/SoundContext.jsx';
 
 function RotatingShipPreviewModel({ shipFile, scale = 0.86 }) {
   const url = getShipUrl(shipFile);
@@ -33,6 +34,7 @@ function RotatingShipPreviewModel({ shipFile, scale = 0.86 }) {
 }
 
 export default function SpacecraftSelector({ shipFile, onSelect }) {
+  const sfx = useSound();
   const [open, setOpen] = useState(false);
   const [hoveredShip, setHoveredShip] = useState(null);
   const containerRef = useRef(null);
@@ -243,6 +245,7 @@ export default function SpacecraftSelector({ shipFile, onSelect }) {
                   onMouseLeave={() => setHoveredShip(null)}
                   onClick={() => {
                     onSelect(ship.id);
+                    sfx?.play('ship-select');
                     setOpen(false);
                     setHoveredShip(null);
                   }}

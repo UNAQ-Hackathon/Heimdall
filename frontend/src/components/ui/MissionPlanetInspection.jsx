@@ -1,16 +1,24 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getPlanetModel, ISS_STATION_MODEL } from '../three/planet-catalog.js';
 import { getSolarPlanetId } from '../three/solar-system-model.js';
 import { EARTH_ZONES } from '../three/planet-analysis.js';
+import { useSound } from '../../context/SoundContext.jsx';
 import PlanetAnalysisPanel from './PlanetAnalysisPanel.jsx';
 
 export default function MissionPlanetInspection({
   body,
   onClose,
   onOpenTestbench,
-  onEnterIssAirlock,
 }) {
+  const sfx = useSound();
   const [zoneId, setZoneId] = useState('temperate');
+  const openedRef = useRef(false);
+
+  useEffect(() => {
+    if (openedRef.current) return;
+    openedRef.current = true;
+    sfx?.play('panel-whoosh');
+  }, [sfx]);
   const planet =
     body.name === 'ISS'
       ? ISS_STATION_MODEL
@@ -41,7 +49,6 @@ export default function MissionPlanetInspection({
         onZoneChange={setZoneId}
         onClose={onClose}
         onOpenTestbench={onOpenTestbench}
-        onEnterIssAirlock={onEnterIssAirlock}
       />
     </section>
   );
