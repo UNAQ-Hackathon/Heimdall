@@ -5,7 +5,6 @@ import NasaSplashLoader from './components/ui/NasaSplashLoader.jsx';
 import MissionHub from './pages/MissionHub.jsx';
 import StudyDetailPage from './pages/StudyDetailPage.jsx';
 import PsiCatalogPage from './pages/PsiCatalogPage.jsx';
-import Flame3DPage from './pages/Flame3DPage.jsx';
 import FireHazRPage from './pages/FireHazRPage.jsx';
 import ComparePage from './pages/ComparePage.jsx';
 import Habitat3DPage from './pages/Habitat3DPage.jsx';
@@ -29,8 +28,8 @@ export default function App() {
         <Route path="telemetry" element={<StudyDetailPage />} />
         <Route path="telemetry/:id" element={<StudyDetailPage />} />
 
-        {/* 3D Flame comparative morphology */}
-        <Route path="flame-3d" element={<Flame3DPage />} />
+        {/* FireHazR Lab & unified 3D Flame morphology */}
+        <Route path="flame-3d" element={<FireHazRPage />} />
         <Route path="firehazr" element={<FireHazRPage />} />
         <Route path="flame" element={<FireHazRPage />} />
 

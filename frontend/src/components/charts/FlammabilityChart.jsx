@@ -77,6 +77,8 @@ export default function FlammabilityChart() {
             stroke="none"
             fill="rgba(56, 189, 248, 0.08)"
             name="Flammable Envelope"
+            animationDuration={320}
+            animationEasing="ease-out"
           />
 
           {/* Saffire-III 0g Boundary line */}
@@ -87,6 +89,8 @@ export default function FlammabilityChart() {
             strokeWidth={2}
             dot={false}
             name="Saffire-III 0g Boundary"
+            animationDuration={320}
+            animationEasing="ease-out"
           />
 
           {/* Extinction / Quenching Zone boundary */}
@@ -98,6 +102,8 @@ export default function FlammabilityChart() {
             strokeDasharray="4 4"
             dot={false}
             name="Extinction Boundary"
+            animationDuration={320}
+            animationEasing="ease-out"
           />
 
           {/* Lunar Base Habitat Spec Callout Point */}

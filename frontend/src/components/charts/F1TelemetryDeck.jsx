@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Area,
   Bar,
@@ -104,19 +105,43 @@ export default function F1TelemetryDeck({
   activeRun = null,
   onSelectRun,
   onSelectStudy,
+  onResetFilters,
   channels = { o2: true, pressure: true, secondary: true, diluent: true },
   baselineOverlay = true,
   measurements = [],
   showRunTelemetry = true,
 }) {
+  const [showSchematicFallback, setShowSchematicFallback] = useState(false);
   const measuredTimeSeries = getStudyMeasuredSeries(study, measurements);
   const hasRuns = showRunTelemetry && runSeries.length > 0;
   const gradId = `f1-o2-grad-${theme.id}`;
 
   return (
     <div className="f1-charts-col">
-      {/* CHANNEL 1: Run-by-Run Measured Telemetry OR Cross-Study O2 Envelope */}
-      {hasRuns ? (
+      {/* CHANNEL 1: Run-by-Run Measured Telemetry OR No-Data Placeholder */}
+      {showRunTelemetry && !hasRuns ? (
+        <section className="f1-channel-card" aria-label="No matching experimental run telemetry">
+          <div className="f1-channel-head">
+            <div className="f1-channel-title">
+              <span className="f1-channel-bar" />
+              CH-01 // EXPERIMENTAL RUN TELEMETRY
+            </div>
+            <div className="f1-channel-sub">0 matching runs</div>
+          </div>
+          <div className="f1-no-data" role="status">
+            <span className="f1-no-data__badge">NO DATA</span>
+            <div className="f1-no-data__title">No experimental runs match the active filters</div>
+            <p className="f1-no-data__desc">
+              Adjust the fuel, diluent mix, or O₂ band filters above to inspect recorded NASA PSI test runs.
+            </p>
+            {onResetFilters && (
+              <button type="button" className="f1-btn f1-btn--primary" onClick={onResetFilters}>
+                Reset Telemetry Filters
+              </button>
+            )}
+          </div>
+        </section>
+      ) : hasRuns ? (
         <>
           {channels.o2 && (
             <section className="f1-channel-card" aria-label="Channel 1 Oxygen and Diluent Telemetry">
@@ -192,7 +217,9 @@ export default function F1TelemetryDeck({
                       strokeWidth={2.2}
                       fill={`url(#${gradId})`}
                       dot={false}
-                      activeDot={{ r: 5, stroke: '#fff', strokeWidth: 1.5 }}
+                      activeDot={{ r: 4.5, stroke: '#fff', strokeWidth: 1.5 }}
+                      animationDuration={320}
+                      animationEasing="ease-out"
                     />
                     {channels.diluent && (
                       <Line
@@ -202,6 +229,8 @@ export default function F1TelemetryDeck({
                         stroke="#34d399"
                         strokeWidth={1.6}
                         dot={false}
+                        animationDuration={320}
+                        animationEasing="ease-out"
                       />
                     )}
                     {channels.diluent && (
@@ -212,6 +241,8 @@ export default function F1TelemetryDeck({
                         stroke="#a78bfa"
                         strokeWidth={1.6}
                         dot={false}
+                        animationDuration={320}
+                        animationEasing="ease-out"
                       />
                     )}
                     {activeRun && (
@@ -307,6 +338,8 @@ export default function F1TelemetryDeck({
                         stroke={theme.channels.pressure}
                         strokeWidth={2}
                         dot={false}
+                        animationDuration={320}
+                        animationEasing="ease-out"
                       />
                     )}
                     {channels.secondary && (
@@ -318,6 +351,8 @@ export default function F1TelemetryDeck({
                         stroke={theme.channels.flow}
                         strokeWidth={1.6}
                         dot={false}
+                        animationDuration={320}
+                        animationEasing="ease-out"
                       />
                     )}
                     {activeRun && channels.pressure && activeRun.pressurePsi != null && (
@@ -347,9 +382,25 @@ export default function F1TelemetryDeck({
             {hasRuns ? 'CH-03' : 'CH-01'} // VERIFIED PSI ENVELOPE TELEMETRY ({envelopeSeries.length} STUDIES)
           </div>
           <div className="f1-channel-sub">
-            Click any bar/point to switch active study · Highlighted: {study?.acronym}
+            {envelopeSeries.length > 0
+              ? `Click any bar/point to switch active study · Highlighted: ${study?.acronym}`
+              : '0 studies match current filters'}
           </div>
         </div>
+        {envelopeSeries.length === 0 ? (
+          <div className="f1-no-data" role="status">
+            <span className="f1-no-data__badge">NO DATA</span>
+            <div className="f1-no-data__title">No PSI studies match the active filters</div>
+            <p className="f1-no-data__desc">
+              No investigations in the verified NASA PSI archive satisfy this combination of pillar, fuel, hardware, and oxygen regime.
+            </p>
+            {onResetFilters && (
+              <button type="button" className="f1-btn f1-btn--primary" onClick={onResetFilters}>
+                Show All Studies
+              </button>
+            )}
+          </div>
+        ) : (
         <div style={{ width: '100%', height: '215px' }}>
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart
@@ -404,7 +455,15 @@ export default function F1TelemetryDeck({
                   strokeDasharray="4 4"
                 />
               )}
-              <Bar yAxisId="o2" dataKey="o2Max" name="Peak O₂ Envelope" radius={[4, 4, 0, 0]} maxBarSize={26}>
+              <Bar
+                yAxisId="o2"
+                dataKey="o2Max"
+                name="Peak O₂ Envelope"
+                radius={[4, 4, 0, 0]}
+                maxBarSize={26}
+                animationDuration={320}
+                animationEasing="ease-out"
+              >
                 {envelopeSeries.map((entry) => (
                   <Cell
                     key={entry.id}
@@ -422,6 +481,8 @@ export default function F1TelemetryDeck({
                 stroke={theme.accent}
                 strokeWidth={1.8}
                 dot={{ r: 2.5 }}
+                animationDuration={320}
+                animationEasing="ease-out"
               />
               <Line
                 yAxisId="p"
@@ -432,13 +493,16 @@ export default function F1TelemetryDeck({
                 strokeWidth={1.5}
                 strokeDasharray="3 3"
                 dot={false}
+                animationDuration={320}
+                animationEasing="ease-out"
               />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
+        )}
       </section>
 
-      {/* CHANNEL 4: Measured Time-Series OR Reference Envelope Charts */}
+      {/* CHANNEL 4: Measured Time-Series OR Honest No-Data Placeholder */}
       <div
         style={{
           display: 'grid',
@@ -452,15 +516,49 @@ export default function F1TelemetryDeck({
               <span className="f1-channel-bar" style={{ background: theme.channels.thermal }} />
               {measuredTimeSeries
                 ? `MEASURED TIME-SERIES (${measuredTimeSeries.source.toUpperCase()})`
-                : 'SCHEMATIC THERMAL / FLUX PROFILE'}
+                : 'TIME-SERIES WAVEFORM'}
             </div>
             <div className="f1-channel-sub">
               {measuredTimeSeries
                 ? `Recorded channels: ${study?.variables?.join(', ') || 'TC / Flux'}`
-                : 'Illustrative curve only — PSI summary omits raw time-series'}
+                : showSchematicFallback
+                  ? 'Illustrative schematic reference (not measured)'
+                  : 'No raw time-series samples in PSI summary'}
             </div>
           </div>
-          <TimeSeriesChart data={measuredTimeSeries ?? undefined} />
+          {measuredTimeSeries ? (
+            <TimeSeriesChart data={measuredTimeSeries} />
+          ) : showSchematicFallback ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <TimeSeriesChart />
+              <button
+                type="button"
+                className="f1-btn"
+                style={{ alignSelf: 'flex-end', fontSize: '10px', padding: '4px 9px' }}
+                onClick={() => setShowSchematicFallback(false)}
+              >
+                Hide Schematic Reference
+              </button>
+            </div>
+          ) : (
+            <div className="f1-no-data" role="status">
+              <span className="f1-no-data__badge">NO DATA</span>
+              <div className="f1-no-data__title">
+                No time-series waveform recorded for {study?.acronym ?? 'this study'}
+              </div>
+              <p className="f1-no-data__desc">
+                The verified PSI archive stores experimental bounds and sensor metadata without raw thermocouple/flux samples here.
+              </p>
+              <button
+                type="button"
+                className="f1-btn"
+                style={{ fontSize: '10px', padding: '5px 10px' }}
+                onClick={() => setShowSchematicFallback(true)}
+              >
+                Preview Schematic Reference
+              </button>
+            </div>
+          )}
         </section>
 
         <section className="f1-channel-card" aria-label="Flammability Envelope">

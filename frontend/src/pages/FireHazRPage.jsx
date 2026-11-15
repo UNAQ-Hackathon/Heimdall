@@ -3,6 +3,7 @@ import FlameVisualization, { TEST_SUBJECT_OPTIONS } from '../components/three/Fl
 import FlexCoverageMap from '../components/ui/FlexCoverageMap.jsx';
 import { useApp } from '../context/AppContext.jsx';
 import { api } from '../services/api.js';
+import { FLAME_COMPARISON } from '../services/mockData.js';
 import {
   MIXTURE_OPTIONS,
   inferMixture,
@@ -326,6 +327,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
   const [error, setError] = useState('');
   const [viewerMode, setViewerMode] = useState('astronaut');
   const [suitState, setSuitState] = useState('auto');
+  const [airflow, setAirflow] = useState(0.1);
 
   useEffect(() => {
     let active = true;
@@ -408,9 +410,6 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
     setSelectedPresetId(preset.id);
     setMixtureMode(inferMixture(nextConditions));
     setForm(nextConditions);
-    if (viewerMode === 'spherical' || viewerMode === 'teardrop') {
-      setViewerMode('astronaut');
-    }
     setSuitState(preset.suitState ?? 'auto');
     resetResultsState();
   };
@@ -652,38 +651,22 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
             </span>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
-            {/* One-Click Test Subject Selector Pills */}
-            <div
-              role="group"
-              aria-label="3D test subject model"
-              style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}
-            >
-              {TEST_SUBJECT_OPTIONS.map((opt) => {
-                const active = viewerMode === opt.id;
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => setViewerMode(opt.id)}
-                    style={{
-                      fontSize: '10px',
-                      fontFamily: 'var(--font-mono)',
-                      fontWeight: active ? 700 : 500,
-                      padding: '4px 8px',
-                      borderRadius: '5px',
-                      border: active ? '1px solid #38bdf8' : '1px solid #1c2640',
-                      background: active ? 'rgba(56, 189, 248, 0.16)' : '#080f1c',
-                      color: active ? '#e0f2fe' : '#94a3b8',
-                      cursor: 'pointer',
-                    }}
-                  >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+            {/* 3D Test Subject Dropdown (Astronaut + 2 Spacecraft) */}
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '11px', color: '#cbd5e1' }}>
+              <span>Test Subject (3D Model)</span>
+              <select
+                aria-label="3D test subject model"
+                value={viewerMode}
+                onChange={(e) => setViewerMode(e.target.value)}
+              >
+                {TEST_SUBJECT_OPTIONS.map((opt) => (
+                  <option key={opt.id} value={opt.id}>
                     {opt.label}
-                  </button>
-                );
-              })}
-            </div>
+                  </option>
+                ))}
+              </select>
+            </label>
 
             {/* One-Click Status Selector Pills (Nominal / In Flames / Burned / Auto) */}
             <div
@@ -708,12 +691,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
                     key={st.id}
                     type="button"
                     aria-pressed={active}
-                    onClick={() => {
-                      setSuitState(st.id);
-                      if (viewerMode === 'spherical' || viewerMode === 'teardrop') {
-                        setViewerMode('spacecraft-blue');
-                      }
-                    }}
+                    onClick={() => setSuitState(st.id)}
                     style={{
                       fontSize: '10px',
                       fontFamily: 'var(--font-mono)',
@@ -808,56 +786,257 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
           </span>
         </div>
 
-        <div
-          style={{
-            height: compact ? '215px' : '250px',
-            borderRadius: '6px',
-            overflow: 'hidden',
-            border: '1px solid #263449',
-            position: 'relative',
-          }}
-        >
-          <FlameVisualization
-            type={viewerMode}
-            oxygen={Math.max(10, o2Pct)}
-            airflow={0.1}
-            suitState={effectiveSuitState}
-          />
+        {!compact ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '10px',
+                padding: '7px 10px',
+                borderRadius: '6px',
+                background: '#080f1c',
+                border: '1px solid #1e293b',
+                fontSize: '10.5px',
+                fontFamily: 'var(--font-mono)',
+                color: '#cbd5e1',
+                flexWrap: 'wrap',
+              }}
+            >
+              <span>FORCED VENTILATION (AIRFLOW): <strong style={{ color: '#38bdf8' }}>{airflow.toFixed(2)} m/s</strong></span>
+              <input
+                type="range"
+                aria-label="Forced ventilation airflow"
+                min="0"
+                max="0.30"
+                step="0.01"
+                value={airflow}
+                onChange={(e) => setAirflow(Number(e.target.value))}
+                style={{ flex: '1 1 160px', maxWidth: '240px', accentColor: '#38bdf8', cursor: 'pointer' }}
+              />
+            </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                gap: '12px',
+              }}
+            >
+              {/* Card 1: Selected 3D Subject (Astronaut / Spacecraft / Rover) */}
+              <div
+                style={{
+                  background: '#080f1c',
+                  border: '1px solid #1e293b',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
+                  <div>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: '#f8fafc' }}>
+                      3D {activeSubject.label} Test
+                    </div>
+                    <div style={{ fontSize: '9.5px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
+                      {activeSubject.label} Response ({o2Pct}% O₂)
+                    </div>
+                  </div>
+                  <span
+                    style={{
+                      fontSize: '9px',
+                      fontFamily: 'var(--font-mono)',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      color: suitBadge.color,
+                      background: `${suitBadge.color}1f`,
+                      border: `1px solid ${suitBadge.color}55`,
+                    }}
+                  >
+                    {effectiveSuitState === 'burned'
+                      ? 'BURNED'
+                      : effectiveSuitState === 'flames'
+                        ? 'ACTIVE FLAMES'
+                        : 'NOMINAL'}
+                  </span>
+                </div>
+                <div style={{ height: '220px', borderRadius: '6px', overflow: 'hidden', border: '1px solid #1c2640', position: 'relative' }}>
+                  <FlameVisualization
+                    type={viewerMode}
+                    oxygen={Math.max(10, o2Pct)}
+                    airflow={airflow}
+                    suitState={effectiveSuitState}
+                  />
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '8px',
+                      left: '8px',
+                      display: 'flex',
+                      gap: '5px',
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: '9.5px',
+                    }}
+                  >
+                    <span style={{ padding: '2px 6px', borderRadius: '4px', background: 'rgba(8, 15, 28, 0.85)', border: '1px solid #263449', color: '#38bdf8' }}>
+                      O₂: {o2Pct}%
+                    </span>
+                    <span style={{ padding: '2px 6px', borderRadius: '4px', background: 'rgba(8, 15, 28, 0.85)', border: '1px solid #263449', color: '#e2e8f0' }}>
+                      {form.pressure_mmhg} mmHg
+                    </span>
+                  </div>
+                </div>
+                <p style={{ margin: 0, fontSize: '11px', color: '#94a3b8', lineHeight: 1.4 }}>
+                  {effectiveSuitState === 'burned'
+                    ? 'Elevated O₂ flashover chars outer layers and leaves glowing embers.'
+                    : effectiveSuitState === 'flames'
+                      ? 'Enriched atmosphere sustains active flame propagation across the subject.'
+                      : 'Nominal cabin air keeps the test subject self-extinguishing and intact.'}
+                </p>
+              </div>
+
+              {/* Card 2: Microgravity ~0g Spherical Flame */}
+              <div
+                style={{
+                  background: '#080f1c',
+                  border: '1px solid #1e293b',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
+                  <div>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: '#f8fafc' }}>
+                      {FLAME_COMPARISON.zeroG.label}
+                    </div>
+                    <div style={{ fontSize: '9.5px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
+                      {FLAME_COMPARISON.zeroG.regime}
+                    </div>
+                  </div>
+                  <span
+                    style={{
+                      fontSize: '9px',
+                      fontFamily: 'var(--font-mono)',
+                      color: '#38bdf8',
+                      background: 'rgba(56, 189, 248, 0.12)',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {FLAME_COMPARISON.zeroG.isoLabel}
+                  </span>
+                </div>
+                <div style={{ height: '220px', borderRadius: '6px', overflow: 'hidden', border: '1px solid #1c2640' }}>
+                  <FlameVisualization type="spherical" oxygen={Math.max(10, o2Pct)} airflow={airflow} />
+                </div>
+                <p style={{ margin: 0, fontSize: '11px', color: '#94a3b8', lineHeight: 1.4 }}>
+                  {FLAME_COMPARISON.zeroG.description}
+                </p>
+              </div>
+
+              {/* Card 3: Earth Gravity 1g Teardrop Flame */}
+              <div
+                style={{
+                  background: '#080f1c',
+                  border: '1px solid #1e293b',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
+                  <div>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: '#f8fafc' }}>
+                      {FLAME_COMPARISON.oneG.label}
+                    </div>
+                    <div style={{ fontSize: '9.5px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
+                      {FLAME_COMPARISON.oneG.regime}
+                    </div>
+                  </div>
+                  <span
+                    style={{
+                      fontSize: '9px',
+                      fontFamily: 'var(--font-mono)',
+                      color: '#f59e0b',
+                      background: 'rgba(245, 158, 11, 0.12)',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {FLAME_COMPARISON.oneG.isoLabel}
+                  </span>
+                </div>
+                <div style={{ height: '220px', borderRadius: '6px', overflow: 'hidden', border: '1px solid #1c2640' }}>
+                  <FlameVisualization type="teardrop" oxygen={Math.max(10, o2Pct)} airflow={airflow} />
+                </div>
+                <p style={{ margin: 0, fontSize: '11px', color: '#94a3b8', lineHeight: 1.4 }}>
+                  {FLAME_COMPARISON.oneG.description}
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
           <div
             style={{
-              position: 'absolute',
-              top: '8px',
-              left: '10px',
-              display: 'flex',
-              gap: '6px',
-              fontFamily: 'var(--font-mono)',
-              fontSize: '10px',
+              height: compact ? '215px' : '250px',
+              borderRadius: '6px',
+              overflow: 'hidden',
+              border: '1px solid #263449',
+              position: 'relative',
             }}
           >
-            <span
+            <FlameVisualization
+              type={viewerMode}
+              oxygen={Math.max(10, o2Pct)}
+              airflow={airflow}
+              suitState={effectiveSuitState}
+            />
+            <div
               style={{
-                padding: '2px 7px',
-                borderRadius: '4px',
-                background: 'rgba(8, 15, 28, 0.85)',
-                border: '1px solid #263449',
-                color: '#38bdf8',
+                position: 'absolute',
+                top: '8px',
+                left: '10px',
+                display: 'flex',
+                gap: '6px',
+                fontFamily: 'var(--font-mono)',
+                fontSize: '10px',
               }}
             >
-              O₂: {o2Pct}% ({form.o2_fraction})
-            </span>
-            <span
-              style={{
-                padding: '2px 7px',
-                borderRadius: '4px',
-                background: 'rgba(8, 15, 28, 0.85)',
-                border: '1px solid #263449',
-                color: '#e2e8f0',
-              }}
-            >
-              {form.pressure_mmhg} mmHg · {form.fuel}
-            </span>
+              <span
+                style={{
+                  padding: '2px 7px',
+                  borderRadius: '4px',
+                  background: 'rgba(8, 15, 28, 0.85)',
+                  border: '1px solid #263449',
+                  color: '#38bdf8',
+                }}
+              >
+                O₂: {o2Pct}% ({form.o2_fraction})
+              </span>
+              <span
+                style={{
+                  padding: '2px 7px',
+                  borderRadius: '4px',
+                  background: 'rgba(8, 15, 28, 0.85)',
+                  border: '1px solid #263449',
+                  color: '#e2e8f0',
+                }}
+              >
+                {form.pressure_mmhg} mmHg · {form.fuel}
+              </span>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <div className="firehazr-layout">
@@ -1221,7 +1400,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
                 <div className="firehazr-gemini-box__head">
                   <strong>Technical Interpretation</strong>
                   <span className="firehazr-gemini-badge">
-                    ✦ Powered by Gemini
+                    Powered by Gemini
                     {interpretation?.usage?.totalTokenCount
                       ? ` · ${interpretation.usage.totalTokenCount} tok`
                       : ''}

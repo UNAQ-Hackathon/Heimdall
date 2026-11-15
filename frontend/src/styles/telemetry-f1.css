@@ -22,7 +22,7 @@
     radial-gradient(850px 360px at 88% -6%, rgba(15, 23, 42, 0.75), transparent 60%),
     #060a14;
   color: #e2e8f0;
-  transition: background 280ms ease;
+  transition: background 560ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Pit-Wall Header */
@@ -37,7 +37,21 @@
   background: linear-gradient(135deg, rgba(13, 19, 33, 0.96), var(--tel-tint));
   border: 1px solid var(--tel-border);
   box-shadow: 0 12px 34px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  transition: border-color 260ms ease, background 260ms ease;
+  transition: border-color 480ms cubic-bezier(0.22, 1, 0.36, 1),
+    background 520ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 480ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes f1-soft-breath {
+  0%,
+  100% {
+    opacity: 0.95;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.92);
+  }
 }
 
 .f1-eyebrow {
@@ -50,6 +64,7 @@
   letter-spacing: 0.9px;
   color: var(--tel-primary);
   margin-bottom: 6px;
+  transition: color 420ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .f1-live-dot {
@@ -57,8 +72,10 @@
   height: 8px;
   border-radius: 999px;
   background: var(--tel-primary);
-  box-shadow: 0 0 10px var(--tel-primary);
+  box-shadow: 0 0 7px var(--tel-glow);
   display: inline-block;
+  animation: f1-soft-breath 3.8s ease-in-out infinite;
+  transition: background 420ms ease, box-shadow 420ms ease;
 }
 
 .f1-title {
@@ -120,7 +137,9 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+  transition: border-color 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    background 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 220ms ease;
 }
 
 .f1-btn:hover {
@@ -202,7 +221,10 @@
   font-size: 10.5px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 150ms ease;
+  transition: background 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 240ms ease,
+    box-shadow 280ms ease;
 }
 
 .f1-pill:hover {
@@ -214,7 +236,7 @@
   background: var(--tel-badge-bg);
   border-color: var(--tel-primary);
   color: #f8fafc;
-  box-shadow: 0 0 12px var(--tel-glow);
+  box-shadow: 0 0 8px var(--tel-glow);
 }
 
 /* Study Selector Strip (Driver/Car Pit Tabs) */
@@ -238,7 +260,9 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+  transition: border-color 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    background 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 300ms ease;
 }
 
 .f1-study-tab:hover {
@@ -296,11 +320,13 @@
   flex-direction: column;
   gap: 12px;
   min-width: 0;
+  transition: border-color 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 420ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .f1-panel--accent {
   border-color: var(--tel-border);
-  box-shadow: 0 0 24px -12px var(--tel-glow);
+  box-shadow: 0 0 18px -12px var(--tel-glow);
 }
 
 .f1-panel__head {
@@ -379,12 +405,13 @@
   height: 5px;
   border-radius: 1.5px;
   background: #151e33;
-  transition: background 180ms ease;
+  transition: background 340ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 340ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .f1-rpm-seg--on {
   background: var(--tel-primary);
-  box-shadow: 0 0 6px var(--tel-glow);
+  box-shadow: 0 0 4px var(--tel-glow);
 }
 
 /* Gas Mix Stacked Bar (Throttle/ERS style) */
@@ -458,6 +485,7 @@
   font-variant-numeric: tabular-nums;
   text-align: left;
   cursor: pointer;
+  transition: background 260ms ease, color 240ms ease, box-shadow 280ms ease;
 }
 
 .f1-timing-row:hover {
@@ -498,7 +526,8 @@
   flex-direction: column;
   gap: 8px;
   min-width: 0;
-  transition: border-color 240ms ease;
+  transition: border-color 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 380ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .f1-channel-card:hover {
@@ -536,6 +565,54 @@
   color: #64748b;
 }
 
+.f1-no-data {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  min-height: 185px;
+  padding: 20px 18px;
+  border-radius: 9px;
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(13, 19, 33, 0.72),
+    rgba(13, 19, 33, 0.72) 10px,
+    rgba(9, 14, 26, 0.72) 10px,
+    rgba(9, 14, 26, 0.72) 20px
+  );
+  border: 1px dashed var(--tel-border);
+  color: #94a3b8;
+}
+
+.f1-no-data__badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.75px;
+  padding: 3px 9px;
+  border-radius: 5px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid #263449;
+  color: var(--tel-badge-text);
+}
+
+.f1-no-data__title {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #e2e8f0;
+}
+
+.f1-no-data__desc {
+  margin: 0;
+  font-size: 11.5px;
+  color: #64748b;
+  max-width: 44ch;
+  line-height: 1.45;
+}
+
 @media (max-width: 1020px) {
   .f1-grid {
     grid-template-columns: 1fr;
@@ -557,11 +634,16 @@
 @media (prefers-reduced-motion: reduce) {
   .f1-telemetry,
   .f1-header,
+  .f1-eyebrow,
+  .f1-live-dot,
   .f1-btn,
   .f1-pill,
   .f1-study-tab,
+  .f1-panel,
   .f1-rpm-seg,
+  .f1-timing-row,
   .f1-channel-card {
     transition: none;
+    animation: none;
   }
 }
