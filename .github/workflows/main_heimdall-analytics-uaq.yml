@@ -32,13 +32,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Copy firehazr package into analytics artifact
+      - name: Copy firehazr package and verify artifacts
         run: |
-          mkdir -p ./analytics/firehazr
+          mkdir -p ./analytics/firehazr/resultados
           cp -r "./PredictorFireHazard-main/Sensibilidad de gases/knn/." ./analytics/firehazr/
-          if [ ! -f "./analytics/firehazr/__init__.py" ]; then
-            printf "from pathlib import Path\nSOURCE_DIR = Path(__file__).resolve().parent\n" > ./analytics/firehazr/__init__.py
-          fi
+          cat << 'EOF' > ./analytics/firehazr/__init__.py
+          from pathlib import Path
+          SOURCE_DIR = Path(__file__).resolve().parent
+          EOF
+          ls -la ./analytics/firehazr/resultados/
+          sha256sum ./analytics/firehazr/resultados/modelo.json ./analytics/firehazr/resultados/resumen.json
 
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v4
