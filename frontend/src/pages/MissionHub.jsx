@@ -1,10 +1,12 @@
-import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import { lazy, Suspense, useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import MissionPlanetInspection from '../components/ui/MissionPlanetInspection.jsx';
 import FireHazRPage from './FireHazRPage.jsx';
 import FireHazrPredictor from '../components/ui/FireHazrPredictor.jsx';
 import SpacecraftSelector from '../components/ui/SpacecraftSelector.jsx';
 import SolarSystemScene from '../components/three/SolarSystemScene.jsx';
+
+const PlanetSurfacePreview = lazy(() => import('../components/three/PlanetSurfacePreview.jsx'));
 import { SCENARIOS, useApp } from '../context/AppContext.jsx';
 import { api } from '../services/api.js';
 import { FACTOR_LABELS, rankLocalInvestigations } from '../services/ranking.js';
@@ -53,6 +55,7 @@ export default function MissionHub() {
   const [paused, setPaused] = useState(false);
   const [weightsOpen, setWeightsOpen] = useState(false);
   const [panelCollapsed, setPanelCollapsed] = useState(false);
+  const [issAirlockModalOpen, setIssAirlockModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(() => {
     const tab = searchParams.get('tab');
     return ['ranking', 'whatif', 'prediction'].includes(tab) ? tab : 'prediction';
@@ -60,6 +63,21 @@ export default function MissionHub() {
   const [shipFile, setShipFile] = useState('naveAzulNuevo.glb');
   const navigate = useNavigate();
   const targetRef = useRef(null);
+
+  useEffect(() => {
+    if (focusPlanet !== 'ISS') {
+      setIssAirlockModalOpen(false);
+    }
+  }, [focusPlanet]);
+
+  useEffect(() => {
+    if (!issAirlockModalOpen) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') setIssAirlockModalOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [issAirlockModalOpen]);
 
   useEffect(() => {
     const qPlanet = searchParams.get('planet');
@@ -726,8 +744,38 @@ export default function MissionHub() {
             <SpacecraftSelector shipFile={shipFile} onSelect={setShipFile} />
           </div>
 
-          {/* Right: Pause Orbits */}
-          <div style={{ display: 'flex', gap: '8px', pointerEvents: 'auto' }}>
+          {/* Right: Dock/Board ISS Action + Pause Orbits */}
+          <div style={{ display: 'flex', gap: '8px', pointerEvents: 'auto', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setScenarioKey('iss');
+                if (focusPlanet !== 'ISS') {
+                  setFocusPlanet('ISS');
+                } else {
+                  setIssAirlockModalOpen(true);
+                }
+              }}
+              style={{
+                background:
+                  focusPlanet === 'ISS'
+                    ? 'rgba(56, 189, 248, 0.24)'
+                    : 'rgba(10, 15, 29, 0.85)',
+                backdropFilter: 'blur(12px)',
+                border:
+                  focusPlanet === 'ISS'
+                    ? '1px solid rgba(56, 189, 248, 0.6)'
+                    : '1px solid rgba(56, 189, 248, 0.35)',
+                borderRadius: '9999px',
+                padding: '6px 13px',
+                color: '#e0f2fe',
+                fontSize: '11px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              {focusPlanet === 'ISS' ? 'Enter ISS Airlock' : 'Dock & Board ISS'}
+            </button>
             <button
               type="button"
               onClick={() => setPaused(!paused)}
@@ -838,7 +886,115 @@ export default function MissionHub() {
               setPanelCollapsed(false);
               setActiveTab('whatif');
             }}
+            onEnterIssAirlock={() => setIssAirlockModalOpen(true)}
           />
+        )}
+
+        {/* Expanded ISS Airlock & Pressurized Module Interior Modal */}
+        {issAirlockModalOpen && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="ISS Quest Airlock & Module Interior"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) setIssAirlockModalOpen(false);
+            }}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 40,
+              background: 'rgba(2, 6, 17, 0.78)',
+              backdropFilter: 'blur(8px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '20px',
+            }}
+          >
+            <div
+              style={{
+                width: 'min(720px, 100%)',
+                borderRadius: '14px',
+                border: '1px solid rgba(56, 189, 248, 0.4)',
+                background: 'rgba(8, 13, 26, 0.96)',
+                boxShadow: '0 24px 60px rgba(0, 0, 0, 0.72)',
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px',
+                  padding: '12px 16px',
+                  borderBottom: '1px solid var(--border-subtle)',
+                }}
+              >
+                <div>
+                  <div
+                    style={{
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      color: '#f8fafc',
+                    }}
+                  >
+                    ISS (LEO) · Quest Airlock &amp; Microgravity Lab Interior
+                  </div>
+                  <div
+                    style={{
+                      fontSize: '11px',
+                      fontFamily: 'var(--font-mono)',
+                      color: '#94a3b8',
+                    }}
+                  >
+                    Astronaut ingress through pressurized hatch · CIR 0g Flame Rack &amp; MSG
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIssAirlockModalOpen(false)}
+                  aria-label="Close ISS interior modal"
+                  style={{
+                    background: 'rgba(15, 23, 42, 0.85)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: '8px',
+                    color: '#cbd5e1',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    padding: '5px 10px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  ✕ Close
+                </button>
+              </div>
+              <div style={{ width: '100%', height: 'clamp(340px, 56vh, 520px)', position: 'relative' }}>
+                <Suspense
+                  fallback={
+                    <div
+                      role="status"
+                      style={{
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '12px',
+                        fontFamily: 'var(--font-mono)',
+                        color: '#94a3b8',
+                      }}
+                    >
+                      Pressurizing ISS interior view…
+                    </div>
+                  }
+                >
+                  <PlanetSurfacePreview planetId="iss" />
+                </Suspense>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

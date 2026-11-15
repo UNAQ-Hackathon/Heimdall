@@ -3,7 +3,10 @@ import test from 'node:test';
 
 import { PLANETS } from '../src/services/mockData.js';
 import { getPlanetModel } from '../src/components/three/planet-catalog.js';
-import { getSolarPlanetId } from '../src/components/three/solar-system-model.js';
+import {
+  computeInspectorCenterOffsetX,
+  getSolarPlanetId,
+} from '../src/components/three/solar-system-model.js';
 
 for (const planet of PLANETS) {
   test(`${planet.name}: mission scene asset resolves to a canonical PlanetModel ID`, () => {
@@ -26,4 +29,18 @@ test('missing and unsupported scene assets remain explicit errors, not silent Ea
     assert.throws(() => getSolarPlanetId(model), RangeError);
   }
   assert.throws(() => getPlanetModel(undefined), RangeError);
+});
+
+test('inspector view offset centers planets cleanly between sidebar/edge and inspection drawer', () => {
+  // With sidebar open (canvas 1020px) and 368px right panel: midpoint is (1020 - 368)/2 = 326px
+  const offsetWithSidebar = computeInspectorCenterOffsetX(1020, 368);
+  assert.equal(1020 / 2 - offsetWithSidebar, (1020 - 368) / 2);
+
+  // With sidebar collapsed (canvas 1440px) and 368px right panel: midpoint is (1440 - 368)/2 = 536px
+  const offsetNoSidebar = computeInspectorCenterOffsetX(1440, 368);
+  assert.equal(1440 / 2 - offsetNoSidebar, (1440 - 368) / 2);
+
+  // Closed panel or invalid inputs return zero offset
+  assert.equal(computeInspectorCenterOffsetX(1020, 0), 0);
+  assert.equal(computeInspectorCenterOffsetX(0, 368), 0);
 });

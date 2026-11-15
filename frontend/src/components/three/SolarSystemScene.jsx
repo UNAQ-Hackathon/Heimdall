@@ -12,6 +12,7 @@ import { OrbitControls, useGLTF, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import SolarSystemPlanet from './SolarSystemPlanet.jsx';
 import { normalizeModel } from './normalize-model.js';
+import { computeInspectorCenterOffsetX } from './solar-system-model.js';
 import { ISS_DESTINATION, PLANETS } from '../../services/mockData.js';
 import { useApp } from '../../context/AppContext.jsx';
 
@@ -401,9 +402,31 @@ function createTailConeGeometry(radius, length, radialSegs = 5) {
 }
 
 /**
- * Multi-layered Rocket Exhaust (Red, Orange, Yellow Fire + 3D Smoke Plume)
- * pinned strictly to the spacecraft's rear thruster nozzle `[0, -0.17, 1.02]`
- * OR Alien Plasma / Antigravity Ring Trail when piloting the UFO (`ovniNuevo.glb`)!
+ * Builds a wide curved crescent-ribbon plume matching the Millennium Falcon's
+ * broad rear sublight engine arc (`x in [-halfWidth, +halfWidth]`, streaming +Z).
+ */
+function createFalconRibbonGeometry(halfWidth, halfHeight, length, arcBack = 0.16) {
+  const geo = new THREE.BoxGeometry(1, 1, 1, 12, 1, 8);
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i += 1) {
+    const u = pos.getX(i) * 2; // -1 .. +1 across width
+    const sy = pos.getY(i) * 2; // -1 or +1 across height
+    const v = pos.getZ(i) + 0.5; // 0 .. 1 from engine slit to wake tip
+    const taperX = 1 - 0.28 * v;
+    const taperY = 1 - 0.88 * v;
+    const x = u * halfWidth * taperX;
+    const y = sy * halfHeight * taperY * (1 - 0.28 * u * u);
+    const z = -arcBack * u * u * (1 - 0.7 * v) + v * length;
+    pos.setXYZ(i, x, y, z);
+  }
+  pos.needsUpdate = true;
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/**
+ * Multi-layered Rocket Exhaust (Red, Orange, Yellow Fire + 3D Smoke Plume),
+ * Wide Millennium Falcon Sublight Ion Ribbon, OR Alien Plasma Ring Trail (`ovniNuevo.glb`).
  */
 function SpacecraftExhaustFX({ isUfo, isLander, isFalcon, inTransitRef }) {
   const exhaustGroupRef = useRef(null);
@@ -413,21 +436,43 @@ function SpacecraftExhaustFX({ isUfo, isLander, isFalcon, inTransitRef }) {
   const smokePuffsRef = useRef(null);
   const ufoRingsRef = useRef(null);
 
-  const yellowGeo = useMemo(() => createTailConeGeometry(0.14, 0.75, 5), []);
-  const orangeGeo = useMemo(() => createTailConeGeometry(0.21, 1.15, 5), []);
-  const redGeo = useMemo(() => createTailConeGeometry(0.28, 1.55, 6), []);
+  const yellowGeo = useMemo(
+    () =>
+      isFalcon
+        ? createFalconRibbonGeometry(0.48, 0.034, 1.35, 0.16)
+        : createTailConeGeometry(0.14, 0.75, 5),
+    [isFalcon]
+  );
+  const orangeGeo = useMemo(
+    () =>
+      isFalcon
+        ? createFalconRibbonGeometry(0.55, 0.06, 2.35, 0.16)
+        : createTailConeGeometry(0.21, 1.15, 5),
+    [isFalcon]
+  );
+  const redGeo = useMemo(
+    () =>
+      isFalcon
+        ? createFalconRibbonGeometry(0.63, 0.095, 3.35, 0.16)
+        : createTailConeGeometry(0.28, 1.55, 6),
+    [isFalcon]
+  );
 
   const puffSeeds = useMemo(
     () =>
-      Array.from({ length: 20 }, (_, i) => ({
-        phase: i / 20,
+      Array.from({ length: isFalcon ? 14 : 20 }, (_, i) => ({
+        phase: i / (isFalcon ? 14 : 20),
         speed: 1.5 + (i % 5) * 0.24,
-        spreadX: Math.cos(i * 2.399) * (0.14 + (i % 4) * 0.06),
-        spreadY: Math.sin(i * 2.399) * (0.14 + (i % 4) * 0.06),
+        spreadX: isFalcon
+          ? ((i % 3) - 1) * 0.12
+          : Math.cos(i * 2.399) * (0.14 + (i % 4) * 0.06),
+        spreadY: isFalcon
+          ? ((i % 2) * 2 - 1) * 0.015
+          : Math.sin(i * 2.399) * (0.14 + (i % 4) * 0.06),
         spinRate: (i % 2 === 0 ? 1 : -1) * (1.8 + (i % 4) * 0.5),
         color: isFalcon
           ? i % 3 === 0
-            ? '#bae6fd'
+            ? '#e0f2fe'
             : i % 3 === 1
               ? '#7dd3fc'
               : '#38bdf8'
@@ -450,7 +495,46 @@ function SpacecraftExhaustFX({ isUfo, isLander, isFalcon, inTransitRef }) {
     if (isParked) return;
     const thrustPower = inTransit ? 1.0 : 0.42;
 
-    if (!isUfo) {
+    if (!isUfo && isFalcon) {
+      // Wide movie-style sublight ribbon glow across the Falcon's entire rear engine arc
+      const f1 = 0.96 + Math.sin(t * 30) * 0.06;
+      const f2 = 0.98 + Math.cos(t * 24) * 0.08;
+      const f3 = 0.97 + Math.sin(t * 18 + 1.0) * 0.09;
+      const lengthBoost = inTransit ? 1.18 : 0.5;
+
+      if (yellowFlameRef.current) {
+        yellowFlameRef.current.scale.set(f1, f1, (0.9 + f1 * 0.25) * lengthBoost);
+      }
+      if (orangeFlameRef.current) {
+        orangeFlameRef.current.scale.set(f2, f2, (0.95 + f2 * 0.3) * lengthBoost);
+      }
+      if (redFlameRef.current) {
+        redFlameRef.current.scale.set(f3, f3, (1.0 + f3 * 0.35) * lengthBoost);
+      }
+      if (smokePuffsRef.current) {
+        const children = smokePuffsRef.current.children;
+        for (let i = 0; i < children.length; i += 1) {
+          const streak = children[i];
+          const s = puffSeeds[i];
+          const cycle = (t * s.speed * (inTransit ? 1.55 : 0.85) + s.phase) % 1;
+          const zDist = 0.35 + cycle * (inTransit ? 4.2 : 1.55);
+          streak.position.set(
+            s.spreadX * (1 + cycle * 0.4),
+            s.spreadY * (1 + cycle * 0.5),
+            zDist
+          );
+          const wScale = (0.72 + Math.sin(Math.PI * cycle) * 0.42) * (1 - cycle * 0.32);
+          streak.scale.set(
+            Math.max(0.15, wScale),
+            Math.max(0.3, (1 - cycle * 0.65) * (inTransit ? 1.15 : 0.7)),
+            Math.max(0.3, (0.85 + cycle * 0.9) * (inTransit ? 1.3 : 0.65))
+          );
+          if (streak.material) {
+            streak.material.opacity = Math.max(0, (1 - cycle) * (inTransit ? 0.62 : 0.34));
+          }
+        }
+      }
+    } else if (!isUfo) {
       // Animate multi-layered Yellow -> Orange -> Red rocket fire from the tail nozzle (z = 0 in nozzle group)
       const f1 = 0.88 + Math.sin(t * 34) * 0.16;
       const f2 = 0.92 + Math.cos(t * 27) * 0.2;
@@ -542,68 +626,86 @@ function SpacecraftExhaustFX({ isUfo, isLander, isFalcon, inTransitRef }) {
 
   // Exact rear thruster nozzle position in normalized model coordinates:
   // For `naveAzulNuevo` / `naveRojaNuevo` / `naveVerdeNuevo`, `LP_Propulsor` is at [0, -0.17, +1.02].
-  // For `MilleniumTriangle` rotated +90deg around Y, rear `Motor` is at [0, 0, +0.86].
-  const nozzlePos = isFalcon ? [0, 0, 0.86] : isLander ? [0, -0.65, 0.85] : [0, -0.17, 1.02];
+  // For `MilleniumTriangle` rotated +90deg around Y, rear `Motor_1` arc center is at [0, 0, +0.97].
+  const nozzlePos = isFalcon ? [0, 0, 0.97] : isLander ? [0, -0.65, 0.85] : [0, -0.17, 1.02];
+  const flameRot = isFalcon ? [0, 0, 0] : [Math.PI / 2, 0, 0];
 
   return (
     <group ref={exhaustGroupRef} position={nozzlePos}>
-      {isFalcon && (
-        <mesh position={[0, 0, -0.02]}>
-          <boxGeometry args={[0.78, 0.14, 0.08]} />
-          <meshBasicMaterial color="#bae6fd" />
-        </mesh>
-      )}
-      {/* 1. Inner Core Rocket / Sublight Ion Flame (base pinned at nozzle z=0, pointing +Z) */}
+      {/* 1. Inner Core Flame / Wide Falcon Sublight Core */}
       <mesh
         ref={yellowFlameRef}
         geometry={yellowGeo}
-        rotation={[Math.PI / 2, 0, 0]}
+        rotation={flameRot}
       >
-        <meshBasicMaterial color={isFalcon ? '#e0f2fe' : '#fde047'} />
+        <meshBasicMaterial color={isFalcon ? '#f0f9ff' : '#fde047'} />
       </mesh>
 
       {/* 2. Mid Vibrant Plume */}
       <mesh
         ref={orangeFlameRef}
         geometry={orangeGeo}
-        position={[0, 0, 0.04]}
-        rotation={[Math.PI / 2, 0, 0]}
+        position={[0, 0, isFalcon ? 0.02 : 0.04]}
+        rotation={flameRot}
       >
-        <meshBasicMaterial color={isFalcon ? '#38bdf8' : '#f97316'} transparent opacity={0.92} />
+        <meshBasicMaterial
+          color={isFalcon ? '#38bdf8' : '#f97316'}
+          transparent
+          opacity={isFalcon ? 0.85 : 0.92}
+          depthWrite={!isFalcon}
+        />
       </mesh>
 
-      {/* 3. Outer Combustion / Ion Envelope */}
+      {/* 3. Outer Combustion / Broad Ion Glow Envelope */}
       <mesh
         ref={redFlameRef}
         geometry={redGeo}
-        position={[0, 0, 0.08]}
-        rotation={[Math.PI / 2, 0, 0]}
+        position={[0, 0, isFalcon ? 0.04 : 0.08]}
+        rotation={flameRot}
       >
-        <meshBasicMaterial color={isFalcon ? '#0284c7' : '#ef4444'} transparent opacity={0.78} />
+        <meshBasicMaterial
+          color={isFalcon ? '#0284c7' : '#ef4444'}
+          transparent
+          opacity={isFalcon ? 0.48 : 0.78}
+          depthWrite={!isFalcon}
+        />
       </mesh>
 
-      {/* 4. Dynamic Billowing Low-Poly Exhaust Smoke Puffs */}
+      {/* 4. Wide Sublight Ion Wake Bars (Falcon) or Low-Poly Smoke Puffs (Rockets) */}
       <group ref={smokePuffsRef}>
         {puffSeeds.map((s, idx) => (
           <mesh key={idx}>
-            <dodecahedronGeometry args={[1, 0]} />
-            <meshStandardMaterial
-              color={s.color}
-              flatShading
-              roughness={0.92}
-              transparent
-              depthWrite={false}
-              opacity={0.7}
-            />
+            {isFalcon ? (
+              <boxGeometry args={[0.68, 0.026, 0.34]} />
+            ) : (
+              <dodecahedronGeometry args={[1, 0]} />
+            )}
+            {isFalcon ? (
+              <meshBasicMaterial
+                color={s.color}
+                transparent
+                depthWrite={false}
+                opacity={0.55}
+              />
+            ) : (
+              <meshStandardMaterial
+                color={s.color}
+                flatShading
+                roughness={0.92}
+                transparent
+                depthWrite={false}
+                opacity={0.7}
+              />
+            )}
           </mesh>
         ))}
       </group>
 
       <pointLight
         color={isFalcon ? '#38bdf8' : '#f97316'}
-        intensity={5.0}
-        distance={3.2}
-        position={[0, 0, 0.45]}
+        intensity={isFalcon ? 6.2 : 5.0}
+        distance={isFalcon ? 4.0 : 3.2}
+        position={[0, 0, 0.5]}
       />
     </group>
   );
@@ -1009,6 +1111,12 @@ function CameraController({
   const prevPanelCollapsedRef = useRef(panelCollapsed);
   const isTransitioningRef = useRef(false);
   const targetCamPosRef = useRef(new THREE.Vector3());
+  const viewOffsetStateRef = useRef({
+    offsetX: 0,
+    appliedOffsetX: -1,
+    width: 0,
+    height: 0,
+  });
 
   useEffect(() => {
     const controls = controlsRef.current;
@@ -1062,6 +1170,48 @@ function CameraController({
     const delta = Math.min(rawDelta, 0.05);
     const controls = controlsRef.current;
     if (!controls) return;
+
+    // Keep focused planet/station centered horizontally between the left sidebar
+    // (or viewport left edge when collapsed) and the floating right planet panel.
+    const vs = viewOffsetStateRef.current;
+    const explorer = state.gl.domElement.closest('.mission-hub__explorer');
+    const inspectionEl = explorer?.querySelector('.mission-inspection');
+    let targetOffsetX = 0;
+    if (
+      focusPlanet &&
+      explorer &&
+      inspectionEl &&
+      typeof window !== 'undefined' &&
+      window.innerWidth > 900
+    ) {
+      const expRect = explorer.getBoundingClientRect();
+      const inspRect = inspectionEl.getBoundingClientRect();
+      const occludedRight = Math.max(0, expRect.right - inspRect.left);
+      targetOffsetX = computeInspectorCenterOffsetX(state.size.width, occludedRight);
+    }
+
+    vs.offsetX += (targetOffsetX - vs.offsetX) * Math.min(1, 1 - Math.exp(-9 * delta));
+    const sizeChanged = vs.width !== state.size.width || vs.height !== state.size.height;
+    if (sizeChanged || Math.abs(vs.offsetX - vs.appliedOffsetX) > 0.25) {
+      if (targetOffsetX === 0 && vs.offsetX < 0.35) {
+        vs.offsetX = 0;
+        if (state.camera.view?.enabled) {
+          state.camera.clearViewOffset();
+        }
+      } else if (state.size.width > 0 && state.size.height > 0) {
+        state.camera.setViewOffset(
+          state.size.width,
+          state.size.height,
+          vs.offsetX,
+          0,
+          state.size.width,
+          state.size.height
+        );
+      }
+      vs.appliedOffsetX = vs.offsetX;
+      vs.width = state.size.width;
+      vs.height = state.size.height;
+    }
 
     const transit = shipTransitRef?.current;
 

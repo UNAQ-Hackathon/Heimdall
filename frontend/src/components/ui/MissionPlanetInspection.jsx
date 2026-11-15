@@ -4,7 +4,12 @@ import { getSolarPlanetId } from '../three/solar-system-model.js';
 import { EARTH_ZONES } from '../three/planet-analysis.js';
 import PlanetAnalysisPanel from './PlanetAnalysisPanel.jsx';
 
-export default function MissionPlanetInspection({ body, onClose, onOpenTestbench }) {
+export default function MissionPlanetInspection({
+  body,
+  onClose,
+  onOpenTestbench,
+  onEnterIssAirlock,
+}) {
   const [zoneId, setZoneId] = useState('temperate');
   const planet =
     body.name === 'ISS'
@@ -36,6 +41,7 @@ export default function MissionPlanetInspection({ body, onClose, onOpenTestbench
         onZoneChange={setZoneId}
         onClose={onClose}
         onOpenTestbench={onOpenTestbench}
+        onEnterIssAirlock={onEnterIssAirlock}
       />
     </section>
   );

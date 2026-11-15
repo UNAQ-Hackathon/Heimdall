@@ -6,3 +6,14 @@ export function getSolarPlanetId(modelPath) {
   if (!model) throw new RangeError(`Unknown solar-system asset: ${modelPath}`);
   return model.id;
 }
+
+/**
+ * Computes the horizontal camera view offset (in CSS pixels) so the orbital
+ * focus projects at the exact midpoint between the canvas left edge (sidebar
+ * border or screen edge) and an overlying right-hand inspection panel.
+ */
+export function computeInspectorCenterOffsetX(canvasWidth, occludedRight) {
+  if (!Number.isFinite(canvasWidth) || canvasWidth <= 0) return 0;
+  if (!Number.isFinite(occludedRight) || occludedRight <= 0) return 0;
+  return Math.min(canvasWidth * 0.42, occludedRight * 0.5);
+}

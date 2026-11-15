@@ -14,6 +14,7 @@ export default function PlanetAnalysisPanel({
   onClose,
   onSelectPlanet,
   onOpenTestbench,
+  onEnterIssAirlock,
 }) {
   const titleRef = useRef(null);
   const appCtx = useApp();
@@ -49,7 +50,12 @@ export default function PlanetAnalysisPanel({
   };
 
   const handleJump = (targetPlanetId) => {
-    const targetName = targetPlanetId === 'moon' ? 'Moon' : 'Mars';
+    const targetName =
+      targetPlanetId === 'iss'
+        ? 'ISS'
+        : targetPlanetId === 'moon'
+          ? 'Moon'
+          : 'Mars';
     if (appCtx?.setScenarioKey) {
       appCtx.setScenarioKey(targetPlanetId);
     }
@@ -210,6 +216,26 @@ export default function PlanetAnalysisPanel({
         </figcaption>
       </figure>
 
+      {planet.id === 'iss' && onEnterIssAirlock && (
+        <button
+          type="button"
+          onClick={onEnterIssAirlock}
+          style={{
+            width: '100%',
+            padding: '8px 12px',
+            borderRadius: '8px',
+            border: '1px solid rgba(56, 189, 248, 0.45)',
+            background: 'rgba(56, 189, 248, 0.16)',
+            color: '#e0f2fe',
+            fontSize: '11.5px',
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          Board ISS · Expand Airlock &amp; Lab View
+        </button>
+      )}
+
       {/* Surface Gravity & Distance Pills */}
       <div
         style={{
@@ -272,7 +298,25 @@ export default function PlanetAnalysisPanel({
           <span style={{ color: '#cbd5e1', lineHeight: 1.4 }}>
             Spacecraft fire risk depends on a pressurized habitat&apos;s internal atmosphere and gravity.
           </span>
-          <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+          <div style={{ display: 'flex', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => handleJump('iss')}
+              style={{
+                flex: 1,
+                padding: '6px 10px',
+                borderRadius: '6px',
+                background: 'rgba(56, 189, 248, 0.2)',
+                border: '1px solid rgba(56, 189, 248, 0.45)',
+                color: '#f8fafc',
+                fontSize: '11px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Board ISS
+            </button>
             <button
               type="button"
               onClick={() => handleJump('moon')}
@@ -286,6 +330,7 @@ export default function PlanetAnalysisPanel({
                 fontSize: '11px',
                 fontWeight: 600,
                 cursor: 'pointer',
+                whiteSpace: 'nowrap',
               }}
             >
               Jump to Moon
@@ -303,6 +348,7 @@ export default function PlanetAnalysisPanel({
                 fontSize: '11px',
                 fontWeight: 600,
                 cursor: 'pointer',
+                whiteSpace: 'nowrap',
               }}
             >
               Jump to Mars
@@ -341,6 +387,10 @@ export default function PlanetAnalysisPanel({
                       key={key}
                       type="button"
                       onClick={() => {
+                        if (key === 'iss') {
+                          handleJump('iss');
+                          return;
+                        }
                         setEarthSubScenario(key);
                         appCtx?.setScenarioKey?.(key);
                       }}
