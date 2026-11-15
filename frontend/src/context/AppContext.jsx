@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { CHAT_HISTORY } from '../services/mockData.js';
 import { api as backendApi } from '../services/api.js';
 import { SCENARIOS, DEFAULT_WEIGHTS, resolveScenarioKey } from './ScenarioContext.jsx';
+import { loadSavedShipFile, saveShipFile } from '../utils/spacecraft-storage.js';
 
 export { SCENARIOS, DEFAULT_WEIGHTS, resolveScenarioKey };
 
@@ -16,9 +17,15 @@ export function AppProvider({ children }) {
   const [chatOpen, setChatOpen] = useState(false);
   const [focusPlanet, setFocusPlanet] = useState(null);
   const [weights, setWeights] = useState(DEFAULT_WEIGHTS);
+  const [shipFile, setShipFileState] = useState(() => loadSavedShipFile());
 
   const setScenarioKey = useCallback((nextKey) => {
     setScenarioKeyState(resolveScenarioKey(nextKey));
+  }, []);
+
+  const setShipFile = useCallback((nextShipFile) => {
+    const resolved = saveShipFile(nextShipFile);
+    setShipFileState(resolved);
   }, []);
 
   /* ── Shared Devin Copilot Chat State (single session across inline & modal) ── */
@@ -198,6 +205,8 @@ export function AppProvider({ children }) {
     setFocusPlanet,
     weights,
     setWeights,
+    shipFile,
+    setShipFile,
     chatMessages,
     chatLoading,
     chatSessionId,

@@ -332,10 +332,10 @@ export default function CopilotChat({ inline = false }) {
             }}
           >
             {alertLevel === 'exhausted'
-              ? '⛔ API token budget reached — Gemini requests are paused to protect the API key.'
+              ? 'Budget Limit: API token budget reached — Gemini requests are paused to protect the API key.'
               : alertLevel === 'critical'
-                ? `⚠ Critical: ${tokenPercent.toFixed(1)}% of API token budget used (${remainingTokens.toLocaleString()} left).`
-                : `⚠ Heads up: ${tokenPercent.toFixed(1)}% of API token budget used.`}
+                ? `Critical: ${tokenPercent.toFixed(1)}% of API token budget used (${remainingTokens.toLocaleString()} left).`
+                : `Heads up: ${tokenPercent.toFixed(1)}% of API token budget used.`}
           </div>
         )}
 

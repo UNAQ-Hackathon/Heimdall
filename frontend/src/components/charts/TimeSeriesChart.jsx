@@ -77,6 +77,8 @@ export default function TimeSeriesChart({ data }) {
             stroke="#38bdf8"
             strokeWidth={2}
             dot={false}
+            animationDuration={320}
+            animationEasing="ease-out"
           />
           {/* Radiant flux curve */}
           <Line
@@ -87,6 +89,8 @@ export default function TimeSeriesChart({ data }) {
             strokeWidth={2}
             strokeDasharray="4 2"
             dot={false}
+            animationDuration={320}
+            animationEasing="ease-out"
           />
 
           {/* Peak 1 */}

@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { COMPARISON_MATRIX, CROSS_FINDINGS, EARTH_APPLICATIONS } from '../services/mockData.js';
 import { api } from '../services/api.js';
+import AppArchitectureMindMap from '../components/ui/AppArchitectureMindMap.jsx';
 
 const panelStyle = {
   background: '#0d1321',
@@ -31,62 +32,75 @@ function formatOxygenRange(conditions = {}) {
   return min !== max ? `${min}% → ${max}% O₂ (nominal ${conditions.oxygenPct ?? max}%)` : `${min}% O₂`;
 }
 
-function PanelHeader({ id, title, badge, expanded, onClick }) {
-  return (
-    <button
-      type="button"
-      aria-expanded={expanded}
-      aria-controls={id}
-      onClick={onClick}
-      style={{
-        width: '100%',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        gap: '12px',
-        padding: '14px 16px',
-        background: 'transparent',
-        border: 'none',
-        color: '#f8fafc',
-        textAlign: 'left',
-        cursor: 'pointer',
-      }}
-    >
-      <span style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-        <span style={{ fontSize: '12px', fontWeight: 700 }}>{title}</span>
-        <span
-          style={{
-            fontSize: '9px',
-            fontFamily: 'var(--font-mono)',
-            color: '#38bdf8',
-            background: 'rgba(56, 189, 248, 0.1)',
-            border: '1px solid rgba(56, 189, 248, 0.25)',
-            borderRadius: '4px',
-            padding: '3px 7px',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {badge}
-        </span>
-      </span>
-      <span aria-hidden="true" style={{ fontSize: '16px', color: '#38bdf8', lineHeight: 1 }}>
-        {expanded ? '−' : '+'}
-      </span>
-    </button>
-  );
-}
+const FINDING_SUMMARIES = [
+  {
+    badge: 'Gravity Bounds',
+    accent: '#38bdf8',
+    summary: '0g and 1g experiments bracket intermediate Moon (0.165g) and Mars (0.38g) fire risk.',
+    bullets: [
+      'No partial-gravity PSI datasets exist yet (LUCI / FM2 pending).',
+      'Microgravity (0g) & Earth (1g) act as safety bounds.',
+      'E-FIELD Flames mimics gravity forces using electric fields.',
+    ],
+  },
+  {
+    badge: 'Oxygen Regimes',
+    accent: '#f59e0b',
+    summary: 'Moon habitats use ~30%+ O2 at reduced pressure (≤10.2 psi), raising material flammability.',
+    bullets: [
+      'Spacesuits run 100% O2 at 4.3 psi; ISS stays near 21% O2 / 14.7 psi.',
+      'Higher O2 reduces astronaut pre-breathing time before EVAs.',
+      'PSI high-O2 tests (up to 85% in CFI-G) map ignition margins.',
+    ],
+  },
+  {
+    badge: 'Hardware & Fuel',
+    accent: '#34d399',
+    summary: 'Modular ISS racks let researchers compare solid, liquid, and gas flames on shared rigs.',
+    bullets: [
+      'CIR / MDCA: FLEX, FLEX-2, and CFI liquid droplet tests.',
+      'CIR / ACME: 6 gaseous flame studies using modular hardware.',
+      'MSG Flow Duct: BASS, BASS-II, SPICE, and SLICE solid/gas tests.',
+    ],
+  },
+];
+
+const EARTH_SUMMARY_MAP = {
+  'water-mist': {
+    badge: 'Fire Suppression',
+    accent: '#38bdf8',
+    summary: 'Microgravity droplet kinetics power cleaner fine-water-mist extinguishers on Earth.',
+    bullets: [
+      'Replaces ozone-depleting halon systems.',
+      'Fine mist absorbs heat quickly with minimal water damage.',
+    ],
+  },
+  'smoke-detection': {
+    badge: 'Smoke Detection',
+    accent: '#a78bfa',
+    summary: 'ISS aerosol light-scattering studies cut false alarms in smart terrestrial detectors.',
+    bullets: [
+      'Distinguishes toxic smoke from dust or steam aerosols.',
+      'Derived from SAME, SAME-R, and DAFT optical instruments.',
+    ],
+  },
+  'material-screening': {
+    badge: 'Material Flammability',
+    accent: '#34d399',
+    summary: 'Zero-buoyancy burn tests guide flame-resistant textiles for firefighters and hospitals.',
+    bullets: [
+      'Tests true flammability limits without upward heat drafts.',
+      'Grounded in BASS, BASS-II, and Saffire solid-fuel metrics.',
+    ],
+  },
+};
 
 export default function ComparePage() {
   const [highlightDiff, setHighlightDiff] = useState(true);
   const [investigations, setInvestigations] = useState([]);
   const [dataSource, setDataSource] = useState('loading');
-  const [openPanels, setOpenPanels] = useState({});
+  const spinoffSectionRef = useRef(null);
   const navigate = useNavigate();
-  const panelIds = [
-    ...CROSS_FINDINGS.map((_, idx) => `finding-${idx}`),
-    ...EARTH_APPLICATIONS.map((application) => `application-${application.id}`),
-  ];
-  const allExpanded = panelIds.every((id) => openPanels[id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -100,12 +114,40 @@ export default function ComparePage() {
     };
   }, []);
 
-  const togglePanel = (id) => {
-    setOpenPanels((current) => ({ ...current, [id]: !current[id] }));
+  const scrollToSpinoff = () => {
+    spinoffSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
-  const toggleAllPanels = () => {
-    const expanded = !allExpanded;
-    setOpenPanels(Object.fromEntries(panelIds.map((id) => [id, expanded])));
+
+  const handleExportCsv = () => {
+    const headers = [
+      'Study',
+      'Testbed',
+      'Orbit',
+      'Oxygen Range',
+      'Ambient Pressure',
+      'Fuel',
+      'Key Behavior',
+    ];
+    const escapeCsv = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+    const rows = COMPARISON_MATRIX.studies.map((study) => [
+      study.name,
+      study.testbed,
+      study.orbit,
+      study.o2Range,
+      study.pressure,
+      study.fuel,
+      study.behavior,
+    ]);
+    const csv = [headers, ...rows].map((r) => r.map(escapeCsv).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'nasa-psi-comparison-matrix.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -124,11 +166,20 @@ export default function ComparePage() {
       }}
     >
       {/* ── Top Header Bar ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ color: '#38bdf8', fontSize: '13px' }}>●</span>
+          <span
+            aria-hidden="true"
+            style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '9999px',
+              background: '#38bdf8',
+              boxShadow: '0 0 8px rgba(56, 189, 248, 0.7)',
+            }}
+          />
           <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: '#8892a8' }}>
-            MULTI-STUDY COMPARISON // NASA PSI ARCHIVE RECORDS
+            EARTH COMPARISON &amp; SYSTEM ARCHITECTURE // NASA PSI ARCHIVE
           </span>
         </div>
 
@@ -142,7 +193,7 @@ export default function ComparePage() {
               color: '#34d399',
             }}
           >
-            PSI STUDY RECORDS
+            STUDENT MIND MAP
           </span>
           <span
             style={{
@@ -153,10 +204,13 @@ export default function ComparePage() {
               color: '#8892a8',
             }}
           >
-            CURATED CROSS-STUDY CONTEXT
+            SPACE-TO-EARTH TRANSFER
           </span>
         </div>
       </div>
+
+      {/* ── Interactive Animated App Architecture & Science Mind Map ── */}
+      <AppArchitectureMindMap onJumpToSection={scrollToSpinoff} />
 
       {/* ── Matrix Section Title ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
@@ -247,7 +301,7 @@ export default function ComparePage() {
                 <td style={{ padding: '14px 16px', verticalAlign: 'top' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <button
-                      onClick={() => navigate(`/study/${s.id}`)}
+                      onClick={() => navigate(`/study/${study.id}`)}
                       style={{
                         background: 'transparent',
                         border: 'none',
@@ -338,55 +392,66 @@ export default function ComparePage() {
       </div>
 
       <section>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '10px', flexWrap: 'wrap' }}>
           <h2 style={{ fontSize: '14px', color: '#f8fafc', margin: 0 }}>Cross-study findings</h2>
-          <button
-            type="button"
-            onClick={toggleAllPanels}
-            style={{
-              fontSize: '10px',
-              fontFamily: 'var(--font-mono)',
-              color: '#94a3b8',
-              background: 'transparent',
-              border: '1px solid #1c2640',
-              borderRadius: '4px',
-              padding: '6px 9px',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {allExpanded ? 'Collapse all' : 'Expand all'}
-          </button>
+          <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
+            HOVER OR FOCUS A CARD FOR KEY DETAILS
+          </span>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: '10px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: '10px', alignItems: 'start' }}>
           {CROSS_FINDINGS.map((finding, idx) => {
             const id = `finding-${idx}`;
-            const expanded = Boolean(openPanels[id]);
-            const badge = ['Límites de Gravedad', 'Regímenes de Oxígeno', 'Hardware y Combustible'][idx];
+            const meta = FINDING_SUMMARIES[idx] ?? {
+              badge: 'Insight',
+              accent: '#38bdf8',
+              summary: finding.text,
+              bullets: [],
+            };
             return (
-              <article key={id} style={panelStyle}>
-                <PanelHeader
-                  id={`${id}-content`}
-                  title={finding.title}
-                  badge={badge}
-                  expanded={expanded}
-                  onClick={() => togglePanel(id)}
-                />
-                <div
-                  id={`${id}-content`}
-                  aria-hidden={!expanded}
-                  inert={!expanded}
-                  style={{
-                    display: 'grid',
-                    gridTemplateRows: expanded ? '1fr' : '0fr',
-                    opacity: expanded ? 1 : 0,
-                    transition: 'grid-template-rows 180ms ease, opacity 180ms ease',
-                  }}
-                >
-                  <div style={{ minHeight: 0, overflow: 'hidden' }}>
-                    <p style={{ fontSize: '11px', color: '#94a3b8', lineHeight: 1.5, margin: '0 16px 14px' }}>
-                      {finding.text}
-                    </p>
+              <article
+                key={id}
+                tabIndex={0}
+                className="compare-hover-card"
+                style={{ ...panelStyle, '--card-accent': meta.accent, padding: '14px 16px' }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                    <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: meta.accent, flexShrink: 0 }} />
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#f8fafc' }}>{finding.title}</span>
+                  </span>
+                  <span
+                    style={{
+                      fontSize: '9px',
+                      fontFamily: 'var(--font-mono)',
+                      color: meta.accent,
+                      background: `${meta.accent}18`,
+                      border: `1px solid ${meta.accent}44`,
+                      borderRadius: '4px',
+                      padding: '3px 7px',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {meta.badge}
+                  </span>
+                </div>
+
+                <p style={{ fontSize: '12px', color: '#cbd5e1', lineHeight: 1.5, margin: 0 }}>
+                  {meta.summary}
+                </p>
+
+                <div className="compare-hover-card__hint" style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#64748b', marginTop: '8px' }}>
+                  Hover to inspect breakdown
+                </div>
+
+                <div className="compare-hover-card__body">
+                  <div className="compare-hover-card__inner">
+                    <ul style={{ margin: '10px 0 0', paddingLeft: '16px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                      {meta.bullets.map((bullet) => (
+                        <li key={bullet} style={{ fontSize: '11px', color: '#94a3b8', lineHeight: 1.45 }}>
+                          {bullet}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 </div>
               </article>
@@ -396,100 +461,120 @@ export default function ComparePage() {
       </section>
 
       {/* ── Earth Spin-Off Applications Section ── */}
-      <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '14px' }}>
+      <div ref={spinoffSectionRef}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
           <div>
             <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#34d399', marginBottom: '2px' }}>
-              TERRESTRIAL TECHNOLOGY DEPLOYMENT · NASA TECHNOLOGY TRANSFER & PUBLIC SAFETY ARCHIVE
+              TERRESTRIAL TECHNOLOGY DEPLOYMENT · NASA TECHNOLOGY TRANSFER
             </div>
             <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#f8fafc', margin: 0 }}>
               EARTH SPIN-OFF APPLICATIONS
             </h2>
             <p style={{ fontSize: '12px', color: '#94a3b8', margin: '4px 0 0 0' }}>
-              Translating microgravity combustion kinetics and extinction bounds into terrestrial life-safety engineering.
+              How microgravity combustion research improves everyday fire protection on Earth. Hover any card to view metrics.
             </p>
           </div>
 
           <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#38bdf8' }}>
-            ● FLIGHT DATA TO MUNICIPAL CODE DIRECT COUPLING
+            HOVER CARDS FOR KEY METRICS
           </div>
         </div>
 
         {/* 3 Spin-Off Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: '10px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: '10px', alignItems: 'start' }}>
           {EARTH_APPLICATIONS.map((app) => {
-            const id = `application-${app.id}`;
-            const expanded = Boolean(openPanels[id]);
-            const category = app.id === 'water-mist'
-              ? 'Supresión de Incendios'
-              : app.id === 'smoke-detection'
-                ? 'Detección de Humo'
-                : 'Inflamabilidad de Materiales';
+            const meta = EARTH_SUMMARY_MAP[app.id] ?? {
+              badge: app.category || 'Spin-Off',
+              accent: '#34d399',
+              summary: app.description,
+              bullets: [],
+            };
             return (
-              <article key={app.id} style={panelStyle}>
-                <PanelHeader
-                  id={`${id}-content`}
-                  title={app.title}
-                  badge={category}
-                  expanded={expanded}
-                  onClick={() => togglePanel(id)}
-                />
-                <div
-                  id={`${id}-content`}
-                  aria-hidden={!expanded}
-                  inert={!expanded}
-                  style={{
-                    display: 'grid',
-                    gridTemplateRows: expanded ? '1fr' : '0fr',
-                    opacity: expanded ? 1 : 0,
-                    transition: 'grid-template-rows 180ms ease, opacity 180ms ease',
-                  }}
-                >
-                  <div style={{ minHeight: 0, overflow: 'hidden' }}>
-                    <div style={{ padding: '0 16px 16px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                        <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>{app.code}</span>
-                        <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>{app.category}</span>
-                      </div>
-                      <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748b', marginBottom: '6px' }}>
-                        {app.taxonomy}
-                      </div>
-                      <p style={{ fontSize: '11.5px', color: '#cbd5e1', lineHeight: 1.5, margin: '0 0 12px' }}>
-                        {app.description}
-                      </p>
-                      <div
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-                          gap: '8px',
-                          background: '#111827',
-                          padding: '9px 10px',
-                          borderRadius: '6px',
-                          border: '1px solid #1c2640',
-                          marginBottom: '8px',
-                        }}
-                      >
-                        {app.stats.map((stat) => (
-                          <div key={stat.label}>
-                            <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
-                              {stat.label.toUpperCase()}
-                            </div>
-                            <div
-                              style={{
-                                fontSize: '11px',
-                                fontFamily: 'var(--font-mono)',
-                                fontWeight: 700,
-                                color: stat.color === 'green' ? '#34d399' : stat.color === 'amber' ? '#f59e0b' : stat.color === 'rose' ? '#fb7185' : '#38bdf8',
-                              }}
-                            >
-                              {stat.value}
-                            </div>
-                          </div>
+              <article
+                key={app.id}
+                tabIndex={0}
+                className="compare-hover-card"
+                style={{ ...panelStyle, '--card-accent': meta.accent, padding: '14px 16px' }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                    <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: meta.accent, flexShrink: 0 }} />
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#f8fafc' }}>{app.title}</span>
+                  </span>
+                  <span
+                    style={{
+                      fontSize: '9px',
+                      fontFamily: 'var(--font-mono)',
+                      color: meta.accent,
+                      background: `${meta.accent}18`,
+                      border: `1px solid ${meta.accent}44`,
+                      borderRadius: '4px',
+                      padding: '3px 7px',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {meta.badge}
+                  </span>
+                </div>
+
+                <p style={{ fontSize: '12px', color: '#cbd5e1', lineHeight: 1.5, margin: 0 }}>
+                  {meta.summary}
+                </p>
+
+                <div className="compare-hover-card__hint" style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#64748b', marginTop: '8px' }}>
+                  Hover to inspect metrics &amp; PSI origin
+                </div>
+
+                <div className="compare-hover-card__body">
+                  <div className="compare-hover-card__inner">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginTop: '10px', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>{app.code}</span>
+                      <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#94a3b8' }}>{app.taxonomy}</span>
+                    </div>
+
+                    {meta.bullets.length > 0 && (
+                      <ul style={{ margin: '0 0 10px', paddingLeft: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {meta.bullets.map((bullet) => (
+                          <li key={bullet} style={{ fontSize: '11px', color: '#94a3b8', lineHeight: 1.45 }}>
+                            {bullet}
+                          </li>
                         ))}
-                      </div>
-                      <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
-                        Standard: <span style={{ color: '#94a3b8' }}>{app.standard}</span>
-                      </div>
+                      </ul>
+                    )}
+
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                        gap: '8px',
+                        background: '#111827',
+                        padding: '9px 10px',
+                        borderRadius: '6px',
+                        border: '1px solid #1c2640',
+                        marginBottom: '8px',
+                      }}
+                    >
+                      {app.stats.map((stat) => (
+                        <div key={stat.label}>
+                          <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
+                            {stat.label.toUpperCase()}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: '11px',
+                              fontFamily: 'var(--font-mono)',
+                              fontWeight: 700,
+                              color: stat.color === 'green' ? '#34d399' : stat.color === 'amber' ? '#f59e0b' : stat.color === 'rose' ? '#fb7185' : '#38bdf8',
+                            }}
+                          >
+                            {stat.value}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
+                      Standard: <span style={{ color: '#94a3b8' }}>{app.standard}</span>
                     </div>
                   </div>
                 </div>
@@ -505,6 +590,8 @@ export default function ComparePage() {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px',
           background: '#0d1321',
           border: '1px solid #1c2640',
           borderRadius: '8px',
@@ -513,10 +600,21 @@ export default function ComparePage() {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ fontSize: '14px', color: '#38bdf8' }}>☲</span>
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#38bdf8"
+            strokeWidth="1.8"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="9" />
+            <path d="M3 12h18M12 3a13 13 0 0 1 0 18M12 3a13 13 0 0 0 0 18" />
+          </svg>
           <div>
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#f8fafc' }}>
-              PSI Study Comparison
+              PSI Study Comparison &amp; Earth Transfer
             </div>
             <div style={{ fontSize: '10px', color: '#64748b', fontFamily: 'var(--font-mono)' }}>
               Record conditions are API-backed when available; findings and spin-off summaries are curated reference content.
@@ -524,9 +622,10 @@ export default function ComparePage() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button
-            onClick={() => alert('Exporting full matrix as CSV...')}
+            type="button"
+            onClick={handleExportCsv}
             style={{
               fontSize: '11px',
               fontFamily: 'var(--font-mono)',
@@ -536,12 +635,19 @@ export default function ComparePage() {
               padding: '6px 12px',
               borderRadius: '4px',
               cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
             }}
           >
-            📥 EXPORT CSV MATRIX
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path d="M12 3v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+            </svg>
+            EXPORT CSV MATRIX
           </button>
           <button
-            onClick={() => alert('Simulating Terrestrial Transition with boundary equations...')}
+            type="button"
+            onClick={() => navigate('/flame')}
             style={{
               fontSize: '11px',
               fontFamily: 'var(--font-mono)',
@@ -552,9 +658,15 @@ export default function ComparePage() {
               padding: '6px 12px',
               borderRadius: '4px',
               cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
             }}
           >
-            ⚡ SIMULATE TERRESTRIAL TRANSITION
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path d="M5 12h14m-6-6 6 6-6 6" />
+            </svg>
+            OPEN FIREHAZR 3D LAB
           </button>
         </div>
       </div>

@@ -46,8 +46,6 @@ export const TEST_SUBJECT_OPTIONS = [
   { id: 'astronaut', label: 'EVA Spacesuit', kind: 'suit' },
   { id: 'lander', label: 'Lunar Lander / Habitat', kind: 'vehicle' },
   { id: 'spacecraft-blue', label: 'Spacecraft · Blue Explorer', kind: 'vehicle' },
-  { id: 'spherical', label: '0g Spherical Flame', kind: 'flame' },
-  { id: 'teardrop', label: '1g Buoyant Plume', kind: 'flame' },
 ];
 
 const VEHICLE_TEST_CONFIG = {

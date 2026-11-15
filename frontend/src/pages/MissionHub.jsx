@@ -7,18 +7,17 @@ import SpacecraftSelector from '../components/ui/SpacecraftSelector.jsx';
 import SolarSystemScene from '../components/three/SolarSystemScene.jsx';
 
 const PlanetSurfacePreview = lazy(() => import('../components/three/PlanetSurfacePreview.jsx'));
-import { SCENARIOS, useApp } from '../context/AppContext.jsx';
+import { useApp } from '../context/AppContext.jsx';
 import { api } from '../services/api.js';
 import { FACTOR_LABELS, rankLocalInvestigations } from '../services/ranking.js';
 import { PLANETS, ISS_DESTINATION } from '../services/mockData.js';
 import '../styles/mission-hub.css';
 
-const SCENARIO_TO_PLANET = {
-  earth: 'Earth',
-  iss: 'ISS',
-  moon: 'Moon',
-  mars: 'Mars',
-  suit: 'Earth',
+const PLANET_TO_SCENARIO = {
+  Earth: 'earth',
+  ISS: 'iss',
+  Moon: 'moon',
+  Mars: 'mars',
 };
 
 const FACTOR_COLORS = {
@@ -37,7 +36,6 @@ const CATEGORIES = [
 
 export default function MissionHub() {
   const {
-    scenarioKey,
     setScenarioKey,
     scenario,
     audience,
@@ -47,6 +45,8 @@ export default function MissionHub() {
     setFocusPlanet,
     weights,
     setWeights,
+    shipFile,
+    setShipFile,
     chatOpen,
     setChatOpen,
   } = useApp();
@@ -60,7 +60,6 @@ export default function MissionHub() {
     const tab = searchParams.get('tab');
     return ['ranking', 'whatif', 'prediction'].includes(tab) ? tab : 'prediction';
   });
-  const [shipFile, setShipFile] = useState('naveAzulNuevo.glb');
   const navigate = useNavigate();
   const targetRef = useRef(null);
 
@@ -119,11 +118,10 @@ export default function MissionHub() {
     [focusPlanet]
   );
 
-  const handleScenarioChange = (nextKey) => {
-    setScenarioKey(nextKey);
-    const targetBody = SCENARIO_TO_PLANET[nextKey];
-    if (targetBody) setFocusPlanet(targetBody);
-  };
+  useEffect(() => {
+    const mapped = focusPlanet ? PLANET_TO_SCENARIO[focusPlanet] : null;
+    if (mapped) setScenarioKey(mapped);
+  }, [focusPlanet, setScenarioKey]);
 
   return (
     <div className="mission-hub">
@@ -145,101 +143,6 @@ export default function MissionHub() {
             zIndex: 25,
           }}
         >
-          {/* Minimalist Scenario Switcher + Environment Summary */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {/* Quick 1-Click Scenario Pills */}
-            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-              {Object.entries(SCENARIOS).map(([key, s]) => {
-                const sKey = s.id ?? key;
-                const active = scenarioKey === sKey;
-                return (
-                  <button
-                    key={sKey}
-                    type="button"
-                    onClick={() => handleScenarioChange(sKey)}
-                    style={{
-                      padding: '5px 10px',
-                      borderRadius: '9999px',
-                      fontSize: '11px',
-                      fontWeight: active ? 600 : 500,
-                      border: active
-                        ? '1px solid rgba(56, 189, 248, 0.5)'
-                        : '1px solid var(--border-subtle)',
-                      background: active
-                        ? 'rgba(56, 189, 248, 0.16)'
-                        : 'rgba(15, 23, 42, 0.6)',
-                      color: active ? '#f8fafc' : '#94a3b8',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                    }}
-                  >
-                    {s.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Active Scenario Title + Compact Inline Environment Metrics */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '8px',
-                padding: '10px 12px',
-                borderRadius: '10px',
-                background: 'rgba(15, 23, 42, 0.55)',
-                border: '1px solid var(--border-subtle)',
-              }}
-            >
-              <div>
-                <div style={{ fontSize: '15px', fontWeight: 700, color: '#f8fafc' }}>
-                  {scenario.label}
-                </div>
-                <div style={{ fontSize: '10.5px', color: '#64748b', marginTop: '2px' }}>
-                  {scenario.assumedAtmosphere
-                    ? 'Assumed same as lunar (30% O₂, 10.2 psi)'
-                    : scenario.partialGravity
-                      ? `Bounded between 0g & 1g (${scenario.gravityG}g)`
-                      : 'Empirical NASA PSI reference envelope'}
-                </div>
-              </div>
-
-              <div
-                style={{
-                  display: 'flex',
-                  gap: '6px',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: '10.5px',
-                }}
-              >
-                <span
-                  style={{
-                    padding: '3px 7px',
-                    borderRadius: '6px',
-                    background: 'rgba(15, 23, 42, 0.9)',
-                    border: '1px solid var(--border-subtle)',
-                    color: '#cbd5e1',
-                  }}
-                >
-                  {scenario.gravityDisplay ?? scenario.gravity}
-                </span>
-                <span
-                  style={{
-                    padding: '3px 7px',
-                    borderRadius: '6px',
-                    background: 'rgba(239, 68, 68, 0.1)',
-                    border: '1px solid rgba(239, 68, 68, 0.3)',
-                    color: '#fca5a5',
-                    fontWeight: 600,
-                  }}
-                >
-                  {scenario.oxygenDisplay ?? `${scenario.oxygenPct}% O₂`}
-                </span>
-              </div>
-            </div>
-          </div>
-
           {/* Live Scenario-Driven PSI Ranking Preview */}
           {rankedItems.length > 0 && (
             <div

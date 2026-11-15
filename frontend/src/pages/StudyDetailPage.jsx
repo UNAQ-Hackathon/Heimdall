@@ -226,7 +226,7 @@ export default function StudyDetailPage() {
         const nextIdx = idx < 0 || idx + 1 >= filteredRuns.length ? 0 : idx + 1;
         return filteredRuns[nextIdx].runId;
       });
-    }, 950);
+    }, 1500);
     return () => window.clearInterval(timer);
   }, [playing, filteredRuns]);
 
@@ -297,17 +297,20 @@ export default function StudyDetailPage() {
     return (
       <div className="f1-telemetry" style={theme.cssVars}>
         <div className="f1-panel f1-panel--accent">
-          <div className="f1-panel__title">TELEMETRY RECOVERY // STUDY NOT FOUND</div>
-          <p style={{ margin: 0, color: '#cbd5e1', fontSize: '13px' }}>
-            Unable to resolve study identifier <code>{id}</code> ({loadError}). Select any verified NASA PSI investigation below.
-          </p>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <button type="button" className="f1-btn f1-btn--primary" onClick={() => navigate('/study/bass')}>
-              Load BASS Telemetry →
-            </button>
-            <button type="button" className="f1-btn" onClick={() => navigate('/studies')}>
-              ← Back to PSI Catalog
-            </button>
+          <div className="f1-no-data" role="status">
+            <span className="f1-no-data__badge">NO DATA</span>
+            <div className="f1-no-data__title">No telemetry data found for &ldquo;{id}&rdquo;</div>
+            <p className="f1-no-data__desc">
+              This identifier does not match a recorded PSI study in the current dataset. Select a verified investigation from the catalog or load the FLEX reference stream.
+            </p>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button type="button" className="f1-btn f1-btn--primary" onClick={() => navigate('/studies')}>
+                ← Back to PSI Catalog
+              </button>
+              <button type="button" className="f1-btn" onClick={() => navigate('/study/flex-2')}>
+                Load FLEX-2 Telemetry →
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -322,7 +325,7 @@ export default function StudyDetailPage() {
     );
   }
 
-  const o2PctDisplay = kpis.o2Value != null ? `${kpis.o2Value}%` : 'N/A';
+  const o2PctDisplay = kpis.o2Value != null ? `${kpis.o2Value}%` : 'No data';
   const o2RangeText =
     kpis.o2Min != null && kpis.o2Max != null && kpis.o2Min !== kpis.o2Max
       ? `${kpis.o2Min}% – ${kpis.o2Max}% envelope`
@@ -657,7 +660,7 @@ export default function StudyDetailPage() {
               <div className="f1-gauge">
                 <span className="f1-gauge__label">CHAMBER PRESSURE</span>
                 <span className="f1-gauge__value">
-                  {kpis.pressurePsi != null ? `${kpis.pressurePsi} psi` : 'N/R'}
+                  {kpis.pressurePsi != null ? `${kpis.pressurePsi} psi` : 'No data'}
                 </span>
                 <RpmBar ratio={(kpis.pressurePsi ?? 0) / 45} />
                 <span className="f1-gauge__sub">
@@ -743,14 +746,21 @@ export default function StudyDetailPage() {
               <span className="f1-panel__title">ONBOARD ECU &amp; SENSORS</span>
               <span className="f1-panel__tag">{activeStudy.sensors?.length ?? 0} CHANNELS</span>
             </div>
-            <div className="f1-sensor-list">
-              {(activeStudy.sensors ?? []).map((sensor) => (
-                <div key={sensor} className="f1-sensor-chip">
-                  <span className="f1-sensor-led" aria-hidden="true" />
-                  <span>{sensor}</span>
-                </div>
-              ))}
-            </div>
+            {(activeStudy.sensors?.length ?? 0) === 0 ? (
+              <div className="f1-no-data" style={{ minHeight: '96px', padding: '12px' }} role="status">
+                <span className="f1-no-data__badge">NO DATA</span>
+                <div className="f1-no-data__desc">No onboard sensor channels reported in this PSI record.</div>
+              </div>
+            ) : (
+              <div className="f1-sensor-list">
+                {activeStudy.sensors.map((sensor) => (
+                  <div key={sensor} className="f1-sensor-chip">
+                    <span className="f1-sensor-led" aria-hidden="true" />
+                    <span>{sensor}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
           {/* Run Timing Tower (when FLEX 258 runs or MongoDB experiments are active) */}
@@ -785,8 +795,25 @@ export default function StudyDetailPage() {
               </div>
 
               {filteredRuns.length === 0 ? (
-                <div style={{ fontSize: '12px', color: '#94a3b8', padding: '10px 4px' }}>
-                  No runs match the current run filters.
+                <div className="f1-no-data" style={{ minHeight: '140px', padding: '14px' }} role="status">
+                  <span className="f1-no-data__badge">NO DATA</span>
+                  <div className="f1-no-data__title">No matching runs</div>
+                  <p className="f1-no-data__desc">
+                    Clear or relax the fuel, gas mix, or O₂ band filters to view runs.
+                  </p>
+                  <button
+                    type="button"
+                    className="f1-btn f1-btn--primary"
+                    style={{ fontSize: '10px', padding: '5px 10px' }}
+                    onClick={() => {
+                      setRunFuel('all');
+                      setRunMix('all');
+                      setRunO2Band('all');
+                      setSelectedRunId(null);
+                    }}
+                  >
+                    Clear Run Filters
+                  </button>
                 </div>
               ) : (
                 <div className="f1-timing-table" role="listbox" aria-label="Experimental runs">
@@ -841,6 +868,7 @@ export default function StudyDetailPage() {
             setSelectedRunId(run.runId);
           }}
           onSelectStudy={selectStudy}
+          onResetFilters={resetAllFilters}
           channels={channels}
           baselineOverlay={baselineOverlay}
           measurements={mongoMeasurements}
@@ -953,12 +981,9 @@ export default function StudyDetailPage() {
           <button
             type="button"
             className="f1-btn f1-btn--primary"
-            onClick={() => navigate('/firehazr')}
+            onClick={() => navigate('/flame')}
           >
-            Open FireHazR Lab →
-          </button>
-          <button type="button" className="f1-btn" onClick={() => navigate('/flame-3d')}>
-            Flame 3D Testbench →
+            Open FireHazR Lab &amp; 3D Chamber →
           </button>
         </div>
       </section>
