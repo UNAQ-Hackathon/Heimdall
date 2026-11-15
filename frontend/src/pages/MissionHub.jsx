@@ -7,7 +7,7 @@ import SpacecraftSelector from '../components/ui/SpacecraftSelector.jsx';
 import SolarSystemScene from '../components/three/SolarSystemScene.jsx';
 import { useApp } from '../context/AppContext.jsx';
 import { api } from '../services/api.js';
-import { FACTOR_LABELS, buildMissionBriefMarkdown, rankLocalInvestigations } from '../services/ranking.js';
+import { rankLocalInvestigations } from '../services/ranking.js';
 import { PLANETS, ISS_DESTINATION } from '../services/mockData.js';
 import '../styles/mission-hub.css';
 
@@ -18,19 +18,27 @@ const PLANET_TO_SCENARIO = {
   Mars: 'mars',
 };
 
-const FACTOR_COLORS = {
-  atmosphereMatch: '#38bdf8',
-  gravityMatch: '#a78bfa',
-  dataRichness: '#34d399',
-  documentation: '#fbbf24',
-};
-
-const CATEGORIES = [
-  { id: 'all', label: 'All' },
-  { id: 'prevention', label: 'Prevention' },
-  { id: 'detection', label: 'Detection' },
-  { id: 'suppression', label: 'Suppression' },
-];
+function getStudentDiscoveryPoints(scenario) {
+  if (scenario?.id === 'iss') {
+    return [
+      'Hot air does not rise in orbit, so flames form slow-burning round spheres.',
+      'Smoke floats everywhere instead of rising to a ceiling alarm.',
+      'Test CO₂ and nitrogen below in Fire 3D or Predictor to see how crews stop flames.',
+    ];
+  }
+  if (scenario?.partialGravity) {
+    return [
+      `This habitat runs near ${scenario.oxygenPct}% O₂ (Earth air is 21%) at lower pressure (${scenario.pressurePsi} psi).`,
+      'NASA still has no real combustion tests in 1/6g Moon or 0.38g Mars gravity.',
+      'Scientists bracket risk between 0g ISS tests and 1g Earth tests until LUCI and FM2 fly.',
+    ];
+  }
+  return [
+    'On Earth (21% O₂, 1g), buoyancy lifts hot exhaust upward into a classic teardrop flame.',
+    'Use this 1g baseline to compare how much harder flames behave once gravity drops.',
+    'Try switching the planet or switching to Fire 3D to compare burning droplets and spacesuits.',
+  ];
+}
 
 export default function MissionHub() {
   const {
@@ -38,11 +46,9 @@ export default function MissionHub() {
     scenario,
     audience,
     category,
-    setCategory,
     focusPlanet,
     setFocusPlanet,
     weights,
-    setWeights,
     shipFile,
     setShipFile,
     chatOpen,
@@ -51,11 +57,10 @@ export default function MissionHub() {
 
   const [searchParams] = useSearchParams();
   const [paused, setPaused] = useState(false);
-  const [weightsOpen, setWeightsOpen] = useState(false);
   const [panelCollapsed, setPanelCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState(() => {
     const tab = searchParams.get('tab');
-    return ['ranking', 'whatif', 'prediction'].includes(tab) ? tab : 'prediction';
+    return tab === 'whatif' || tab === '3d' ? 'whatif' : 'prediction';
   });
   const navigate = useNavigate();
   const targetRef = useRef(null);
@@ -125,17 +130,17 @@ export default function MissionHub() {
             zIndex: 25,
           }}
         >
-          {/* Live Scenario-Driven PSI Ranking Preview */}
-          {rankedItems.length > 0 && (
+          {/* Audience-Specific Top Context: Quantitative PSI Ranking (Engineer) vs Guided Fire Lesson (Student) */}
+          {audience === 'Student' ? (
             <div
               style={{
+                border: '1px solid var(--audience-border, rgba(52, 211, 153, 0.45))',
+                borderRadius: '10px',
+                padding: '12px 13px',
+                background: 'var(--audience-tint, rgba(16, 185, 129, 0.12))',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '6px',
-                padding: '8px 10px',
-                borderRadius: '8px',
-                background: 'rgba(15, 23, 42, 0.45)',
-                border: '1px solid var(--border-subtle)',
+                gap: '7px',
               }}
             >
               <div
@@ -145,95 +150,158 @@ export default function MissionHub() {
                   justifyContent: 'space-between',
                   fontSize: '10px',
                   fontFamily: 'var(--font-mono)',
-                  color: '#94a3b8',
+                  color: 'var(--audience-accent, #34d399)',
+                  letterSpacing: '0.6px',
                 }}
               >
-                <span>TOP PSI RANKING · {scenario.label.toUpperCase()}</span>
+                <span>STUDENT DISCOVERY · {scenario.label.toUpperCase()}</span>
                 <button
                   type="button"
-                  onClick={() => setActiveTab('ranking')}
+                  onClick={() => navigate('/studies')}
                   style={{
                     background: 'transparent',
                     border: 'none',
-                    color: '#60a5fa',
+                    color: '#6ee7b7',
                     fontSize: '10px',
                     fontFamily: 'var(--font-mono)',
                     cursor: 'pointer',
                     padding: 0,
                   }}
                 >
-                  All ({rankedItems.length}) ↗
+                  Catalog ↗
                 </button>
               </div>
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                {rankedItems.slice(0, 3).map((item, idx) => {
-                  const inv = item.investigation ?? item;
-                  const targetId = inv.id ?? inv.slug ?? inv.psiId ?? item.studyId ?? item._id;
-                  const pctScore = Math.round((item.score ?? item.ranking?.score ?? 0) * 100);
-                  return (
+              <strong style={{ fontSize: '13px', color: '#f8fafc' }}>
+                What changes in space fire here?
+              </strong>
+              <ul
+                style={{
+                  margin: 0,
+                  paddingLeft: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                  fontSize: '11.5px',
+                  color: '#d1fae5',
+                  lineHeight: 1.45,
+                }}
+              >
+                {getStudentDiscoveryPoints(scenario).map((pt) => (
+                  <li key={pt}>{pt}</li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <>
+              {rankedItems.length > 0 && (
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px',
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    background: 'rgba(15, 23, 42, 0.45)',
+                    border: '1px solid var(--border-subtle)',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      fontSize: '10px',
+                      fontFamily: 'var(--font-mono)',
+                      color: '#94a3b8',
+                    }}
+                  >
+                    <span>TOP PSI RANKING · {scenario.label.toUpperCase()}</span>
                     <button
-                      key={inv.psiId ?? targetId ?? idx}
                       type="button"
-                      onClick={() => navigate(`/study/${targetId}`)}
+                      onClick={() => navigate('/studies')}
                       style={{
-                        flex: '1 1 90px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '6px',
-                        padding: '5px 8px',
-                        borderRadius: '6px',
-                        background: '#0b1322',
-                        border: '1px solid #263449',
-                        color: '#e2e8f0',
-                        fontSize: '11px',
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#60a5fa',
+                        fontSize: '10px',
                         fontFamily: 'var(--font-mono)',
                         cursor: 'pointer',
-                        textAlign: 'left',
+                        padding: 0,
                       }}
                     >
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        #{idx + 1} {inv.acronym ?? inv.name ?? targetId}
-                      </span>
-                      <strong style={{ color: '#60a5fa', fontSize: '10.5px' }}>
-                        {pctScore}
-                      </strong>
+                      All ({rankedItems.length}) ↗
                     </button>
-                  );
-                })}
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {rankedItems.slice(0, 3).map((item, idx) => {
+                      const inv = item.investigation ?? item;
+                      const targetId = inv.id ?? inv.slug ?? inv.psiId ?? item.studyId ?? item._id;
+                      const pctScore = Math.round((item.score ?? item.ranking?.score ?? 0) * 100);
+                      return (
+                        <button
+                          key={inv.psiId ?? targetId ?? idx}
+                          type="button"
+                          onClick={() => navigate(`/study/${targetId}`)}
+                          style={{
+                            flex: '1 1 90px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '6px',
+                            padding: '5px 8px',
+                            borderRadius: '6px',
+                            background: '#0b1322',
+                            border: '1px solid #263449',
+                            color: '#e2e8f0',
+                            fontSize: '11px',
+                            fontFamily: 'var(--font-mono)',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                          }}
+                        >
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            #{idx + 1} {inv.acronym ?? inv.name ?? targetId}
+                          </span>
+                          <strong style={{ color: '#60a5fa', fontSize: '10.5px' }}>
+                            {pctScore}
+                          </strong>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div
+                style={{
+                  border: '1px solid #263449',
+                  borderRadius: '8px',
+                  padding: '10px 12px',
+                  background: '#0b1322',
+                  fontSize: '11.5px',
+                  lineHeight: 1.5,
+                  color: '#cbd5e1',
+                }}
+              >
+                <strong style={{ display: 'block', color: '#93c5fd', marginBottom: '4px', fontSize: '12px' }}>
+                  Engineering envelope · {scenario.oxygenPct}% O₂ · {scenario.pressurePsi} psi
+                </strong>
+                <p style={{ margin: 0 }}>
+                  Microgravity removes buoyant convection, making diffusion flames spherical (<strong>BASS</strong>,{' '}
+                  <strong>Saffire</strong>, <strong>ACME</strong>, <strong>FLEX</strong>).{' '}
+                  {scenario.partialGravity
+                    ? 'No partial-g PSI datasets exist yet; 0g and 1g baselines bound lunar/Mars risk.'
+                    : 'Nominal 0g and 1g experimental references apply directly.'}
+                </p>
               </div>
-            </div>
+            </>
           )}
 
-          {/* Concise Mission & PSI Context in Main Sidebar */}
-          <div
-            style={{
-              border: '1px solid #263449',
-              borderRadius: '8px',
-              padding: '10px 12px',
-              background: '#0b1322',
-              fontSize: '11.5px',
-              lineHeight: 1.5,
-              color: '#cbd5e1',
-            }}
-          >
-            <strong style={{ display: 'block', color: '#93c5fd', marginBottom: '4px', fontSize: '12px' }}>
-              Why these NASA PSI fire tests matter
-            </strong>
-            <p style={{ margin: 0 }}>
-              In microgravity, flames lack buoyancy and form spherical diffusion clouds, making fire
-              prevention (<strong>BASS</strong>, <strong>Saffire</strong>, <strong>ACME</strong>),
-              detection (<strong>SAME</strong>), and suppression (<strong>FLEX</strong>) critical
-              for spacecraft, Moon bases (<strong>≥30% O₂, ≤10.2 psi</strong>), and Mars habitats
-              where 0g and 1g data bound partial-gravity risk.
-            </p>
-          </div>
-
-          {/* Clean Segmented Mode Switcher: PSI Studies vs Fire Hazard Lab */}
+          {/* Clean 2-Tab Sidebar Switcher: Predictor vs Fire 3D */}
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
               gap: '4px',
               padding: '3px',
               borderRadius: '9px',
@@ -241,26 +309,6 @@ export default function MissionHub() {
               border: '1px solid var(--border-subtle)',
             }}
           >
-            <button
-              type="button"
-              onClick={() => setActiveTab('ranking')}
-              style={{
-                padding: '7px 10px',
-                borderRadius: '7px',
-                fontSize: '12px',
-                fontWeight: 600,
-                background:
-                  activeTab === 'ranking' ? 'rgba(59, 130, 246, 0.2)' : 'transparent',
-                border:
-                  activeTab === 'ranking'
-                    ? '1px solid rgba(59, 130, 246, 0.4)'
-                    : '1px solid transparent',
-                color: activeTab === 'ranking' ? '#f8fafc' : '#94a3b8',
-                cursor: 'pointer',
-              }}
-            >
-              Studies ({rankedItems.length})
-            </button>
             <button
               type="button"
               className="mission-predictor-tab"
@@ -271,6 +319,7 @@ export default function MissionHub() {
             </button>
             <button
               type="button"
+              aria-pressed={activeTab === 'whatif'}
               onClick={() => setActiveTab('whatif')}
               style={{
                 padding: '7px 10px',
@@ -291,363 +340,11 @@ export default function MissionHub() {
                 gap: '6px',
               }}
             >
-              3D Lab
+              Fire 3D
             </button>
           </div>
 
-          {activeTab === 'prediction' ? (
-            <FireHazrPredictor />
-          ) : activeTab === 'whatif' ? (
-            <FireHazRPage compact />
-          ) : (
-            <>
-              {/* Minimalist Category Pills + Weights Button (only shown in Studies tab) */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '6px',
-                }}
-              >
-                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                  {CATEGORIES.map((cat) => {
-                    const active = category === cat.id;
-                    return (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => setCategory(cat.id)}
-                        style={{
-                          padding: '4px 9px',
-                          borderRadius: '6px',
-                          fontSize: '11px',
-                          border: active
-                            ? '1px solid rgba(59, 130, 246, 0.4)'
-                            : '1px solid transparent',
-                          background: active
-                            ? 'rgba(59, 130, 246, 0.16)'
-                            : 'rgba(15, 23, 42, 0.5)',
-                          color: active ? '#f8fafc' : '#94a3b8',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        {cat.label}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const md = buildMissionBriefMarkdown({
-                        scenario,
-                        rankedItems,
-                        weights,
-                        audience,
-                        category,
-                      });
-                      const blob = new Blob([md], { type: 'text/markdown;charset=utf-8;' });
-                      const url = URL.createObjectURL(blob);
-                      const link = document.createElement('a');
-                      link.href = url;
-                      link.download = `heimdall-${scenario.id ?? 'mission'}-brief.md`;
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                      URL.revokeObjectURL(url);
-                    }}
-                    title="Export Mission Fire Safety Brief (.md)"
-                    style={{
-                      padding: '4px 8px',
-                      borderRadius: '6px',
-                      background: 'rgba(16, 185, 129, 0.12)',
-                      border: '1px solid rgba(16, 185, 129, 0.35)',
-                      color: '#34d399',
-                      fontSize: '10.5px',
-                      fontFamily: 'var(--font-mono)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Brief ↓
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setWeightsOpen(!weightsOpen)}
-                    title="Adjust ranking weights"
-                    style={{
-                      padding: '4px 9px',
-                      borderRadius: '6px',
-                      background: weightsOpen
-                        ? 'rgba(59, 130, 246, 0.18)'
-                        : 'rgba(15, 23, 42, 0.6)',
-                      border: weightsOpen
-                        ? '1px solid rgba(59, 130, 246, 0.45)'
-                        : '1px solid var(--border-subtle)',
-                      color: weightsOpen ? '#60a5fa' : '#94a3b8',
-                      fontSize: '10.5px',
-                      fontFamily: 'var(--font-mono)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Weights
-                  </button>
-                </div>
-              </div>
-
-              {weightsOpen && (
-                <div
-                  className="tri-card"
-                  style={{
-                    padding: '10px 12px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '7px',
-                  }}
-                >
-                  {Object.entries(weights).map(([wKey, val]) => (
-                    <div
-                      key={wKey}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        fontSize: '11px',
-                      }}
-                    >
-                      <span style={{ color: '#cbd5e1' }}>
-                        {FACTOR_LABELS[wKey] ?? wKey}
-                      </span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          step="5"
-                          value={val}
-                          onChange={(e) =>
-                            setWeights({ ...weights, [wKey]: Number(e.target.value) })
-                          }
-                          style={{ width: '90px', accentColor: '#3b82f6' }}
-                        />
-                        <span
-                          style={{
-                            fontFamily: 'var(--font-mono)',
-                            color: '#60a5fa',
-                            width: '28px',
-                            textAlign: 'right',
-                          }}
-                        >
-                          {val}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <details
-                style={{
-                  border: '1px solid #263449',
-                  borderRadius: '8px',
-                  padding: '9px 12px',
-                  background: '#0b1322',
-                  fontSize: '11.5px',
-                  color: '#cbd5e1',
-                  lineHeight: 1.5,
-                }}
-              >
-                <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#93c5fd' }}>
-                  What are these NASA PSI investigations?
-                </summary>
-                <p style={{ margin: '8px 0 4px' }}>
-                  NASA&apos;s Physical Science Informatics (PSI) database groups microgravity fire
-                  research into three safety pillars:
-                </p>
-                <ul style={{ margin: '4px 0 0', paddingLeft: '16px', display: 'grid', gap: '4px' }}>
-                  <li>
-                    <strong>Prevention &amp; Flammability:</strong> <em>BASS / BASS-II</em> &amp;{' '}
-                    <em>Saffire-I/II/III</em> (solid fabrics/plastics in MSG/SPICE &amp; Cygnus);{' '}
-                    <em>ACME</em> (6 gas-flame tests in CIR, including <em>BRE</em>,{' '}
-                    <em>CFI-G</em> up to 85% O₂, and <em>E-FIELD Flames</em>).
-                  </li>
-                  <li>
-                    <strong>Detection:</strong> <em>SAME / SAME-R</em> (smoke aerosol sizing in
-                    MSG; instrument also used in <em>DAFT / DAFT-2</em> for dust).
-                  </li>
-                  <li>
-                    <strong>Suppression:</strong> <em>FLEX / FLEX-2</em> (liquid droplet burning in
-                    CIR/MDCA with CO₂ and He diluents).
-                  </li>
-                </ul>
-              </details>
-
-              {/* Challenge Context + Active Audience Emphasis */}
-              <div
-                style={{
-                  border: '1px solid var(--audience-border, #1e293b)',
-                  borderRadius: '8px',
-                  padding: '8px 11px',
-                  background: 'var(--audience-tint, rgba(15, 23, 42, 0.55))',
-                  fontSize: '11px',
-                  color: '#cbd5e1',
-                  lineHeight: 1.45,
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                  <strong style={{ color: 'var(--audience-accent, #38bdf8)', fontFamily: 'var(--font-mono)', fontSize: '10px' }}>
-                    {scenario.label?.toUpperCase() ?? 'SCENARIO'} · {audience === 'Student' ? 'STUDENT GUIDED MODE' : 'ENGINEER MODE'}
-                  </strong>
-                </div>
-                {audience === 'Student'
-                  ? scenario.partialGravity
-                    ? `Because ${scenario.label ?? 'this habitat'} has partial gravity and ${scenario.oxygenPct}% O₂ (vs 21% on Earth), NASA uses 0g space and 1g Earth flame tests together to stay safe.`
-                    : `In ${scenario.label ?? 'this setting'} (${scenario.oxygenPct}% O₂), flames behave very differently without gravity's upward hot-air draft.`
-                  : (
-                    <>
-                      {scenario.oxygenPct > 21
-                        ? `${scenario.oxygenPct}% O₂ (+${Math.round(((scenario.oxygenPct - 21) / 21) * 100)}% vs Earth 21%) at ${scenario.pressurePsi} psi cuts EVA pre-breathe time while raising flammability. `
-                        : `${scenario.oxygenPct}% O₂ at ${scenario.pressurePsi} psi (Earth sea-level baseline reference). `}
-                      {scenario.partialGravity
-                        ? 'No partial-gravity PSI datasets exist yet (LUCI & FM2 upcoming); 0g + 1g studies & E-FIELD Flames bound this regime.'
-                        : 'Microgravity removes buoyancy, making flames spherical and diffusion-limited.'}
-                    </>
-                  )}
-              </div>
-
-              {/* Clean, Minimalist Study Cards */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {rankedItems.map(({ investigation: inv, score, breakdown }, idx) => {
-                  const pct = Math.round(score * 100);
-                  return (
-                    <div
-                      key={inv.psiId ?? inv.id}
-                      onClick={() => navigate(`/study/${inv.id}`)}
-                      className="tri-card"
-                      style={{
-                        padding: '13px 15px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '8px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: '8px',
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '7px', minWidth: 0 }}>
-                          <span
-                            style={{
-                              color: '#64748b',
-                              fontSize: '10.5px',
-                              fontFamily: 'var(--font-mono)',
-                            }}
-                          >
-                            {idx + 1}.
-                          </span>
-                          <span style={{ fontSize: '13.5px', fontWeight: 700, color: '#f8fafc' }}>
-                            {inv.acronym ?? inv.name}
-                          </span>
-                          <span
-                            style={{
-                              fontSize: '11px',
-                              color: '#64748b',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            {inv.hardware ?? inv.facility}
-                          </span>
-                        </div>
-                        <span
-                          style={{
-                            fontSize: '10.5px',
-                            fontFamily: 'var(--font-mono)',
-                            fontWeight: 600,
-                            color: inv.dataAvailable === false ? '#fbbf24' : '#34d399',
-                            background:
-                              inv.dataAvailable === false
-                                ? 'rgba(245, 158, 11, 0.12)'
-                                : 'rgba(16, 185, 129, 0.1)',
-                            border:
-                              inv.dataAvailable === false
-                                ? '1px solid rgba(245, 158, 11, 0.28)'
-                                : '1px solid rgba(16, 185, 129, 0.22)',
-                            borderRadius: '6px',
-                            padding: '2px 7px',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {inv.dataAvailable === false
-                            ? 'NO PSI DATA YET'
-                            : scenario.partialGravity
-                              ? `${Math.max(10, pct - 7)}%–${Math.min(100, pct + 5)}%`
-                              : `${pct}%`}
-                        </span>
-                      </div>
-
-                      {audience === 'Engineer' && breakdown?.length > 0 && (
-                        <div className="score-bar-container" style={{ height: '4px' }}>
-                          {breakdown.map((b) => (
-                            <div
-                              key={b.factor}
-                              className="score-bar-segment"
-                              title={`${b.factor}: +${(b.contribution * 100).toFixed(0)}%`}
-                              style={{
-                                width: `${Math.max(3, b.contribution * 100)}%`,
-                                backgroundColor: FACTOR_COLORS[b.factor] ?? '#3b82f6',
-                              }}
-                            />
-                          ))}
-                        </div>
-                      )}
-
-                      <p
-                        style={{
-                          margin: 0,
-                          fontSize: audience === 'Student' ? '12px' : '11.5px',
-                          color: audience === 'Student' ? '#cbd5e1' : '#94a3b8',
-                          lineHeight: 1.5,
-                        }}
-                      >
-                        {audience === 'Engineer'
-                          ? inv.aiSummary?.engineer
-                          : inv.aiSummary?.student}
-                      </p>
-
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          fontSize: '10px',
-                          fontFamily: 'var(--font-mono)',
-                          color: '#64748b',
-                        }}
-                      >
-                        <span>
-                          {audience === 'Student'
-                            ? `${inv.category ?? 'safety'} · ${inv.gravityLevel ?? '0g'}`
-                            : `O₂ ${inv.oxygenRange} · ${inv.ambientPressure}`}
-                        </span>
-                        <span style={{ color: 'var(--audience-accent, #60a5fa)' }}>
-                          {audience === 'Student' ? 'Learn more →' : 'Details →'}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
+          {activeTab === 'prediction' ? <FireHazrPredictor /> : <FireHazRPage compact />}
         </aside>
       )}
 

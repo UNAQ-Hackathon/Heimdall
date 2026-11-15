@@ -800,7 +800,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
             padding: '7px 10px',
             borderRadius: '6px',
             background: '#080f1c',
-            border: '1px solid #1e293b',
+            border: '1px solid var(--audience-border, #1e293b)',
             fontSize: '10px',
             fontFamily: 'var(--font-mono)',
             fontVariantNumeric: 'tabular-nums',
@@ -808,7 +808,8 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
           }}
         >
           <span style={{ color: '#cbd5e1', whiteSpace: 'nowrap' }}>
-            CHAMBER · <strong>{o2Pct}% O₂</strong> / {n2Pct}% N₂
+            {isStudent ? 'SPACE CABIN AIR · ' : 'CHAMBER · '}
+            <strong>{o2Pct}% O₂</strong> / {n2Pct}% N₂
             {Number(form.co2_fraction) > 0 ? ` / ${Math.round(Number(form.co2_fraction) * 100)}% CO₂` : ''}
             {Number(form.he_fraction) > 0 ? ` / ${Math.round(Number(form.he_fraction) * 100)}% He` : ''}
           </span>
@@ -823,13 +824,33 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
               border: flexBoundsOk ? '1px solid rgba(52, 211, 153, 0.35)' : '1px solid rgba(251, 191, 36, 0.35)',
             }}
           >
-            {flexBoundsOk
-              ? `In FLEX support (${liveCoverage.distance?.toFixed(2)} ≤ ${liveCoverage.limit?.toFixed(2)})`
-              : liveCoverage.distance != null
-                ? `Gap (${liveCoverage.distance.toFixed(2)} > ${liveCoverage.limit?.toFixed(2)})`
-                : 'Out of FLEX range'}
+            {isStudent
+              ? flexBoundsOk
+                ? 'Matches real ISS data'
+                : 'Beyond tested droplet data'
+              : flexBoundsOk
+                ? `In FLEX support (${liveCoverage.distance?.toFixed(2)} ≤ ${liveCoverage.limit?.toFixed(2)})`
+                : liveCoverage.distance != null
+                  ? `Gap (${liveCoverage.distance.toFixed(2)} > ${liveCoverage.limit?.toFixed(2)})`
+                  : 'Out of FLEX range'}
           </span>
         </div>
+
+        {isStudent && (
+          <div
+            style={{
+              padding: '8px 10px',
+              borderRadius: '7px',
+              background: 'rgba(16, 185, 129, 0.08)',
+              border: '1px solid rgba(52, 211, 153, 0.28)',
+              fontSize: '11.5px',
+              color: '#d1fae5',
+              lineHeight: 1.45,
+            }}
+          >
+            <strong>Student Tip:</strong> Slide oxygen higher to watch how spacecraft hazard levels escalate, or add CO₂ to see why fire suppressants quench space flames.
+          </div>
+        )}
 
         {!compact ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>

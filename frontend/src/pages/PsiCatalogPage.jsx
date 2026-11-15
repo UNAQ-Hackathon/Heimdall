@@ -568,6 +568,7 @@ function FlexRunsExplorer({ runs }) {
 }
 
 function StudyInspectorPanel({ study, audience, allFlexRuns }) {
+  const isStudent = audience === 'Student';
   const [vizTab, setVizTab] = useState('envelope');
   const seriesStats = useMemo(() => getStudySeriesStats(study), [study]);
   const isDropletStudy = useMemo(() => isDropletTelemetryStudy(study), [study]);
@@ -575,12 +576,12 @@ function StudyInspectorPanel({ study, audience, allFlexRuns }) {
   useEffect(() => {
     if (seriesStats.sampleCount > 0) {
       setVizTab('curves');
-    } else if (isDropletStudy && /flex/i.test(String(study?.acronym ?? ''))) {
+    } else if (!isStudent && isDropletStudy && /flex/i.test(String(study?.acronym ?? ''))) {
       setVizTab('runs');
     } else {
       setVizTab('envelope');
     }
-  }, [study?.psiId, study?.acronym, seriesStats.sampleCount, isDropletStudy]);
+  }, [study?.psiId, study?.acronym, seriesStats.sampleCount, isDropletStudy, isStudent]);
 
   const kpis = useMemo(
     () =>
@@ -611,12 +612,27 @@ function StudyInspectorPanel({ study, audience, allFlexRuns }) {
       : `${cond.flowVelocity} m/s`
     : 'Unreported';
 
-  const summary =
-    audience === 'Student'
-      ? study.aiSummary?.student ?? study.objective
-      : study.objective;
+  const summary = isStudent
+    ? study.aiSummary?.student ?? study.objective
+    : study.objective;
 
-  const showRunsExplorer = isDropletStudy && /flex/i.test(String(study.acronym ?? ''));
+  const studentConceptTip =
+    study.category === 'prevention'
+      ? 'Why it matters in space: without gravity lifting hot exhaust, even plastics or gases that look safe in a classroom can stay burning in slow airflow or high-oxygen cabins.'
+      : study.category === 'detection'
+        ? 'Why it matters in space: smoke does not rise to a ceiling detector in zero gravity — spacecraft rely on air fans and particle sizing to spot invisible smoldering.'
+        : 'Why it matters in space: putting out a fire with CO₂, nitrogen dilution, or reduced pressure works differently when buoyancy cannot pull fresh oxygen into the flame.';
+
+  const studentOxygenSummary =
+    o2.maxPct == null
+      ? 'Waiting for Moon mission plan'
+      : o2.maxPct > 25
+        ? 'High oxygen — burns faster than Earth'
+        : o2.minPct < 19
+          ? 'Low oxygen — tests where flames go out'
+          : 'Similar to Earth classroom air (21%)';
+
+  const showRunsExplorer = !isStudent && isDropletStudy && /flex/i.test(String(study.acronym ?? ''));
 
   return (
     <article className="psi-inspector" aria-label={`Detailed telemetry for ${study.acronym}`}>
@@ -674,56 +690,120 @@ function StudyInspectorPanel({ study, audience, allFlexRuns }) {
 
       <p className="psi-inspector-summary">{summary}</p>
 
-      {/* Focused 4-Metric Telemetry KPI Strip */}
-      <section className="psi-kpi-strip" aria-label="Key telemetry metrics versus Earth baseline">
-        <div className="psi-kpi-cell">
-          <span className="psi-kpi-label">OXYGEN ENVELOPE</span>
-          <span className="psi-kpi-value">{o2.label}</span>
-          <span
-            className={`psi-kpi-delta ${
-              kpis.o2DeltaEarth != null && kpis.o2DeltaEarth > 0 ? 'psi-kpi-delta--warn' : ''
-            }`}
-          >
-            {kpis.o2DeltaEarth == null
-              ? 'Pending publication'
-              : kpis.o2DeltaEarth === 0
-                ? 'Matches 21% ISS nominal'
-                : `${kpis.o2DeltaEarth > 0 ? '+' : ''}${kpis.o2DeltaEarth}% nominal vs Earth`}
-          </span>
+      {isStudent && (
+        <div
+          style={{
+            padding: '11px 14px',
+            borderRadius: '9px',
+            background: 'rgba(16, 185, 129, 0.08)',
+            border: '1px solid rgba(52, 211, 153, 0.32)',
+            fontSize: '12.5px',
+            color: '#d1fae5',
+            lineHeight: 1.5,
+          }}
+        >
+          <strong style={{ color: '#6ee7b7', display: 'block', marginBottom: '2px', fontSize: '11px', fontFamily: 'var(--font-mono)' }}>
+            STUDENT PHYSICS CONCEPT
+          </strong>
+          {studentConceptTip}
         </div>
+      )}
 
-        <div className="psi-kpi-cell">
-          <span className="psi-kpi-label">CABIN PRESSURE</span>
-          <span className="psi-kpi-value">{pressureText}</span>
-          <span className="psi-kpi-delta">
-            {kpis.pressureMmhg != null ? `${kpis.pressureMmhg} mmHg` : 'Unreported'}
-          </span>
-        </div>
+      {/* Audience-Adapted 4-Metric Strip */}
+      {isStudent ? (
+        <section className="psi-kpi-strip" aria-label="Student-friendly experiment summary">
+          <div className="psi-kpi-cell">
+            <span className="psi-kpi-label">AIR VS EARTH ROOM</span>
+            <span className="psi-kpi-value">{o2.label}</span>
+            <span className="psi-kpi-delta" style={{ color: '#6ee7b7' }}>{studentOxygenSummary}</span>
+          </div>
+          <div className="psi-kpi-cell">
+            <span className="psi-kpi-label">GRAVITY SETTING</span>
+            <span className="psi-kpi-value">
+              {String(study.gravityLevel ?? 'microgravity').includes('partial') ? 'Moon 1/6 Gravity' : 'Weightless Orbit (0g)'}
+            </span>
+            <span className="psi-kpi-delta">{getHardwareFamily(study.hardware)}</span>
+          </div>
+          <div className="psi-kpi-cell">
+            <span className="psi-kpi-label">WHAT TESTED BURNING</span>
+            <span className="psi-kpi-value" style={{ fontSize: '12.5px', fontFamily: 'var(--font-sans)' }}>
+              {study.fuel ?? 'Pending payload'}
+            </span>
+          </div>
+          <div className="psi-kpi-cell">
+            <span className="psi-kpi-label">EVIDENCE READY</span>
+            <span className="psi-kpi-value">
+              {tier === 'empirical' ? `${seriesStats.sampleCount} Space Runs` : tier === 'upcoming' ? 'Future Mission' : 'Verified Specs'}
+            </span>
+            <span className="psi-kpi-delta">
+              {tier === 'upcoming' ? 'Real gap — no invented data' : 'NASA ISS / Cygnus record'}
+            </span>
+          </div>
+        </section>
+      ) : (
+        <section className="psi-kpi-strip" aria-label="Key telemetry metrics versus Earth baseline">
+          <div className="psi-kpi-cell">
+            <span className="psi-kpi-label">OXYGEN ENVELOPE</span>
+            <span className="psi-kpi-value">{o2.label}</span>
+            <span
+              className={`psi-kpi-delta ${
+                kpis.o2DeltaEarth != null && kpis.o2DeltaEarth > 0 ? 'psi-kpi-delta--warn' : ''
+              }`}
+            >
+              {kpis.o2DeltaEarth == null
+                ? 'Pending publication'
+                : kpis.o2DeltaEarth === 0
+                  ? 'Matches 21% ISS nominal'
+                  : `${kpis.o2DeltaEarth > 0 ? '+' : ''}${kpis.o2DeltaEarth}% nominal vs Earth`}
+            </span>
+          </div>
 
-        <div className="psi-kpi-cell">
-          <span className="psi-kpi-label">AIRFLOW VELOCITY</span>
-          <span className="psi-kpi-value">{flowText}</span>
-          <span className="psi-kpi-delta">{study.fuel ?? 'Fuel unspecified'}</span>
-        </div>
+          <div className="psi-kpi-cell">
+            <span className="psi-kpi-label">CABIN PRESSURE</span>
+            <span className="psi-kpi-value">{pressureText}</span>
+            <span className="psi-kpi-delta">
+              {kpis.pressureMmhg != null ? `${kpis.pressureMmhg} mmHg` : 'Unreported'}
+            </span>
+          </div>
 
-        <div className="psi-kpi-cell">
-          <span className="psi-kpi-label">TELEMETRY DEPTH</span>
-          <span className="psi-kpi-value">
-            {tier === 'empirical'
-              ? `${seriesStats.sampleCount} runs`
-              : tier === 'upcoming'
-                ? 'Lunar gap'
-                : `${study.sensors?.length ?? 0} sensors`}
-          </span>
-          <span className={`psi-kpi-delta ${tier === 'empirical' ? 'psi-kpi-delta--ok' : ''}`}>
-            {tier === 'empirical'
-              ? 'Empirical curves ready'
-              : tier === 'upcoming'
-                ? 'Awaiting CLPS flight'
-                : 'Published condition bounds'}
-          </span>
-        </div>
-      </section>
+          <div className="psi-kpi-cell">
+            <span className="psi-kpi-label">AIRFLOW VELOCITY</span>
+            <span className="psi-kpi-value">{flowText}</span>
+            <span className="psi-kpi-delta">{study.fuel ?? 'Fuel unspecified'}</span>
+          </div>
+
+          <div className="psi-kpi-cell">
+            <span className="psi-kpi-label">TELEMETRY DEPTH</span>
+            <span className="psi-kpi-value">
+              {tier === 'empirical'
+                ? `${seriesStats.sampleCount} runs`
+                : tier === 'upcoming'
+                  ? 'Lunar gap'
+                  : `${study.sensors?.length ?? 0} sensors`}
+            </span>
+            <span className={`psi-kpi-delta ${tier === 'empirical' ? 'psi-kpi-delta--ok' : ''}`}>
+              {tier === 'empirical'
+                ? 'Empirical curves ready'
+                : tier === 'upcoming'
+                  ? 'Awaiting CLPS flight'
+                  : 'Published condition bounds'}
+            </span>
+          </div>
+        </section>
+      )}
+
+      {isStudent && Array.isArray(study.earthApplications) && study.earthApplications.length > 0 && (
+        <section className="psi-earth-box" aria-label="Earth spin-off impact" style={{ borderTop: 'none', paddingTop: 0 }}>
+          <div className="psi-section-title" style={{ color: '#34d399', marginBottom: '2px' }}>
+            How This Space Test Protects People on Earth
+          </div>
+          <ul className="psi-list-clean">
+            {study.earthApplications.map((app) => (
+              <li key={app}>{app}</li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="psi-conditions-panel" aria-label="Atmosphere visual gauge">
         <OxygenEnvelopeBar
@@ -737,7 +817,7 @@ function StudyInspectorPanel({ study, audience, allFlexRuns }) {
       <section aria-label="Interactive study telemetry charts" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         <div className="psi-viz-header">
           <span className="psi-section-title" style={{ marginBottom: 0 }}>
-            Telemetry Visualization
+            {isStudent ? 'Visual Comparison Chart' : 'Telemetry Visualization'}
           </span>
           <div className="psi-mode-switch" role="tablist" aria-label="Telemetry chart view">
             {seriesStats.sampleCount > 0 && (
@@ -813,7 +893,7 @@ function StudyInspectorPanel({ study, audience, allFlexRuns }) {
         </div>
       </section>
 
-      {Array.isArray(study.earthApplications) && study.earthApplications.length > 0 && (
+      {!isStudent && Array.isArray(study.earthApplications) && study.earthApplications.length > 0 && (
         <section className="psi-earth-box" aria-label="Earth spin-off impact">
           <div className="psi-section-title" style={{ color: '#34d399', marginBottom: '2px' }}>
             Why It Matters on Earth
@@ -952,36 +1032,44 @@ export default function PsiCatalogPage() {
             <span className={`psi-source-badge ${dataSource === 'api' ? 'psi-source-badge--live' : ''}`}>
               SOURCE: {dataSource === 'api' ? 'MONGODB / API' : 'VERIFIED PSI ARCHIVE'}
             </span>
-            <button
-              type="button"
-              className="psi-action-btn psi-action-btn--csv"
-              disabled={filtered.length === 0}
-              onClick={() =>
-                triggerDownload(
-                  'nasa-psi-investigations.csv',
-                  buildPsiDatasetCsv(filtered),
-                  'text/csv;charset=utf-8;'
-                )
-              }
-            >
-              Extract CSV ({filtered.length})
-            </button>
-            <button
-              type="button"
-              className="psi-action-btn psi-action-btn--json"
-              disabled={filtered.length === 0}
-              onClick={() =>
-                triggerDownload(
-                  'nasa-psi-investigations.json',
-                  JSON.stringify(filtered, null, 2),
-                  'application/json;charset=utf-8;'
-                )
-              }
-            >
-              Extract JSON
-            </button>
-            <Link to="/?tab=ranking" className="psi-action-btn">
-              Mission Ranking ↗
+            {audience === 'Engineer' ? (
+              <>
+                <button
+                  type="button"
+                  className="psi-action-btn psi-action-btn--csv"
+                  disabled={filtered.length === 0}
+                  onClick={() =>
+                    triggerDownload(
+                      'nasa-psi-investigations.csv',
+                      buildPsiDatasetCsv(filtered),
+                      'text/csv;charset=utf-8;'
+                    )
+                  }
+                >
+                  Extract CSV ({filtered.length})
+                </button>
+                <button
+                  type="button"
+                  className="psi-action-btn psi-action-btn--json"
+                  disabled={filtered.length === 0}
+                  onClick={() =>
+                    triggerDownload(
+                      'nasa-psi-investigations.json',
+                      JSON.stringify(filtered, null, 2),
+                      'application/json;charset=utf-8;'
+                    )
+                  }
+                >
+                  Extract JSON
+                </button>
+              </>
+            ) : (
+              <span className="psi-audience-chip" style={{ fontFamily: 'var(--font-mono)', fontSize: '10.5px' }}>
+                SIMPLIFIED LEARNING MODE · RAW DATA EXPORTS HIDDEN
+              </span>
+            )}
+            <Link to="/compare" className="psi-action-btn">
+              Compare Studies ↗
             </Link>
           </div>
         </header>
