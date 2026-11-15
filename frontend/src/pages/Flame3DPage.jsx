@@ -3,11 +3,41 @@ import FlameVisualization from '../components/three/FlameVisualization.jsx';
 import FireHazRPage from './FireHazRPage.jsx';
 import { FLAME_COMPARISON } from '../services/mockData.js';
 
+const CHAMBER_PRESETS = [
+  {
+    id: 'normal',
+    label: 'Preset: Nominal Suit (21% O₂)',
+    oxygen: 21.0,
+    airflow: 0.05,
+    gravityIndex: 0,
+    suitState: 'normal',
+    color: '#10b981',
+  },
+  {
+    id: 'flames',
+    label: 'Preset: Suit in Flames (35% O₂)',
+    oxygen: 35.0,
+    airflow: 0.14,
+    gravityIndex: 1,
+    suitState: 'flames',
+    color: '#f59e0b',
+  },
+  {
+    id: 'burned',
+    label: 'Preset: Burned Suit / Flashover (85% O₂)',
+    oxygen: 85.0,
+    airflow: 0.25,
+    gravityIndex: 0,
+    suitState: 'burned',
+    color: '#ef4444',
+  },
+];
 
 export default function Flame3DPage() {
   const [oxygen, setOxygen] = useState(30.0);
   const [airflow, setAirflow] = useState(0.05);
   const [gravityIndex, setGravityIndex] = useState(0);
+  const [suitState, setSuitState] = useState('auto');
 
   const gravities = [
     { label: '0g ISS', g: 0.0, name: '0.00 g (Microgravity)' },
@@ -17,10 +47,27 @@ export default function Flame3DPage() {
   ];
 
   const resetBaseline = () => {
-    setOxygen(30.0);
+    setOxygen(21.0);
     setAirflow(0.05);
     setGravityIndex(0);
+    setSuitState('normal');
   };
+
+  const applyPreset = (preset) => {
+    setOxygen(preset.oxygen);
+    setAirflow(preset.airflow);
+    setGravityIndex(preset.gravityIndex);
+    setSuitState(preset.suitState);
+  };
+
+  const resolvedSuitState =
+    suitState !== 'auto'
+      ? suitState
+      : oxygen >= 60
+        ? 'burned'
+        : oxygen >= 25
+          ? 'flames'
+          : 'normal';
 
   const zeroG = FLAME_COMPARISON.zeroG;
   const oneG = FLAME_COMPARISON.oneG;
@@ -38,73 +85,45 @@ export default function Flame3DPage() {
       }}
     >
       {/* ── Sub-Nav & Calibration Header ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ color: '#4f8ef7', fontSize: '13px' }}>☲</span>
           <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: '#94a3b8', letterSpacing: '0.5px' }}>
-            COMBUSTION MORPHOLOGY // FLAME DYNAMICS EXTINCTION CHAMBER
+            COMBUSTION MORPHOLOGY // 3D EVA SUIT & FLAME DYNAMICS TESTBENCH
           </span>
         </div>
 
-        <div style={{ display: 'flex', gap: '6px' }}>
-          <span
-            style={{
-              fontSize: '10px',
-              fontFamily: 'var(--font-mono)',
-              background: '#111827',
-              border: '1px solid #1c2640',
-              color: '#64748b',
-              padding: '4px 8px',
-              borderRadius: '4px',
-            }}
-          >
-            TELEMETRY SYNTHESIS [BETA-CHAMBER-2]
-          </span>
-          <span
-            style={{
-              fontSize: '10px',
-              fontFamily: 'var(--font-mono)',
-              background: 'rgba(245, 158, 11, 0.1)',
-              border: '1px solid rgba(245, 158, 11, 0.25)',
-              color: '#f59e0b',
-              padding: '4px 8px',
-              borderRadius: '4px',
-            }}
-          >
-            ● QUALITATIVE ILLUSTRATION — NOT A PHYSICS SIMULATION
-          </span>
-          <span
-            style={{
-              fontSize: '10px',
-              fontFamily: 'var(--font-mono)',
-              background: '#111827',
-              border: '1px solid #1c2640',
-              color: '#34d399',
-              padding: '4px 8px',
-              borderRadius: '4px',
-            }}
-          >
-            ● INTERACTIVE TESTBENCH // DUAL CHAMBER
-          </span>
-          <span
-            style={{
-              fontSize: '10px',
-              fontFamily: 'var(--font-mono)',
-              background: '#111827',
-              border: '1px solid #1c2640',
-              color: '#64748b',
-              padding: '4px 8px',
-              borderRadius: '4px',
-            }}
-          >
-            10MM HUD
-          </span>
+        {/* One-Click Presets for Normal, Flames, and Burned Suit */}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          {CHAMBER_PRESETS.map((preset) => {
+            const active = resolvedSuitState === preset.suitState;
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => applyPreset(preset)}
+                style={{
+                  fontSize: '10.5px',
+                  fontFamily: 'var(--font-mono)',
+                  fontWeight: active ? 700 : 500,
+                  background: active ? `${preset.color}22` : '#111827',
+                  border: active ? `1px solid ${preset.color}` : '1px solid #1c2640',
+                  color: active ? preset.color : '#cbd5e1',
+                  padding: '5px 11px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                }}
+              >
+                {preset.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* ── Two Columns: Microgravity vs Earth Flame ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-        {/* ── 0G Flame Panel ── */}
+      {/* ── Three Columns: 0G Flame vs 1G Flame vs 3D EVA Astronaut Suit Test ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(310px, 1fr))', gap: '18px' }}>
+        {/* ── 01. 3D EVA Astronaut Suit Flammability Chamber ── */}
         <div
           style={{
             background: '#0d1321',
@@ -116,7 +135,86 @@ export default function Flame3DPage() {
             gap: '12px',
           }}
         >
-          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '15px', fontWeight: 700, color: '#f8fafc' }}>
+                  3D EVA Astronaut Suit Test
+                </span>
+                <span
+                  style={{
+                    fontSize: '9px',
+                    fontFamily: 'var(--font-mono)',
+                    color:
+                      resolvedSuitState === 'burned'
+                        ? '#ef4444'
+                        : resolvedSuitState === 'flames'
+                          ? '#f59e0b'
+                          : '#10b981',
+                    background:
+                      resolvedSuitState === 'burned'
+                        ? 'rgba(239, 68, 68, 0.14)'
+                        : resolvedSuitState === 'flames'
+                          ? 'rgba(245, 158, 11, 0.14)'
+                          : 'rgba(16, 185, 129, 0.14)',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                  }}
+                >
+                  {resolvedSuitState === 'burned'
+                    ? 'BURNED / CHARRED'
+                    : resolvedSuitState === 'flames'
+                      ? 'ACTIVE FLAMES'
+                      : 'NOMINAL SUIT'}
+                </span>
+              </div>
+              <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#64748b', marginTop: '2px' }}>
+                EVA Suit Material Response ({oxygen.toFixed(0)}% O₂)
+              </div>
+            </div>
+            <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#94a3b8' }}>
+              CAM-SUIT-3D
+            </span>
+          </div>
+
+          <div
+            style={{
+              height: '240px',
+              borderRadius: '6px',
+              overflow: 'hidden',
+              position: 'relative',
+              border: '1px solid #1c2640',
+            }}
+          >
+            <FlameVisualization
+              type="astronaut"
+              oxygen={oxygen}
+              airflow={airflow}
+              suitState={resolvedSuitState}
+            />
+          </div>
+
+          <p style={{ fontSize: '11.5px', color: '#cbd5e1', lineHeight: 1.45, margin: 0 }}>
+            {resolvedSuitState === 'burned'
+              ? 'At ≥50% O₂ (e.g. pure-O₂ EVA suit conditions), rapid flashover chars the outer Ortho-Fabric layer, shatters the visor, and leaves glowing embers.'
+              : resolvedSuitState === 'flames'
+                ? 'At 26%–49% O₂ (enriched lunar/Mars habitat atmosphere), elevated oxygen partial pressure sustains active flame propagation across the suit.'
+                : 'At <26% O₂ (nominal ISS / Earth cabin air), the EVA suit material remains self-extinguishing and nominal.'}
+          </p>
+        </div>
+
+        {/* ── 02. 0G Flame Panel ── */}
+        <div
+          style={{
+            background: '#0d1321',
+            border: '1px solid #1c2640',
+            borderRadius: '8px',
+            padding: '16px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+          }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -145,26 +243,6 @@ export default function Flame3DPage() {
             </span>
           </div>
 
-          {/* Quick Metrics */}
-          <div
-            style={{
-              display: 'flex',
-              gap: '12px',
-              fontSize: '10px',
-              fontFamily: 'var(--font-mono)',
-              color: '#94a3b8',
-              background: '#111827',
-              padding: '6px 10px',
-              borderRadius: '4px',
-              border: '1px solid #1c2640',
-            }}
-          >
-            <span>Buoyancy Vector: <strong style={{ color: '#38bdf8' }}>{zeroG.buoyancy}</strong></span>
-            <span>Soot Radiation: <strong style={{ color: '#38bdf8' }}>{zeroG.sootRadiation}</strong></span>
-            <span>Quenching Zone: <strong style={{ color: '#e2e8f0' }}>{zeroG.quenchingZone}</strong></span>
-          </div>
-
-          {/* 3D Flame Canvas Area */}
           <div
             style={{
               height: '240px',
@@ -174,84 +252,15 @@ export default function Flame3DPage() {
               border: '1px solid #1c2640',
             }}
           >
-            {/* Overlay labels */}
-            <div
-              style={{
-                position: 'absolute',
-                top: '10px',
-                left: '12px',
-                zIndex: 10,
-                fontSize: '10px',
-                fontFamily: 'var(--font-mono)',
-                color: '#94a3b8',
-                background: 'rgba(13, 19, 33, 0.7)',
-                padding: '2px 6px',
-                borderRadius: '4px',
-              }}
-            >
-              RADIAL EXPANSION: {(17.7 * (oxygen / 30)).toFixed(1)} mm
-            </div>
-            <div
-              style={{
-                position: 'absolute',
-                top: '10px',
-                right: '12px',
-                zIndex: 10,
-                fontSize: '9px',
-                fontFamily: 'var(--font-mono)',
-                color: '#38bdf8',
-                background: 'rgba(56, 189, 248, 0.1)',
-                padding: '2px 6px',
-                borderRadius: '4px',
-                border: '1px solid rgba(56, 189, 248, 0.2)',
-              }}
-            >
-              FLOW REGIME: {zeroG.flowRegime}
-            </div>
-
             <FlameVisualization type="spherical" oxygen={oxygen} airflow={airflow} />
           </div>
 
-          {/* Spectral Sub-stats */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
-            <span>● {zeroG.emission}</span>
-            <span>SYM-RATIO: {zeroG.symRatio}</span>
-          </div>
-
-          {/* Text Description */}
           <p style={{ fontSize: '11.5px', color: '#cbd5e1', lineHeight: 1.45, margin: 0 }}>
             {zeroG.description}
           </p>
-
-          {/* 3 Columns Stats Bottom */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr 1fr',
-              gap: '8px',
-              borderTop: '1px solid #1c2640',
-              paddingTop: '10px',
-            }}
-          >
-            <div>
-              <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>PEAK CORE TEMP</div>
-              <div style={{ fontSize: '15px', fontWeight: 700, color: '#38bdf8' }}>{zeroG.peakCoreTemp}</div>
-              <div style={{ fontSize: '9px', color: '#94a3b8' }}>{zeroG.peakLabel}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>QUENCH RADIUS</div>
-              <div style={{ fontSize: '15px', fontWeight: 700, color: '#f8fafc' }}>{zeroG.quenchRadius}</div>
-              <div style={{ fontSize: '9px', color: '#94a3b8' }}>{zeroG.quenchLabel}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>SPECTRAL MODE</div>
-              <div style={{ fontSize: '13px', fontWeight: 700, color: '#a78bfa' }}>{zeroG.spectralMode}</div>
-              <div style={{ fontSize: '9px', color: '#94a3b8' }}>{zeroG.spectralLabel}</div>
-            </div>
-          </div>
         </div>
 
-        {/* ── 1G Flame Panel ── */}
+        {/* ── 03. 1G Flame Panel ── */}
         <div
           style={{
             background: '#0d1321',
@@ -263,7 +272,6 @@ export default function Flame3DPage() {
             gap: '12px',
           }}
         >
-          {/* Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -292,26 +300,6 @@ export default function Flame3DPage() {
             </span>
           </div>
 
-          {/* Quick Metrics */}
-          <div
-            style={{
-              display: 'flex',
-              gap: '12px',
-              fontSize: '10px',
-              fontFamily: 'var(--font-mono)',
-              color: '#94a3b8',
-              background: '#111827',
-              padding: '6px 10px',
-              borderRadius: '4px',
-              border: '1px solid #1c2640',
-            }}
-          >
-            <span>Buoyancy Vector: <strong style={{ color: '#f59e0b' }}>{oneG.buoyancy}</strong></span>
-            <span>Soot Radiation: <strong style={{ color: '#f59e0b' }}>{oneG.sootRadiation}</strong></span>
-            <span>Upward Draft: <strong style={{ color: '#e2e8f0' }}>{oneG.upwardDraft}</strong></span>
-          </div>
-
-          {/* 3D Flame Canvas Area */}
           <div
             style={{
               height: '240px',
@@ -321,81 +309,12 @@ export default function Flame3DPage() {
               border: '1px solid #1c2640',
             }}
           >
-            {/* Overlay labels */}
-            <div
-              style={{
-                position: 'absolute',
-                top: '10px',
-                left: '12px',
-                zIndex: 10,
-                fontSize: '10px',
-                fontFamily: 'var(--font-mono)',
-                color: '#94a3b8',
-                background: 'rgba(13, 19, 33, 0.7)',
-                padding: '2px 6px',
-                borderRadius: '4px',
-              }}
-            >
-              FLAME HEIGHT: {(25.5 * (1 + airflow * 2)).toFixed(1)} mm
-            </div>
-            <div
-              style={{
-                position: 'absolute',
-                top: '10px',
-                right: '12px',
-                zIndex: 10,
-                fontSize: '9px',
-                fontFamily: 'var(--font-mono)',
-                color: '#f59e0b',
-                background: 'rgba(245, 158, 11, 0.1)',
-                padding: '2px 6px',
-                borderRadius: '4px',
-                border: '1px solid rgba(245, 158, 11, 0.2)',
-              }}
-            >
-              FLOW REGIME: {oneG.flowRegime}
-            </div>
-
             <FlameVisualization type="teardrop" oxygen={oxygen} airflow={airflow} />
           </div>
 
-          {/* Spectral Sub-stats */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
-            <span>● {oneG.emission}</span>
-            <span>ASPECT: {oneG.aspectRatio}</span>
-          </div>
-
-          {/* Text Description */}
           <p style={{ fontSize: '11.5px', color: '#cbd5e1', lineHeight: 1.45, margin: 0 }}>
             {oneG.description}
           </p>
-
-          {/* 3 Columns Stats Bottom */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr 1fr',
-              gap: '8px',
-              borderTop: '1px solid #1c2640',
-              paddingTop: '10px',
-            }}
-          >
-            <div>
-              <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>PEAK CORE TEMP</div>
-              <div style={{ fontSize: '15px', fontWeight: 700, color: '#f59e0b' }}>{oneG.peakCoreTemp}</div>
-              <div style={{ fontSize: '9px', color: '#94a3b8' }}>{oneG.peakLabel}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>FLAME HEIGHT</div>
-              <div style={{ fontSize: '15px', fontWeight: 700, color: '#f8fafc' }}>{oneG.flameHeightStat}</div>
-              <div style={{ fontSize: '9px', color: '#94a3b8' }}>{oneG.flameHeightLabel}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>ASPECT RATIO</div>
-              <div style={{ fontSize: '14px', fontWeight: 700, color: '#fb923c' }}>{oneG.aspectRatioStat}</div>
-              <div style={{ fontSize: '9px', color: '#94a3b8' }}>{oneG.aspectRatioLabel}</div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -411,9 +330,9 @@ export default function Flame3DPage() {
           gap: '14px',
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
           <div style={{ fontSize: '12px', fontWeight: 700, color: '#f8fafc' }}>
-            ⚙ AEROSPACE TESTBENCH PARAMETERS & CONVECTION CONTROLS
+            ⚙ AEROSPACE TESTBENCH PARAMETERS & SUIT STATE CONTROLS
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button
@@ -431,27 +350,12 @@ export default function Flame3DPage() {
             >
               ⟳ RESET BASELINE
             </button>
-            <button
-              onClick={() => alert('Exporting telemetry payload HDF5...')}
-              style={{
-                fontSize: '10px',
-                fontFamily: 'var(--font-mono)',
-                background: '#4f8ef7',
-                border: 'none',
-                color: '#ffffff',
-                padding: '4px 10px',
-                borderRadius: '4px',
-                cursor: 'pointer',
-              }}
-            >
-              📥 EXPORT TELEMETRY (HDF5)
-            </button>
           </div>
         </div>
 
         {/* 3 Control sliders / pills */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr', gap: '16px' }}>
-          {/* 01. Oxygen Concentration */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+          {/* 01. Oxygen Concentration (15% to 100% so Burned Suit >=50% is reachable via slider too!) */}
           <div style={{ background: '#111827', padding: '12px 14px', borderRadius: '6px', border: '1px solid #1c2640' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontFamily: 'var(--font-mono)', marginBottom: '8px' }}>
               <span style={{ color: '#64748b' }}>01. OXYGEN CONCENTRATION</span>
@@ -460,16 +364,19 @@ export default function Flame3DPage() {
             <input
               type="range"
               min="15"
-              max="40"
-              step="0.5"
+              max="100"
+              step="1"
               value={oxygen}
-              onChange={(e) => setOxygen(parseFloat(e.target.value))}
+              onChange={(e) => {
+                setOxygen(parseFloat(e.target.value));
+                setSuitState('auto');
+              }}
               style={{ width: '100%', accentColor: '#38bdf8' }}
             />
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748b', marginTop: '4px' }}>
-              <span>15.0% (Hypoxic)</span>
-              <span>30.0% (Lunar/Spacecraft)</span>
-              <span>40.0% (Max)</span>
+              <span>21% Nominal</span>
+              <span>35% Flames</span>
+              <span>85% Burned Suit</span>
             </div>
           </div>
 
@@ -527,26 +434,9 @@ export default function Flame3DPage() {
             </div>
           </div>
         </div>
-
-        {/* Status Footer */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            fontSize: '10px',
-            fontFamily: 'var(--font-mono)',
-            color: '#64748b',
-            borderTop: '1px solid #1c2640',
-            paddingTop: '8px',
-          }}
-        >
-          <span>● QUALITATIVE ILLUSTRATION — NOT A PHYSICS SIMULATION</span>
-          <span>BOUNDED REGIME: MICRO-G (0g) ↔ 1G</span>
-          <span>PARTIAL-G PROXY: E-FIELD FLAMES (ACME) · MAX O₂: CFI-G (85%)</span>
-        </div>
       </div>
 
-      {/* ── Full What-If Scenario Test Panel ── */}
+      {/* ── Full FireHazR Lab Panel ── */}
       <FireHazRPage />
     </div>
   );

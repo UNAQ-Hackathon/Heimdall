@@ -20,8 +20,8 @@ async function request(path, options = {}) {
 
 export const api = {
   firehazrMetadata: () => request('/analytics/firehazr'),
-  predictFirehazr: (conditions) => request('/analytics/firehazr/predict', {
-    method: 'POST', body: JSON.stringify(conditions),
+  predictFirehazr: (conditions, { signal } = {}) => request('/analytics/firehazr/predict', {
+    method: 'POST', body: JSON.stringify(conditions), signal,
   }),
   listInvestigations: async (params = {}) => {
     try {

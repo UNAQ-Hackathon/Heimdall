@@ -32,9 +32,8 @@ export default function WhatIfTestPanel({
         : 'microgravity'
   );
   const [fuelType, setFuelType] = useState('all');
-  const [flameShape, setFlameShape] = useState(
-    activeScenario.gravity === '1g' ? 'teardrop' : 'spherical'
-  );
+  const [flameShape, setFlameShape] = useState('astronaut');
+  const [suitState, setSuitState] = useState('auto');
   const [rankedResults, setRankedResults] = useState([]);
 
   useEffect(() => {
@@ -48,7 +47,7 @@ export default function WhatIfTestPanel({
         ? '1g'
         : 'microgravity';
     setGravityMode(nextG);
-    setFlameShape(nextG === '1g' ? 'teardrop' : 'spherical');
+    setSuitState('auto');
   }, [scenarioKey]);
 
   const effectiveGravity =
@@ -196,10 +195,10 @@ export default function WhatIfTestPanel({
         {/* Preset Buttons */}
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
           {[
-            { label: 'ISS (21% O₂)', o2: 21, p: 14.7, flow: 0.1, shape: 'spherical', g: 'microgravity' },
-            { label: 'Lunar/Mars (30% O₂)', o2: 30, p: 10.2, flow: 0.15, shape: 'spherical', g: 'scenario' },
-            { label: 'Earth 1g (21% O₂)', o2: 21, p: 14.7, flow: 0.05, shape: 'teardrop', g: '1g' },
-            { label: 'Out-of-Bounds (95% O₂)', o2: 95, p: 4.3, flow: 0.45, shape: 'spherical', g: 'microgravity' },
+            { label: 'Nominal Suit (21% O₂)', o2: 21, p: 14.7, flow: 0.1, shape: 'astronaut', suit: 'normal', g: 'microgravity' },
+            { label: 'Suit in Flames (35% O₂)', o2: 35, p: 10.2, flow: 0.15, shape: 'astronaut', suit: 'flames', g: 'scenario' },
+            { label: 'Burned Suit (85% O₂)', o2: 85, p: 4.3, flow: 0.45, shape: 'astronaut', suit: 'burned', g: 'microgravity' },
+            { label: 'Earth 1g Plume (21% O₂)', o2: 21, p: 14.7, flow: 0.05, shape: 'teardrop', suit: 'normal', g: '1g' },
           ].map((preset) => (
             <button
               key={preset.label}
@@ -209,6 +208,7 @@ export default function WhatIfTestPanel({
                 setPressurePsi(preset.p);
                 setFlowVelocity(preset.flow);
                 setFlameShape(preset.shape);
+                setSuitState(preset.suit);
                 setGravityMode(preset.g);
               }}
               style={{
@@ -270,6 +270,24 @@ export default function WhatIfTestPanel({
           >
             <button
               type="button"
+              onClick={() => setFlameShape('astronaut')}
+              style={{
+                fontSize: '10.5px',
+                fontFamily: 'var(--font-mono)',
+                padding: '4px 9px',
+                borderRadius: '6px',
+                border: 'none',
+                background:
+                  flameShape === 'astronaut' ? 'rgba(16, 185, 129, 0.2)' : 'transparent',
+                color: flameShape === 'astronaut' ? '#34d399' : '#94a3b8',
+                cursor: 'pointer',
+                fontWeight: flameShape === 'astronaut' ? 600 : 400,
+              }}
+            >
+              3D Astronaut Suit
+            </button>
+            <button
+              type="button"
               onClick={() => setFlameShape('spherical')}
               style={{
                 fontSize: '10.5px',
@@ -316,7 +334,12 @@ export default function WhatIfTestPanel({
             position: 'relative',
           }}
         >
-          <FlameVisualization type={flameShape} oxygen={oxygenPct} airflow={flowVelocity} />
+          <FlameVisualization
+            type={flameShape}
+            oxygen={oxygenPct}
+            airflow={flowVelocity}
+            suitState={suitState}
+          />
           <div
             style={{
               position: 'absolute',
@@ -409,7 +432,10 @@ export default function WhatIfTestPanel({
             max="100"
             step="1"
             value={oxygenPct}
-            onChange={(e) => setOxygenPct(Number(e.target.value))}
+            onChange={(e) => {
+              setOxygenPct(Number(e.target.value));
+              setSuitState('auto');
+            }}
             style={{ width: '100%', accentColor: '#38bdf8', cursor: 'pointer' }}
           />
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>

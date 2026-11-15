@@ -3,9 +3,9 @@ import { api } from '../services/api.js';
 import HeimdallLogo from '../components/ui/HeimdallLogo.jsx';
 
 const QUICK_PROMPTS = [
-  'Hola Heimdall, confirma que la conexión con Devin API está activa.',
-  '¿Qué factores afectan la inflamabilidad de materiales en microgravedad?',
-  'Resume qué variables son críticas en experimentos de combustión espacial (O2 %, presión, gravedad).',
+  'Hi Heimdall, check the connection to the Devin API.',
+  'What factors affect material flammability in microgravity?',
+  'Summarize the key variables in space combustion experiments: oxygen, pressure, and gravity.',
 ];
 
 export default function ChatPage() {
@@ -14,7 +14,7 @@ export default function ChatPage() {
       id: 'welcome',
       role: 'assistant',
       content:
-        'Panel de prueba conectado a Devin API. Envía una pregunta o usa uno de los ejemplos para probar la sesión.',
+        'Ask a question or choose an example to test your Devin API session.',
     },
   ]);
   const [input, setInput] = useState('');
@@ -83,8 +83,8 @@ export default function ChatPage() {
         id: pendingMsgId,
         role: 'assistant',
         content: sessionId
-          ? 'Enviando mensaje a la sesión activa de Devin…'
-          : 'Iniciando sesión en Devin API (la primera respuesta puede tardar ~20–45s)…',
+          ? 'Sending your message to Devin…'
+          : 'Starting a Devin API session…',
         pending: true,
       },
     ]);
@@ -115,7 +115,7 @@ export default function ChatPage() {
             m.id === pendingMsgId
               ? {
                   ...m,
-                  content: `Sesión de Devin creada (${res.sessionStatus ?? 'running'}). Esperando respuesta…`,
+                  content: `Devin session created (${res.sessionStatus ?? 'running'}). Waiting for a response…`,
                   pending: true,
                 }
               : m
@@ -148,7 +148,7 @@ export default function ChatPage() {
       {
         id: `welcome-${Date.now()}`,
         role: 'assistant',
-        content: 'Sesión reiniciada. El próximo mensaje abrirá una nueva sesión en Devin.',
+        content: 'Session reset. Your next message will start a new Devin session.',
       },
     ]);
   };
@@ -163,7 +163,7 @@ export default function ChatPage() {
         <div className="chat-panel__meta">
           {sessionId && (
             <span className="chat-panel__badge">
-              Sesión: <code>{sessionId.slice(0, 14)}…</code>
+              Session: <code>{sessionId.slice(0, 14)}…</code>
               {sessionStatus ? ` · ${sessionStatus}` : ''}
             </span>
           )}
@@ -174,7 +174,7 @@ export default function ChatPage() {
               rel="noreferrer"
               className="chat-panel__link"
             >
-              Ver en Devin ↗
+              View in Devin ↗
             </a>
           )}
           {sessionId && (
@@ -183,7 +183,7 @@ export default function ChatPage() {
               onClick={resetSession}
               className="chat-panel__reset"
             >
-              Nueva sesión
+              New session
             </button>
           )}
         </div>
@@ -209,12 +209,12 @@ export default function ChatPage() {
             className={`chat-msg chat-msg--${msg.role}${msg.pending ? ' chat-msg--pending' : ''}`}
           >
             <header className="chat-msg__role">
-              {msg.role === 'user' ? 'Tú' : 'Heimdall (Devin)'}
+              {msg.role === 'user' ? 'You' : 'Heimdall (Devin)'}
             </header>
             <div className="chat-msg__body">{msg.content}</div>
             {msg.citations?.length > 0 && (
               <footer className="chat-msg__citations">
-                Fuentes PSI:{' '}
+                PSI sources:{' '}
                 {msg.citations.map((c) => c.acronym || c.title).join(', ')}
               </footer>
             )}
@@ -233,11 +233,11 @@ export default function ChatPage() {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Escribe una pregunta para probar Devin API…"
+          placeholder="Ask a question to test the Devin API…"
           disabled={loading}
         />
         <button type="submit" disabled={loading || !input.trim()}>
-          {loading ? 'Esperando…' : 'Enviar'}
+          {loading ? 'Waiting…' : 'Send'}
         </button>
       </form>
     </section>

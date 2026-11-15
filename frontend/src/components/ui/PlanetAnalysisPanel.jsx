@@ -86,20 +86,11 @@ export default function PlanetAnalysisPanel({
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span
             style={{
-              width: '8px',
-              height: '8px',
-              borderRadius: '50%',
-              background: activeZone?.color ?? preview.accent ?? '#38bdf8',
-            }}
-          />
-          <span
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: '10px',
-              fontWeight: 600,
-              letterSpacing: '0.08em',
-              color: '#94a3b8',
-              textTransform: 'uppercase',
+              fontFamily: 'var(--font-sans)',
+              fontSize: '13px',
+              fontWeight: 700,
+              letterSpacing: '0.01em',
+              color: '#b7cbe4',
             }}
           >
             {planet.label} · Surface Preview
@@ -132,88 +123,35 @@ export default function PlanetAnalysisPanel({
           tabIndex={-1}
           style={{
             margin: 0,
-            fontSize: '16px',
-            fontWeight: 700,
+            fontSize: '22px',
+            fontWeight: 800,
             color: '#f8fafc',
             outline: 'none',
           }}
         >
           {activeZone?.label ?? preview.title}
         </h2>
-        <p style={{ margin: '3px 0 0', fontSize: '11.5px', color: '#94a3b8', lineHeight: 1.4 }}>
+        <p style={{ margin: '6px 0 0', fontSize: '13px', color: '#afc2db', lineHeight: 1.55 }}>
           {activeZone?.biomes ?? planet.publicDescription ?? preview.description}
         </p>
       </div>
 
       {/* Interactive Earth Biome Selector (Tropical / Subtropical / Temperate / Polar) */}
       {planet.id === 'earth' && (
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '6px',
-            padding: '8px 10px',
-            borderRadius: '8px',
-            background: 'rgba(15, 23, 42, 0.7)',
-            border: '1px solid var(--border-subtle)',
-          }}
-        >
-          <span
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: '9.5px',
-              color: '#64748b',
-              letterSpacing: '0.06em',
-            }}
-          >
-            EARTH BIOME PREVIEW
-          </span>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
-              gap: '5px',
-            }}
-          >
-            {EARTH_ZONES.map((z) => {
-              const isSelected = activeZone?.id === z.id;
-              return (
-                <button
-                  key={z.id}
-                  type="button"
-                  onClick={() => handleZoneClick(z.id)}
-                  style={{
-                    padding: '5px 4px',
-                    borderRadius: '6px',
-                    fontSize: '10.5px',
-                    fontWeight: isSelected ? 600 : 500,
-                    background: isSelected
-                      ? 'rgba(56, 189, 248, 0.16)'
-                      : 'rgba(10, 15, 29, 0.7)',
-                    border: isSelected
-                      ? `1px solid ${z.color}`
-                      : '1px solid var(--border-subtle)',
-                    color: isSelected ? '#f8fafc' : '#94a3b8',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '4px',
-                  }}
-                >
-                  <span
-                    style={{
-                      width: '6px',
-                      height: '6px',
-                      borderRadius: '50%',
-                      background: z.color,
-                      flexShrink: 0,
-                    }}
-                  />
-                  <span>{z.label.replace(' Zone', '')}</span>
-                </button>
-              );
-            })}
+        <div className="earth-biome-selector" role="group" aria-labelledby="earth-biome-label">
+          <span id="earth-biome-label" className="earth-biome-selector__label">Earth biome preview</span>
+          <div className="earth-biome-selector__options">
+            {EARTH_ZONES.map((z) => (
+              <button
+                key={z.id}
+                type="button"
+                className="earth-biome-selector__button"
+                aria-pressed={activeZone?.id === z.id}
+                onClick={() => handleZoneClick(z.id)}
+              >
+                {z.label}
+              </button>
+            ))}
           </div>
         </div>
       )}
