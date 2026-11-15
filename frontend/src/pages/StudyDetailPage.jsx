@@ -5,6 +5,76 @@ import TimeSeriesChart from '../components/charts/TimeSeriesChart.jsx';
 import { INVESTIGATIONS } from '../services/mockData.js';
 import { api } from '../services/api.js';
 
+const cardStyle = {
+  background: '#0d1321',
+  border: '1px solid #1c2640',
+  borderRadius: '8px',
+  padding: '18px 20px',
+};
+
+function formatOxygen(conditions = {}) {
+  const min = conditions.oxygenMinPct ?? conditions.oxygenPct ?? conditions.oxygenMaxPct;
+  const max = conditions.oxygenMaxPct ?? conditions.oxygenPct ?? conditions.oxygenMinPct;
+  if (min == null && max == null) return 'Not reported';
+  return min !== max ? `${min}%–${max}%` : `${min}%`;
+}
+
+function getTelemetrySeries(series = []) {
+  const temperature = series.find((item) => /temp|thermocouple/i.test(item.name ?? ''));
+  const radiantFlux = series.find((item) => /flux|radiant|heat/i.test(item.name ?? ''));
+  const matched = [
+    temperature && { series: temperature, key: 'tc' },
+    radiantFlux && { series: radiantFlux, key: 'flux' },
+  ].filter(Boolean);
+  const pointsByTime = new Map();
+
+  matched.forEach(({ series: telemetry, key }) => {
+    telemetry.samples?.forEach((sample) => {
+      if (!Array.isArray(sample) || sample.length < 2) return;
+      const time = Number(sample[0]);
+      const value = Number(sample[1]);
+      if (!Number.isFinite(time) || !Number.isFinite(value)) return;
+      const point = pointsByTime.get(time) ?? { time };
+      point[key] = value;
+      pointsByTime.set(time, point);
+    });
+  });
+
+  const data = [...pointsByTime.values()].sort((a, b) => a.time - b.time);
+  return data.length ? { data } : null;
+}
+
+function MetricCard({ label, value, detail }) {
+  return (
+    <div
+      style={{
+        background: '#0d1321',
+        border: '1px solid #1c2640',
+        borderRadius: '8px',
+        padding: '14px 16px',
+        minWidth: 0,
+      }}
+    >
+      <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748b', marginBottom: '8px' }}>
+        {label}
+      </div>
+      <div style={{ fontSize: '20px', fontWeight: 700, color: '#f8fafc', lineHeight: 1.15 }}>{value}</div>
+      {detail && <div style={{ fontSize: '10px', color: '#8892a8', marginTop: '5px' }}>{detail}</div>}
+    </div>
+  );
+}
+
+function SpecCard({ label, children }) {
+  return (
+    <div style={{ background: '#111827', border: '1px solid #1c2640', borderRadius: '6px', padding: '14px 16px' }}>
+      <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748b', marginBottom: '7px' }}>
+        {label}
+      </div>
+      <div style={{ fontSize: '12px', color: '#cbd5e1', lineHeight: 1.55 }}>{children}</div>
+    </div>
+  );
+}
+
 export default function StudyDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -15,23 +85,35 @@ export default function StudyDetailPage() {
           item.id === id ||
           String(item.psiId ?? '').toLowerCase() === String(id ?? '').toLowerCase() ||
           String(item.acronym ?? '').toLowerCase() === String(id ?? '').toLowerCase()
-      ) || INVESTIGATIONS[0]
+      ) || null
   );
+  const [loadError, setLoadError] = useState('');
   const [overlay1g, setOverlay1g] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    setLoadError('');
     api.getInvestigation(id).then((doc) => {
       if (!cancelled && doc) setStudy(doc);
+    }).catch((error) => {
+      if (!cancelled) setLoadError(error.message);
     });
     return () => {
       cancelled = true;
     };
   }, [id]);
 
+  if (loadError && !study) {
+    return <div style={{ padding: '40px', color: '#fb7185' }}>Unable to load study: {loadError}</div>;
+  }
   if (!study) {
     return <div style={{ padding: '40px', color: '#8892a8' }}>Loading study telemetry...</div>;
   }
+
+  const conditions = study.conditions ?? {};
+  const gravity = String(study.gravityLevel ?? 'Not reported').replace('-', ' ');
+  const sourceUrl = study.sourceUrl ?? 'https://psi.nasa.gov/';
+  const telemetryData = getTelemetrySeries(study.series);
 
   return (
     <div
@@ -45,120 +127,26 @@ export default function StudyDetailPage() {
         background: '#060a14',
       }}
     >
-      {/* ── Top Header Area ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
-        <div>
-          <div
-            style={{
-              fontSize: '11px',
-              fontFamily: 'var(--font-mono)',
-              color: '#4f8ef7',
-              letterSpacing: '0.8px',
-              marginBottom: '6px',
-            }}
-          >
-            NASA PSI ARCHIVE // {study.psiId ?? study.archiveCode} · HARDWARE: {study.hardware ?? 'ISS Facility'} · CATEGORY:{' '}
-            {(study.category ?? 'prevention').toUpperCase()}
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#4f8ef7', letterSpacing: '0.8px', marginBottom: '6px' }}>
+            NASA PSI ARCHIVE // {study.psiId ?? study.archiveCode}
           </div>
-          <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#f8fafc', margin: '0 0 6px 0' }}>
+          <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#f8fafc', margin: '0 0 6px' }}>
             {study.acronym ?? study.name}: {study.title ?? study.subtitle}
           </h1>
-          <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0, maxWidth: '800px' }}>
-            {study.objective ?? study.description}
+          <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>
+            Verified experimental record · {study.category ?? 'combustion study'}
           </p>
-
-          {/* Tags */}
-          <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
-            <span
-              style={{
-                fontSize: '10px',
-                fontFamily: 'var(--font-mono)',
-                background: '#111827',
-                border: '1px solid #1c2640',
-                color: '#cbd5e1',
-                padding: '3px 8px',
-                borderRadius: '4px',
-              }}
-            >
-              Fuel: {study.fuel ?? 'null'}
-            </span>
-            <span
-              style={{
-                fontSize: '10px',
-                fontFamily: 'var(--font-mono)',
-                background: '#111827',
-                border: '1px solid #1c2640',
-                color: '#cbd5e1',
-                padding: '3px 8px',
-                borderRadius: '4px',
-              }}
-            >
-              Gravity: {study.gravityLevel}
-            </span>
-            <span
-              style={{
-                fontSize: '10px',
-                fontFamily: 'var(--font-mono)',
-                background: '#111827',
-                border: '1px solid #1c2640',
-                color: '#cbd5e1',
-                padding: '3px 8px',
-                borderRadius: '4px',
-              }}
-            >
-              Hardware: {study.hardware ?? 'null'}
-            </span>
-            <a
-              href={study.sourceUrl ?? 'https://psi.nasa.gov/'}
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                fontSize: '10px',
-                fontFamily: 'var(--font-mono)',
-                background: 'rgba(56, 189, 248, 0.12)',
-                border: '1px solid rgba(56, 189, 248, 0.35)',
-                color: '#38bdf8',
-                padding: '3px 8px',
-                borderRadius: '4px',
-                textDecoration: 'none',
-              }}
-            >
-              Source: {study.sourceUrl ?? 'https://psi.nasa.gov/'} ↗
-            </a>
-          </div>
         </div>
 
-        {/* Study switcher & Verified badge */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
-          <div
-            style={{
-              fontSize: '11px',
-              fontFamily: 'var(--font-mono)',
-              fontWeight: 700,
-              color: '#34d399',
-              background: 'rgba(52, 211, 153, 0.1)',
-              border: '1px solid rgba(52, 211, 153, 0.25)',
-              padding: '6px 12px',
-              borderRadius: '6px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
-          >
-            <span>●</span> {study.verifiedLabel || 'NASA PSI ARCHIVE RECORD'}
-          </div>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
           <select
             aria-label="Select PSI Investigation"
             className="tri-select"
             value={study.id}
-            onChange={(e) => navigate(`/study/${e.target.value}`)}
-            style={{
-              border: '1px solid #1e293b',
-              color: '#e2e8f0',
-              fontSize: '11.5px',
-              padding: '5px 10px',
-              borderRadius: '4px',
-            }}
+            onChange={(event) => navigate(`/study/${event.target.value}`)}
+            style={{ border: '1px solid #1e293b', color: '#e2e8f0', fontSize: '11.5px', padding: '7px 10px', borderRadius: '4px' }}
           >
             {INVESTIGATIONS.map((inv) => (
               <option key={inv.id} value={inv.id}>
@@ -166,262 +154,132 @@ export default function StudyDetailPage() {
               </option>
             ))}
           </select>
-        </div>
-      </div>
-
-      {/* ── Upper Grid: Extracted PSI Metadata + Flammability Boundary ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-        {/* Left: PSI Record Envelope */}
-        <div
-          style={{
-            background: '#0d1321',
-            border: '1px solid #1c2640',
-            borderRadius: '8px',
-            padding: '18px 20px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '14px',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '12px', fontWeight: 700, color: '#f8fafc', letterSpacing: '0.5px' }}>
-              ✦ PSI RECORD METADATA // VERIFIED EXPERIMENTAL ENVELOPE
-            </span>
-            <span
-              style={{
-                fontSize: '10px',
-                fontFamily: 'var(--font-mono)',
-                color: '#38bdf8',
-                background: 'rgba(56, 189, 248, 0.1)',
-                padding: '2px 8px',
-                borderRadius: '4px',
-                border: '1px solid rgba(56, 189, 248, 0.2)',
-              }}
-            >
-              {study.psiId}
-            </span>
-          </div>
-
-          {/* 4 Quadrants */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div style={{ background: '#111827', padding: '10px 12px', borderRadius: '6px', border: '1px solid #1c2640' }}>
-              <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748b', marginBottom: '4px' }}>
-                01 // MISSION OBJECTIVE
-              </div>
-              <div style={{ fontSize: '11px', color: '#cbd5e1', lineHeight: 1.4 }}>
-                {study.synthesis?.missionObjective}
-              </div>
-            </div>
-
-            <div style={{ background: '#111827', padding: '10px 12px', borderRadius: '6px', border: '1px solid #1c2640' }}>
-              <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748b', marginBottom: '4px' }}>
-                02 // FUEL & HARDWARE
-              </div>
-              <div style={{ fontSize: '11px', color: '#cbd5e1', lineHeight: 1.4 }}>
-                {study.synthesis?.fuelAndGeometry} ({study.hardware ?? 'null'})
-              </div>
-            </div>
-
-            <div style={{ background: '#111827', padding: '10px 12px', borderRadius: '6px', border: '1px solid #1c2640' }}>
-              <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748b', marginBottom: '4px' }}>
-                03 // MEASURED CONDITIONS
-              </div>
-              <div style={{ fontSize: '11px', color: '#cbd5e1', lineHeight: 1.4, fontFamily: 'var(--font-mono)' }}>
-                O₂: {study.conditions?.oxygenPct ?? 'null'}% | P: {study.conditions?.pressurePsi ?? 'null'} psi | Flow:{' '}
-                {study.conditions?.flowVelocity ?? 'null'} m/s
-              </div>
-            </div>
-
-            <div style={{ background: '#111827', padding: '10px 12px', borderRadius: '6px', border: '1px solid #1c2640' }}>
-              <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748b', marginBottom: '4px' }}>
-                04 // SENSORS & VARIABLES
-              </div>
-              <div style={{ fontSize: '11px', color: '#cbd5e1', lineHeight: 1.4 }}>
-                Sensors: {study.sensors?.join(', ') || 'null'}
-              </div>
-            </div>
-          </div>
-
-          {/* Earth Applications */}
-          {study.earthApplications?.length > 0 && (
-            <div
-              style={{
-                background: 'rgba(52, 211, 153, 0.08)',
-                border: '1px solid rgba(52, 211, 153, 0.25)',
-                borderRadius: '6px',
-                padding: '10px 14px',
-                fontSize: '11.5px',
-                color: '#d1fae5',
-              }}
-            >
-              <strong style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: '#34d399', display: 'block', marginBottom: '2px' }}>
-                EARTH SPIN-OFF APPLICATIONS:
-              </strong>
-              {study.earthApplications.join(' · ')}
-            </div>
-          )}
-
-          {/* Heimdall Insight callout */}
-          <div
+          <a
+            href={sourceUrl}
+            target="_blank"
+            rel="noreferrer"
             style={{
-              background: 'rgba(79, 142, 247, 0.08)',
-              border: '1px solid rgba(79, 142, 247, 0.25)',
-              borderRadius: '6px',
-              padding: '10px 14px',
-              display: 'flex',
-              gap: '10px',
-              alignItems: 'flex-start',
+              fontSize: '10px',
+              fontFamily: 'var(--font-mono)',
+              color: '#38bdf8',
+              background: 'rgba(56, 189, 248, 0.1)',
+              border: '1px solid rgba(56, 189, 248, 0.3)',
+              padding: '7px 10px',
+              borderRadius: '4px',
+              textDecoration: 'none',
+              whiteSpace: 'nowrap',
             }}
           >
-            <span style={{ color: '#4f8ef7', fontSize: '14px' }}>⚡</span>
-            <div>
-              <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#4f8ef7', marginBottom: '2px' }}>
-                HEIMDALL INSIGHT:
-              </div>
-              <div style={{ fontSize: '11.5px', color: '#e2e8f0', lineHeight: 1.45 }}>
-                {study.aiInsight}
-              </div>
-            </div>
-          </div>
+            NASA PSI ↗
+          </a>
         </div>
+      </header>
 
-        {/* Right: Flammability Boundary Map */}
-        <div
-          style={{
-            background: '#0d1321',
-            border: '1px solid #1c2640',
-            borderRadius: '8px',
-            padding: '18px 20px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '10px',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ fontSize: '12px', fontWeight: 700, color: '#f8fafc' }}>
-                REGIME FLAMMABILITY BOUNDARY (O₂ VS. FLOW VELOCITY)
-              </div>
-              <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
-                Microgravity Regime Map · Bounded Envelope Analysis
-              </div>
+      <section aria-label="Critical experimental conditions" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(155px, 1fr))', gap: '12px' }}>
+        <MetricCard label="O₂ CONCENTRATION" value={formatOxygen(conditions)} detail="Measured test envelope" />
+        <MetricCard label="PRESSURE" value={conditions.pressurePsi == null ? 'Not reported' : `${conditions.pressurePsi} psi`} detail={conditions.ambient} />
+        <MetricCard label="FLOW" value={conditions.flowVelocity == null ? 'Not reported' : `${conditions.flowVelocity} m/s`} detail="Forced ventilation" />
+        <MetricCard label="GRAVITY REGIME" value={gravity} detail="As recorded in PSI" />
+      </section>
+
+      <section aria-label="Study charts" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 430px), 1fr))', gap: '16px' }}>
+        <div style={{ ...cardStyle, display: 'flex', flexDirection: 'column', gap: '10px', minWidth: 0 }}>
+          <div>
+            <div style={{ fontSize: '12px', fontWeight: 700, color: '#f8fafc' }}>
+              ILLUSTRATIVE FLAMMABILITY ENVELOPE (O₂ VS. FLOW)
             </div>
-            <span
-              style={{
-                fontSize: '10px',
-                fontFamily: 'var(--font-mono)',
-                color: '#34d399',
-                background: 'rgba(52, 211, 153, 0.1)',
-                padding: '2px 8px',
-                borderRadius: '4px',
-              }}
-            >
-              ● BOUNDED INTERPOLATION
-            </span>
+            <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
+              Schematic curves · Not study-specific measurements
+            </div>
           </div>
-
           <FlammabilityChart />
         </div>
-      </div>
 
-      {/* ── Lower Grid: Time Series + Extrapolation Notice ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '20px' }}>
-        {/* Left: Time Series Chart */}
-        <div
-          style={{
-            background: '#0d1321',
-            border: '1px solid #1c2640',
-            borderRadius: '8px',
-            padding: '18px 20px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '10px',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ ...cardStyle, display: 'flex', flexDirection: 'column', gap: '10px', minWidth: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
             <div>
               <div style={{ fontSize: '12px', fontWeight: 700, color: '#f8fafc' }}>
-                ILLUSTRATIVE TELEMETRY PROFILE (TEMPERATURE & RADIANT FLUX)
+                {telemetryData ? 'MEASURED TELEMETRY PROFILE' : 'ILLUSTRATIVE TELEMETRY PROFILE'}
               </div>
               <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
-                Variables tracked: {study.variables?.join(', ') || 'None'}
+                {telemetryData
+                  ? `Record series: ${study.variables?.join(', ') || 'temperature / radiant flux'}`
+                  : 'No matching measured series; showing illustrative profile'}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '10px', fontSize: '10px', fontFamily: 'var(--font-mono)' }}>
+            <div style={{ display: 'flex', gap: '10px', fontSize: '10px', fontFamily: 'var(--font-mono)', flexWrap: 'wrap' }}>
               <span style={{ color: '#38bdf8' }}>— Temperature (°C)</span>
               <span style={{ color: '#fb7185' }}>-- Radiant Flux (kW/m²)</span>
             </div>
           </div>
-
-          <TimeSeriesChart />
+          <TimeSeriesChart data={telemetryData ?? undefined} />
         </div>
+      </section>
 
-        {/* Right: Extrapolation Warning & Simulation CTAs */}
-        <div
-          style={{
-            background: '#0d1321',
-            border: '1px solid #1c2640',
-            borderRadius: '8px',
-            padding: '18px 20px',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            gap: '14px',
-          }}
-        >
-          <div>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ color: '#f59e0b', fontSize: '16px' }}>⚠</span>
-              <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#f59e0b' }}>
-                SCIENTIFIC NOTICE // PARTIAL-GRAVITY BOUNDARIES (0G ↔ 1G)
-              </span>
+      <section style={{ ...cardStyle, display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <div>
+          <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#38bdf8', marginBottom: '4px' }}>
+            PSI RECORD METADATA // VERIFIED EXPERIMENTAL ENVELOPE
+          </div>
+          <h2 style={{ fontSize: '16px', color: '#f8fafc', margin: 0 }}>Study specifications</h2>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 270px), 1fr))', gap: '10px' }}>
+          <SpecCard label="MISSION OBJECTIVE">{study.objective ?? study.synthesis?.missionObjective ?? 'Not reported in PSI record.'}</SpecCard>
+          <SpecCard label="FUEL & GEOMETRY">{study.fuel ?? study.synthesis?.fuelAndGeometry ?? 'Not reported in PSI record.'}</SpecCard>
+          <SpecCard label="HARDWARE / TESTBED">{study.hardware ?? 'Not reported in PSI record.'}</SpecCard>
+          <SpecCard label="SENSORS">{study.sensors?.length ? study.sensors.join(' · ') : 'Not reported in PSI record.'}</SpecCard>
+          <SpecCard label="MEASURED VARIABLES">{study.variables?.length ? study.variables.join(' · ') : 'Not reported in PSI record.'}</SpecCard>
+          {study.earthApplications?.length > 0 && (
+            <SpecCard label="EARTH SPIN-OFF APPLICATIONS">{study.earthApplications.join(' · ')}</SpecCard>
+          )}
+        </div>
+        {study.aiInsight && (
+          <div style={{ background: 'rgba(79, 142, 247, 0.08)', border: '1px solid rgba(79, 142, 247, 0.25)', borderRadius: '6px', padding: '10px 14px' }}>
+            <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#4f8ef7', marginBottom: '4px' }}>
+              HEIMDALL INSIGHT
             </div>
-            <p style={{ fontSize: '12px', color: '#cbd5e1', lineHeight: 1.5, margin: 0 }}>
-              PSI contains no direct partial-gravity (0.165g Moon or 0.38g Mars) data. Results for lunar and Martian habitats are presented strictly as a bounded range between microgravity and 1g baselines. E-FIELD Flames (ACME) serves as a partial-gravity body-force proxy, and CFI-G (ACME) provides the highest-O₂ tests (up to 85% O₂ from the burner).
-            </p>
+            <div style={{ fontSize: '11.5px', color: '#e2e8f0', lineHeight: 1.45 }}>{study.aiInsight}</div>
           </div>
+        )}
+      </section>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <button
-              onClick={() => navigate('/flame-3d')}
-              style={{
-                fontSize: '11px',
-                fontFamily: 'var(--font-mono)',
-                fontWeight: 600,
-                background: '#4f8ef7',
-                border: 'none',
-                color: '#ffffff',
-                padding: '9px 14px',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                textAlign: 'left',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <span>⚡ Open Interactive What-If & 3D Flame Testbench</span>
-              <span>→</span>
-            </button>
-
-            <button
-              onClick={() => setOverlay1g(!overlay1g)}
-              style={{
-                fontSize: '10px',
-                fontFamily: 'var(--font-mono)',
-                background: overlay1g ? 'rgba(251, 113, 133, 0.15)' : '#111827',
-                border: overlay1g ? '1px solid #fb7185' : '1px solid #1c2640',
-                color: overlay1g ? '#fb7185' : '#8892a8',
-                padding: '6px 12px',
-                borderRadius: '4px',
-                cursor: 'pointer',
-              }}
-            >
-              {overlay1g ? '✓ COMPARING WITH 1G BASELINE BOUND' : '● COMPARE WITH 1G BASELINE BOUND'}
-            </button>
+      <section style={{ ...cardStyle, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+        <div style={{ maxWidth: '850px' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '7px' }}>
+            <span style={{ color: '#f59e0b', fontSize: '16px' }}>⚠</span>
+            <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#f59e0b' }}>
+              SCIENTIFIC NOTICE // PARTIAL-GRAVITY BOUNDARIES (0G ↔ 1G)
+            </span>
           </div>
+          <p style={{ fontSize: '11.5px', color: '#cbd5e1', lineHeight: 1.5, margin: 0 }}>
+            PSI contains no direct partial-gravity (0.165g Moon or 0.38g Mars) data. Habitat results are bounded between microgravity and 1g baselines; E-FIELD Flames is an experimental body-force proxy.
+          </p>
         </div>
-      </div>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => navigate('/flame-3d')}
+            style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', fontWeight: 600, background: '#4f8ef7', border: 'none', color: '#fff', padding: '9px 12px', borderRadius: '6px', cursor: 'pointer' }}
+          >
+            Open What-If & 3D Testbench →
+          </button>
+          <button
+            onClick={() => setOverlay1g(!overlay1g)}
+            aria-pressed={overlay1g}
+            style={{
+              fontSize: '9px',
+              fontFamily: 'var(--font-mono)',
+              background: overlay1g ? 'rgba(251, 113, 133, 0.15)' : '#111827',
+              border: overlay1g ? '1px solid #fb7185' : '1px solid #1c2640',
+              color: overlay1g ? '#fb7185' : '#8892a8',
+              padding: '8px 10px',
+              borderRadius: '4px',
+              cursor: 'pointer',
+            }}
+          >
+            {overlay1g ? '✓ 1G BASELINE BOUND' : 'COMPARE WITH 1G'}
+          </button>
+        </div>
+      </section>
     </div>
   );
 }
