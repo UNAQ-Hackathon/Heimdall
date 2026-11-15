@@ -8,7 +8,9 @@ import {
   filterTelemetryRuns,
   filterTelemetryStudies,
   getAllFlexRuns,
+  getExperimentParamEntries,
   isDropletTelemetryStudy,
+  normalizeMongoExperiments,
 } from '../src/services/telemetry-f1.js';
 
 const enrichedStudies = processedInvestigations.map((inv) => enrichInvestigationForUI(inv));
@@ -97,4 +99,64 @@ test('computeTelemetryKPIs computes exact deltas without inventing missing value
   const cfiKpis = computeTelemetryKPIs({ study: cfiG });
   assert.equal(cfiKpis.flowVelocity, null);
   assert.equal(cfiKpis.o2Value, 37.165);
+});
+
+test('normalizeMongoExperiments and getExperimentParamEntries preserve non-FLEX BASS-II runs', () => {
+  const bassIiDocs = [
+    {
+      runId: 'B1',
+      investigationSlug: 'bass-ii',
+      date: '2014-02-19',
+      flowVelocityMs: null,
+      pressureKpa: null,
+      o2Percent: 22.2,
+      o2PercentFinal: 22.2,
+      fuel: {
+        material: '100 micron PMMA film   2 cm wide',
+        family: 'PMMA',
+        form: 'film',
+      },
+      gravity: { regime: 'microgravity', g: 0 },
+      params: {
+        co2InitialPct: 0.44,
+        co2FinalPct: 0.44,
+        coInitialPpm: 0,
+        coFinalPpm: 6,
+        totalFrames: 57,
+      },
+      sensors: ['CO2', 'CO', 'O2', 'radiometer'],
+      sourceFile: 'PSI-25_Experimental table_BASS-II.csv',
+      pi: 'Bhattacharjee',
+      sampleNumber: '147',
+    },
+  ];
+
+  const normalized = normalizeMongoExperiments(bassIiDocs);
+  assert.equal(normalized.length, 1);
+  const run = normalized[0];
+  assert.equal(run.runId, 'B1');
+  assert.equal(run.fuelFamily, 'PMMA');
+  assert.equal(run.o2Pct, 22.2);
+  assert.equal(run.o2PctFinal, 22.2);
+  assert.equal(run.pressurePsi, null);
+  assert.equal(run.sourceFile, 'PSI-25_Experimental table_BASS-II.csv');
+  assert.deepEqual(run.sensors, ['CO2', 'CO', 'O2', 'radiometer']);
+
+  const entries = getExperimentParamEntries(run);
+  assert.deepEqual(
+    entries.map((e) => [e.label, e.value]),
+    [
+      ['CO₂ init', '0.44 %'],
+      ['CO₂ final', '0.44 %'],
+      ['CO init', '0 ppm'],
+      ['CO final', '6 ppm'],
+      ['Frames', '57'],
+    ]
+  );
+
+  const bassIi = enrichedStudies.find((s) => s.acronym === 'BASS-II');
+  const kpis = computeTelemetryKPIs({ study: bassIi, runs: normalized });
+  assert.equal(kpis.runCount, 1);
+  assert.equal(kpis.o2Min, 22.2);
+  assert.equal(kpis.o2Max, 22.2);
 });

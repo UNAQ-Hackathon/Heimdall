@@ -320,7 +320,7 @@ function MeterSlider({
         <span style={{ fontSize: '11.5px', fontWeight: 600, color: '#cbd5e1' }}>{label}</span>
         <span
           style={{
-            fontFamily: 'var(--font-mono)',
+            fontFamily: 'var(--font-sans)',
             fontSize: '11.5px',
             fontWeight: 700,
             color: '#f8fafc',
@@ -347,7 +347,7 @@ function MeterSlider({
           alignItems: 'center',
           gap: '8px',
           fontSize: '9.5px',
-          fontFamily: 'var(--font-mono)',
+          fontFamily: 'var(--font-sans)',
           color: '#64748b',
           fontVariantNumeric: 'tabular-nums',
         }}
@@ -361,7 +361,7 @@ function MeterSlider({
 }
 
 export default function FireHazRPage({ compact = false, embedded = false }) {
-  const { scenario, focusPlanet, audience } = useApp();
+  const { audience } = useApp();
   const sfx = useSound();
   const isStudent = audience === 'Student';
   const [form, setForm] = useState(EXAMPLE);
@@ -633,76 +633,53 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
     >
       <header>
         <h1>FireHazR test lab</h1>
-        <p>
-          Recorded droplet burn duration · KNN FLEX v3 · Experimental microgravity conditions
-        </p>
       </header>
 
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '6px 12px',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '8px 10px',
-          borderRadius: '8px',
-          background: 'rgba(15, 23, 42, 0.7)',
-          border: '1px solid #263449',
-          fontSize: '11px',
-          fontFamily: 'var(--font-mono)',
-          color: '#cbd5e1',
-        }}
-      >
-        <span>
-          <strong style={{ color: '#60a5fa' }}>Facility:</strong> ISS (EEI) · CIR / MDCA (0g)
-        </span>
-        <span>
-          <strong style={{ color: '#93c5fd' }}>Mission:</strong> {scenario?.label ?? 'Moon base / rover'}
-          {focusPlanet ? ` · Viewing: ${focusPlanet}` : ''}
-        </span>
-      </div>
-      <p className="firehazr-notice">
-        This model estimates recorded droplet burn duration from past NASA FLEX microgravity tests.
-        It does not predict fire probability, ignition limits, suppression effectiveness, or safety,
-        and cannot simulate a planetary environment. Ar and Xe are not supported.
-      </p>
+      {!compact && (
+        <>
+          <p className="firehazr-notice">
+            This model estimates recorded droplet burn duration from past NASA FLEX microgravity tests.
+            It does not predict fire probability, ignition limits, suppression effectiveness, or safety,
+            and cannot simulate a planetary environment. Ar and Xe are not supported.
+          </p>
 
-      <details className="firehazr-context" open={!compact}>
-        <summary>What are these tests &amp; why do they matter? (NASA PSI Context)</summary>
-        <p>
-          <strong>Why study fire in space:</strong> In microgravity (free fall), there is no buoyancy
-          to lift hot gases, so flames form spherical diffusion clouds instead of flickering teardrops.
-          Fire alarms during Artemis II and historic incidents (Apollo 1, Apollo 13, Mir) show why
-          spacecraft fire safety relies on three pillars: <strong>prevention</strong>,{' '}
-          <strong>detection</strong>, and <strong>suppression</strong>.
-        </p>
-        <p>
-          <strong>What FireHazR tests (Suppression &amp; Diluents):</strong> NASA&apos;s{' '}
-          <strong>FLEX / FLEX-2</strong> experiments burned liquid droplets (Methanol and Heptane)
-          inside the ISS Combustion Integrated Rack (<strong>CIR / MDCA</strong>) while diluting the
-          chamber with <strong>CO₂</strong> and <strong>He</strong> to measure how gas mixture,
-          pressure, and droplet size change burn duration.
-        </p>
-        <p>
-          <strong>Why O₂ &amp; pressure matter for Moon &amp; Mars:</strong> Spacesuits run at{' '}
-          <strong>100% O₂ / 4.3 psi</strong> (vs. Earth&apos;s 21% O₂ / 14.7 psi). To cut astronaut
-          pre-breathing time, Moon bases and pressurized rovers will likely use{' '}
-          <strong>≥30% O₂ at ≤10.2 psi</strong>—over 40% more oxygen than Earth air, making
-          materials far more flammable.
-        </p>
-        <p>
-          <strong>Other NASA PSI test families:</strong>{' '}
-          <strong>BASS / BASS-II</strong> &amp; <strong>Saffire-I/II/III</strong> (solid fabric &amp;
-          plastic flammability in MSG/SPICE and Cygnus), <strong>ACME</strong> (6 gas-flame studies
-          in CIR including <strong>BRE</strong>, <strong>CFI-G</strong> up to 85% O₂, and{' '}
-          <strong>E-FIELD Flames</strong> as an electric-field partial-gravity proxy), and{' '}
-          <strong>SAME / SAME-R</strong> (smoke particle detection; instrument reused in{' '}
-          <strong>DAFT / DAFT-2</strong> for dust). Direct lunar/Martian partial-gravity data is
-          not yet in PSI (future <strong>LUCI</strong> &amp; <strong>FM2</strong>), so 0g and 1g
-          tests bound intermediate risk.
-        </p>
-      </details>
+          <details className="firehazr-context">
+            <summary>What are these tests &amp; why do they matter? (NASA PSI Context)</summary>
+            <p>
+              <strong>Why study fire in space:</strong> In microgravity (free fall), there is no buoyancy
+              to lift hot gases, so flames form spherical diffusion clouds instead of flickering teardrops.
+              Fire alarms during Artemis II and historic incidents (Apollo 1, Apollo 13, Mir) show why
+              spacecraft fire safety relies on three pillars: <strong>prevention</strong>,{' '}
+              <strong>detection</strong>, and <strong>suppression</strong>.
+            </p>
+            <p>
+              <strong>What FireHazR tests (Suppression &amp; Diluents):</strong> NASA&apos;s{' '}
+              <strong>FLEX / FLEX-2</strong> experiments burned liquid droplets (Methanol and Heptane)
+              inside the ISS Combustion Integrated Rack (<strong>CIR / MDCA</strong>) while diluting the
+              chamber with <strong>CO₂</strong> and <strong>He</strong> to measure how gas mixture,
+              pressure, and droplet size change burn duration.
+            </p>
+            <p>
+              <strong>Why O₂ &amp; pressure matter for Moon &amp; Mars:</strong> Spacesuits run at{' '}
+              <strong>100% O₂ / 4.3 psi</strong> (vs. Earth&apos;s 21% O₂ / 14.7 psi). To cut astronaut
+              pre-breathing time, Moon bases and pressurized rovers will likely use{' '}
+              <strong>≥30% O₂ at ≤10.2 psi</strong>—over 40% more oxygen than Earth air, making
+              materials far more flammable.
+            </p>
+            <p>
+              <strong>Other NASA PSI test families:</strong>{' '}
+              <strong>BASS / BASS-II</strong> &amp; <strong>Saffire-I/II/III</strong> (solid fabric &amp;
+              plastic flammability in MSG/SPICE and Cygnus), <strong>ACME</strong> (6 gas-flame studies
+              in CIR including <strong>BRE</strong>, <strong>CFI-G</strong> up to 85% O₂, and{' '}
+              <strong>E-FIELD Flames</strong> as an electric-field partial-gravity proxy), and{' '}
+              <strong>SAME / SAME-R</strong> (smoke particle detection; instrument reused in{' '}
+              <strong>DAFT / DAFT-2</strong> for dust). Direct lunar/Martian partial-gravity data is
+              not yet in PSI (future <strong>LUCI</strong> &amp; <strong>FM2</strong>), so 0g and 1g
+              tests bound intermediate risk.
+            </p>
+          </details>
+        </>
+      )}
 
       {/* 3D Astronaut Suit & Flame Test Chamber with One-Click Suit Presets */}
       <div
@@ -732,7 +709,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
             <span
               style={{
                 fontSize: '11px',
-                fontFamily: 'var(--font-mono)',
+                fontFamily: 'var(--font-sans)',
                 fontWeight: 700,
                 color: '#f8fafc',
               }}
@@ -742,7 +719,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
             <span
               style={{
                 fontSize: '9.5px',
-                fontFamily: 'var(--font-mono)',
+                fontFamily: 'var(--font-sans)',
                 padding: '2px 7px',
                 borderRadius: '4px',
                 color: suitBadge.color,
@@ -780,7 +757,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
               <span
                 style={{
                   fontSize: '9.5px',
-                  fontFamily: 'var(--font-mono)',
+                  fontFamily: 'var(--font-sans)',
                   color: '#64748b',
                   marginRight: '2px',
                 }}
@@ -797,7 +774,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
                     onClick={() => setSuitState(st.id)}
                     style={{
                       fontSize: '10px',
-                      fontFamily: 'var(--font-mono)',
+                      fontFamily: 'var(--font-sans)',
                       fontWeight: active ? 700 : 500,
                       padding: '3px 8px',
                       borderRadius: '5px',
@@ -820,7 +797,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
           <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '11px', color: '#cbd5e1' }}>
             <span>
               Load NASA PSI / FLEX Experimental Preset{' '}
-              <small style={{ color: '#64748b', fontFamily: 'var(--font-mono)' }}>
+              <small style={{ color: '#64748b', fontFamily: 'var(--font-sans)' }}>
                 ({presetsData.source === 'mongodb' ? 'MongoDB' : 'PSI Archive'})
               </small>
             </span>
@@ -860,7 +837,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
             background: '#080f1c',
             border: '1px solid var(--audience-border, #1e293b)',
             fontSize: '10px',
-            fontFamily: 'var(--font-mono)',
+            fontFamily: 'var(--font-sans)',
             fontVariantNumeric: 'tabular-nums',
             flexWrap: 'wrap',
           }}
@@ -923,7 +900,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
                 background: '#080f1c',
                 border: '1px solid #1e293b',
                 fontSize: '10.5px',
-                fontFamily: 'var(--font-mono)',
+                fontFamily: 'var(--font-sans)',
                 color: '#cbd5e1',
                 flexWrap: 'wrap',
               }}
@@ -965,14 +942,14 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
                     <div style={{ fontSize: '12px', fontWeight: 700, color: '#f8fafc' }}>
                       3D {activeSubject.label} Test
                     </div>
-                    <div style={{ fontSize: '9.5px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
+                    <div style={{ fontSize: '9.5px', fontFamily: 'var(--font-sans)', color: '#64748b' }}>
                       {activeSubject.label} Response ({o2Pct}% O₂)
                     </div>
                   </div>
                   <span
                     style={{
                       fontSize: '9px',
-                      fontFamily: 'var(--font-mono)',
+                      fontFamily: 'var(--font-sans)',
                       padding: '2px 6px',
                       borderRadius: '4px',
                       color: suitBadge.color,
@@ -1001,7 +978,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
                       left: '8px',
                       display: 'flex',
                       gap: '5px',
-                      fontFamily: 'var(--font-mono)',
+                      fontFamily: 'var(--font-sans)',
                       fontSize: '9.5px',
                     }}
                   >
@@ -1039,14 +1016,14 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
                     <div style={{ fontSize: '12px', fontWeight: 700, color: '#f8fafc' }}>
                       {FLAME_COMPARISON.zeroG.label}
                     </div>
-                    <div style={{ fontSize: '9.5px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
+                    <div style={{ fontSize: '9.5px', fontFamily: 'var(--font-sans)', color: '#64748b' }}>
                       {FLAME_COMPARISON.zeroG.regime}
                     </div>
                   </div>
                   <span
                     style={{
                       fontSize: '9px',
-                      fontFamily: 'var(--font-mono)',
+                      fontFamily: 'var(--font-sans)',
                       color: '#38bdf8',
                       background: 'rgba(56, 189, 248, 0.12)',
                       padding: '2px 6px',
@@ -1082,14 +1059,14 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
                     <div style={{ fontSize: '12px', fontWeight: 700, color: '#f8fafc' }}>
                       {FLAME_COMPARISON.oneG.label}
                     </div>
-                    <div style={{ fontSize: '9.5px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
+                    <div style={{ fontSize: '9.5px', fontFamily: 'var(--font-sans)', color: '#64748b' }}>
                       {FLAME_COMPARISON.oneG.regime}
                     </div>
                   </div>
                   <span
                     style={{
                       fontSize: '9px',
-                      fontFamily: 'var(--font-mono)',
+                      fontFamily: 'var(--font-sans)',
                       color: '#f59e0b',
                       background: 'rgba(245, 158, 11, 0.12)',
                       padding: '2px 6px',
@@ -1132,7 +1109,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
                 left: '10px',
                 display: 'flex',
                 gap: '6px',
-                fontFamily: 'var(--font-mono)',
+                fontFamily: 'var(--font-sans)',
                 fontSize: '10px',
               }}
             >
@@ -1311,7 +1288,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
                 borderRadius: '8px',
                 background: '#060a14',
                 border: '1px solid #1c2640',
-                fontFamily: 'var(--font-mono)',
+                fontFamily: 'var(--font-sans)',
                 fontSize: '10.5px',
               }}
             >
@@ -1529,7 +1506,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
                     <span
                       style={{
                         fontSize: '10px',
-                        fontFamily: 'var(--font-mono)',
+                        fontFamily: 'var(--font-sans)',
                         padding: '2px 7px',
                         borderRadius: '9999px',
                         background: 'var(--audience-tint)',
@@ -1577,7 +1554,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
                 <div
                   style={{
                     fontSize: '10px',
-                    fontFamily: 'var(--font-mono)',
+                    fontFamily: 'var(--font-sans)',
                     color: '#64748b',
                     letterSpacing: '0.08em',
                     marginBottom: '4px',
@@ -1616,7 +1593,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
                       borderTop: '1px solid rgba(148, 163, 184, 0.18)',
                     }}
                   >
-                    <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#7dd3fc', marginBottom: '4px' }}>
+                    <div style={{ fontSize: '10px', fontFamily: 'var(--font-sans)', color: '#7dd3fc', marginBottom: '4px' }}>
                       {aiLabel.toUpperCase()} AI BRIEF
                     </div>
                     <p style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: '12.5px', lineHeight: 1.5 }}>

@@ -36,7 +36,7 @@ function RegimeTooltip({ active, payload }) {
         borderRadius: '6px',
         padding: '8px 10px',
         fontSize: '10.5px',
-        fontFamily: 'var(--font-mono)',
+        fontFamily: 'var(--font-sans)',
         color: '#f8fafc',
       }}
     >
@@ -172,7 +172,7 @@ export default function FlammabilityChart() {
           </button>
         </div>
         {mode === 'hull' && hullState.status === 'ready' && (
-          <span style={{ fontSize: '9.5px', fontFamily: 'var(--font-mono)', color: '#34d399' }}>
+          <span style={{ fontSize: '9.5px', fontFamily: 'var(--font-sans)', color: '#34d399' }}>
             IN-HULL: {hullState.inHull.length} · NULL OUTSIDE: {hullState.outHull.length}
           </span>
         )}
@@ -185,7 +185,7 @@ export default function FlammabilityChart() {
               role="status"
               style={{
                 fontSize: '10px',
-                fontFamily: 'var(--font-mono)',
+                fontFamily: 'var(--font-sans)',
                 color: '#fbbf24',
                 background: 'rgba(245, 158, 11, 0.08)',
                 border: '1px solid rgba(245, 158, 11, 0.25)',
@@ -206,7 +206,7 @@ export default function FlammabilityChart() {
                   domain={[0, 0.28]}
                   stroke="#64748b"
                   fontSize={10}
-                  fontFamily="var(--font-mono)"
+                  fontFamily="var(--font-sans)"
                   unit=" m/s"
                 />
                 <YAxis
@@ -215,7 +215,7 @@ export default function FlammabilityChart() {
                   domain={[12, 52]}
                   stroke="#64748b"
                   fontSize={10}
-                  fontFamily="var(--font-mono)"
+                  fontFamily="var(--font-sans)"
                   unit="%"
                 />
                 <ZAxis range={[48, 48]} />
@@ -223,7 +223,7 @@ export default function FlammabilityChart() {
                 <Legend
                   wrapperStyle={{
                     fontSize: '10px',
-                    fontFamily: 'var(--font-mono)',
+                    fontFamily: 'var(--font-sans)',
                     paddingTop: '2px',
                   }}
                 />
@@ -241,14 +241,14 @@ export default function FlammabilityChart() {
             </ResponsiveContainer>
           </div>
           {hullState.status === 'ready' && hullState.note && (
-            <div style={{ fontSize: '9.5px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
+            <div style={{ fontSize: '9.5px', fontFamily: 'var(--font-sans)', color: '#64748b' }}>
               {hullState.note}
             </div>
           )}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <div style={{ fontSize: '9.5px', fontFamily: 'var(--font-mono)', color: '#94a3b8' }}>
+          <div style={{ fontSize: '9.5px', fontFamily: 'var(--font-sans)', color: '#94a3b8' }}>
             Illustrative conceptual curve showing how low-speed airflow lowers O₂ thresholds in 0g (not measured ignition data).
           </div>
           <div style={{ width: '100%', height: '235px' }}>
@@ -259,7 +259,7 @@ export default function FlammabilityChart() {
                   dataKey="flow"
                   stroke="#64748b"
                   fontSize={10}
-                  fontFamily="var(--font-mono)"
+                  fontFamily="var(--font-sans)"
                   tickFormatter={(v) => `${v.toFixed(2)}`}
                   label={{
                     value: 'FORCED FLOW VELOCITY (m/s) · CONCEPTUAL AXIS',
@@ -267,14 +267,14 @@ export default function FlammabilityChart() {
                     offset: -12,
                     fill: '#64748b',
                     fontSize: 9,
-                    fontFamily: 'var(--font-mono)',
+                    fontFamily: 'var(--font-sans)',
                   }}
                 />
                 <YAxis
                   domain={[12, 38]}
                   stroke="#64748b"
                   fontSize={10}
-                  fontFamily="var(--font-mono)"
+                  fontFamily="var(--font-sans)"
                   tickFormatter={(v) => `${v}%`}
                   label={{
                     value: 'AMBIENT O₂ (%)',
@@ -282,7 +282,7 @@ export default function FlammabilityChart() {
                     position: 'insideLeft',
                     fill: '#64748b',
                     fontSize: 9,
-                    fontFamily: 'var(--font-mono)',
+                    fontFamily: 'var(--font-sans)',
                   }}
                 />
                 <Tooltip
@@ -291,7 +291,7 @@ export default function FlammabilityChart() {
                     borderColor: '#1c2640',
                     borderRadius: '6px',
                     fontSize: '11px',
-                    fontFamily: 'var(--font-mono)',
+                    fontFamily: 'var(--font-sans)',
                   }}
                   formatter={(value, name) => [`${value}% O₂`, name]}
                 />

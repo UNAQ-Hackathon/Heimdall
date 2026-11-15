@@ -203,7 +203,7 @@ export default function PlanetAnalysisPanel({
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: '11px',
-                  fontFamily: 'var(--font-mono)',
+                  fontFamily: 'var(--font-sans)',
                   color: '#64748b',
                 }}
               >
@@ -218,7 +218,7 @@ export default function PlanetAnalysisPanel({
           style={{
             marginTop: '5px',
             fontSize: '10px',
-            fontFamily: 'var(--font-mono)',
+            fontFamily: 'var(--font-sans)',
             color: '#64748b',
             textAlign: 'center',
           }}
@@ -251,7 +251,7 @@ export default function PlanetAnalysisPanel({
             background: 'rgba(15, 23, 42, 0.7)',
             border: '1px solid var(--border-subtle)',
             borderRadius: '8px',
-            fontFamily: 'var(--font-mono)',
+            fontFamily: 'var(--font-sans)',
           }}
         >
           <div style={{ color: '#64748b', fontSize: '9px' }}>
@@ -267,7 +267,7 @@ export default function PlanetAnalysisPanel({
             background: 'rgba(15, 23, 42, 0.7)',
             border: '1px solid var(--border-subtle)',
             borderRadius: '8px',
-            fontFamily: 'var(--font-mono)',
+            fontFamily: 'var(--font-sans)',
           }}
         >
           <div style={{ color: '#64748b', fontSize: '9px' }}>
@@ -372,7 +372,7 @@ export default function PlanetAnalysisPanel({
               <div
                 style={{
                   fontSize: '9.5px',
-                  fontFamily: 'var(--font-mono)',
+                  fontFamily: 'var(--font-sans)',
                   color: '#64748b',
                   marginBottom: '6px',
                 }}
@@ -443,7 +443,7 @@ export default function PlanetAnalysisPanel({
                 }}
               >
                 <span>{activeScenario.label}</span>
-                <span style={{ color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>
+                <span style={{ color: '#38bdf8', fontFamily: 'var(--font-sans)' }}>
                   {activeScenario.oxygenDisplay} · {activeScenario.pressureDisplay}
                 </span>
               </div>

@@ -121,7 +121,7 @@ export default function SpacecraftSelector({ shipFile, onSelect }) {
         <span
           style={{
             fontSize: '10px',
-            fontFamily: 'var(--font-mono)',
+            fontFamily: 'var(--font-sans)',
             color: '#94a3b8',
             letterSpacing: '0.04em',
           }}
@@ -225,7 +225,7 @@ export default function SpacecraftSelector({ shipFile, onSelect }) {
               <span
                 style={{
                   fontSize: '9.5px',
-                  fontFamily: 'var(--font-mono)',
+                  fontFamily: 'var(--font-sans)',
                   color: '#93c5fd',
                   textAlign: 'right',
                 }}
@@ -289,7 +289,7 @@ export default function SpacecraftSelector({ shipFile, onSelect }) {
                     <span
                       style={{
                         fontSize: '9.5px',
-                        fontFamily: 'var(--font-mono)',
+                        fontFamily: 'var(--font-sans)',
                         color: '#93c5fd',
                         padding: '2px 6px',
                         borderRadius: '4px',

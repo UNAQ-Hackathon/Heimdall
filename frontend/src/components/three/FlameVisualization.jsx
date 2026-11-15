@@ -1155,7 +1155,7 @@ export default function FlameVisualization({
             background: 'rgba(10, 15, 29, 0.88)',
             border: '1px solid rgba(245, 158, 11, 0.4)',
             color: '#fde68a',
-            fontFamily: 'var(--font-mono)',
+            fontFamily: 'var(--font-sans)',
             fontSize: '10px',
             lineHeight: 1.35,
             textAlign: 'center',

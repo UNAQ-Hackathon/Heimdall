@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   CartesianGrid,
@@ -27,13 +27,6 @@ const COMPARATOR_PRESETS = [
   { label: 'Suppression & High O₂ (FLEX · FLEX-2 · CFI-G)', ids: ['FLEX', 'FLEX-2', 'CFI-G'] },
   { label: 'Partial-g & Moon Gap (E-FIELD · LUCI · FM2)', ids: ['E-FIELD Flames', 'LUCI', 'FM2'] },
   { label: 'Smoke & Dust (SAME · SAME-R · DAFT)', ids: ['SAME', 'SAME-R', 'DAFT'] },
-];
-
-const VIEW_TABS = [
-  { id: 'all', label: 'All Sections' },
-  { id: 'comparator', label: 'Side-by-Side' },
-  { id: 'matrix', label: 'Conditions Matrix' },
-  { id: 'earth', label: 'Earth Spin-Offs' },
 ];
 
 const EARTH_STUDY_LINKS = {
@@ -184,7 +177,6 @@ function downloadBlob(content, filename, mimeType) {
 export default function ComparePage() {
   const { audience } = useApp();
   const isStudent = audience === 'Student';
-  const [activeView, setActiveView] = useState('all');
   const [highlightDiff, setHighlightDiff] = useState(true);
   const [diffRowsOnly, setDiffRowsOnly] = useState(false);
   const [matrixQuery, setMatrixQuery] = useState('');
@@ -192,18 +184,6 @@ export default function ComparePage() {
   const [compareIds, setCompareIds] = useState(['BASS-II', 'Saffire-III', 'SoFIE']);
   const [dataSource, setDataSource] = useState('loading');
   const navigate = useNavigate();
-  const comparatorRef = useRef(null);
-  const matrixRef = useRef(null);
-  const earthRef = useRef(null);
-
-  useEffect(() => {
-    if (activeView === 'all') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
-    const target = { comparator: comparatorRef, matrix: matrixRef, earth: earthRef }[activeView]?.current;
-    target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, [activeView]);
 
   useEffect(() => {
     let cancelled = false;
@@ -317,7 +297,7 @@ export default function ComparePage() {
               padding: '2px 8px',
               borderRadius: '9999px',
               fontSize: '11px',
-              fontFamily: 'var(--font-mono)',
+              fontFamily: 'var(--font-sans)',
               background: 'rgba(56, 189, 248, 0.12)',
               border: '1px solid rgba(56, 189, 248, 0.3)',
               color: '#7dd3fc',
@@ -346,12 +326,12 @@ export default function ComparePage() {
         getCompareVal: (s) => (s.dataAvailable === false ? 'upcoming' : formatOxygenRange(s.conditions) ?? 'N/A'),
         render: (s) => {
           if (s.dataAvailable === false) {
-            return <span style={{ color: '#fbbf24', fontFamily: 'var(--font-mono)', fontSize: '11.5px' }}>No PSI data yet</span>;
+            return <span style={{ color: '#fbbf24', fontFamily: 'var(--font-sans)', fontSize: '11.5px' }}>No PSI data yet</span>;
           }
           const bounds = getOxygenBounds(s.conditions);
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <span style={{ color: '#38bdf8', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
+              <span style={{ color: '#38bdf8', fontWeight: 700, fontFamily: 'var(--font-sans)' }}>
                 {formatOxygenRange(s.conditions) ?? 'Not reported'}
               </span>
               {bounds && <OxygenBar minPct={bounds.lo} maxPct={bounds.hi} />}
@@ -367,7 +347,7 @@ export default function ComparePage() {
         render: (s) => {
           const c = s.conditions ?? {};
           return (
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11.5px', color: '#cbd5e1' }}>
+            <span style={{ fontFamily: 'var(--font-sans)', fontSize: '11.5px', color: '#cbd5e1' }}>
               {c.pressurePsi != null ? `${c.pressurePsi} psi` : 'No pressure data'} ·{' '}
               {c.flowVelocity != null ? `${c.flowVelocity} m/s` : 'Quiescent / N/R'}
             </span>
@@ -388,7 +368,7 @@ export default function ComparePage() {
         render: (s) => {
           const pts = Array.isArray(s.series) ? s.series.reduce((acc, x) => acc + (x?.samples?.length ?? 0), 0) : 0;
           return (
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11.5px', color: pts > 0 ? '#34d399' : '#64748b' }}>
+            <span style={{ fontFamily: 'var(--font-sans)', fontSize: '11.5px', color: pts > 0 ? '#34d399' : '#64748b' }}>
               {pts > 0 ? `${pts} measured samples` : 'Metadata / summary only'}
             </span>
           );
@@ -435,10 +415,6 @@ export default function ComparePage() {
     return rows.filter((row) => new Set(selectedStudies.map(row.getCompareVal)).size > 1);
   }, [diffRowsOnly, isStudent, selectedStudies]);
 
-  const showComparator = activeView === 'all' || activeView === 'comparator';
-  const showMatrix = activeView === 'all' || activeView === 'matrix';
-  const showEarth = activeView === 'all' || activeView === 'earth';
-
   const openStudyByKey = (key) => {
     const match = investigations.find(
       (item) => normalizeKey(item.acronym) === normalizeKey(key) || normalizeKey(item.psiId) === normalizeKey(key)
@@ -449,7 +425,6 @@ export default function ComparePage() {
   return (
     <div className="compare-page">
       <div className="compare-page__inner">
-        {/* Clean Header & Section Switcher */}
         <header className="compare-hero">
           <div>
             <h1>PSI Cross-Study Parametric Analysis</h1>
@@ -459,35 +434,10 @@ export default function ComparePage() {
                 : 'Align PSI investigations row-by-row, map tested O₂/pressure envelopes against habitat & suit regimes, and trace microgravity findings to terrestrial fire standards.'}
             </p>
           </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
-            <div className="compare-tabs" role="tablist" aria-label="Compare page sections">
-              {VIEW_TABS.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  role="tab"
-                  className="compare-tab"
-                  aria-selected={activeView === tab.id}
-                  onClick={() => setActiveView(tab.id)}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-            <button
-              type="button"
-              className="compare-btn compare-btn--active"
-              onClick={() => navigate('/flame')}
-            >
-              Open FireHazR 3D Lab →
-            </button>
-          </div>
         </header>
 
         {/* 1. Side-by-Side Aligned Comparator */}
-        {showComparator && (
-          <section ref={comparatorRef} className="compare-section" aria-label="Interactive side-by-side study comparator">
+        <section className="compare-section" aria-label="Interactive side-by-side study comparator">
             <div data-tour="compare-controls" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div className="compare-section__head">
                 <div>
@@ -600,7 +550,7 @@ export default function ComparePage() {
                       <th key={`${study.psiId ?? study.acronym}-${idx}`}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
                           <div>
-                            <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#38bdf8' }}>
+                            <div style={{ fontSize: '10px', fontFamily: 'var(--font-sans)', color: '#38bdf8' }}>
                               {study.psiId}
                             </div>
                             <div style={{ fontSize: '15px', fontWeight: 700, color: '#f8fafc', marginTop: '2px' }}>
@@ -640,7 +590,7 @@ export default function ComparePage() {
             {(comparisonDigest.similarities.length > 0 || comparisonDigest.differences.length > 0) && (
               <div className="compare-digest-grid">
                 <div className="compare-digest-card" style={{ borderColor: 'rgba(52, 211, 153, 0.35)' }}>
-                  <div style={{ fontSize: '10.5px', fontFamily: 'var(--font-mono)', color: '#34d399', marginBottom: '6px' }}>
+                  <div style={{ fontSize: '10.5px', fontFamily: 'var(--font-sans)', color: '#34d399', marginBottom: '6px' }}>
                     VERIFIED SIMILARITIES
                   </div>
                   <ul style={{ margin: 0, paddingLeft: '18px', display: 'grid', gap: '5px', fontSize: '12.5px', color: '#cbd5e1' }}>
@@ -652,7 +602,7 @@ export default function ComparePage() {
                   </ul>
                 </div>
                 <div className="compare-digest-card" style={{ borderColor: 'rgba(245, 158, 11, 0.35)' }}>
-                  <div style={{ fontSize: '10.5px', fontFamily: 'var(--font-mono)', color: '#fbbf24', marginBottom: '6px' }}>
+                  <div style={{ fontSize: '10.5px', fontFamily: 'var(--font-sans)', color: '#fbbf24', marginBottom: '6px' }}>
                     KEY EXPERIMENTAL DIFFERENCES
                   </div>
                   <ul style={{ margin: 0, paddingLeft: '18px', display: 'grid', gap: '5px', fontSize: '12.5px', color: '#cbd5e1' }}>
@@ -664,11 +614,9 @@ export default function ComparePage() {
               </div>
             )}
           </section>
-        )}
 
         {/* 2. Parametric Conditions Matrix */}
-        {showMatrix && (
-          <section ref={matrixRef} className="compare-section" aria-label="Microgravity experiment comparison matrix">
+        <section className="compare-section" aria-label="Microgravity experiment comparison matrix">
             <div className="compare-section__head">
               <div>
                 <div className="compare-section__eyebrow" style={{ color: '#38bdf8' }}>
@@ -760,7 +708,7 @@ export default function ComparePage() {
                                 key={t}
                                 style={{
                                   fontSize: '9.5px',
-                                  fontFamily: 'var(--font-mono)',
+                                  fontFamily: 'var(--font-sans)',
                                   background: 'rgba(56, 189, 248, 0.1)',
                                   border: '1px solid rgba(56, 189, 248, 0.25)',
                                   color: '#7dd3fc',
@@ -775,13 +723,13 @@ export default function ComparePage() {
                           <div style={{ fontSize: '11.5px', color: '#94a3b8', marginTop: '4px' }}>
                             {record?.hardware ?? study.testbed}
                           </div>
-                          <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#64748b', marginTop: '2px' }}>
+                          <div style={{ fontSize: '10px', fontFamily: 'var(--font-sans)', color: '#64748b', marginTop: '2px' }}>
                             {study.orbit}
                           </div>
                         </td>
 
                         <td style={{ minWidth: '175px' }}>
-                          <div style={{ fontWeight: 700, color: highlightDiff ? '#38bdf8' : '#e2e8f0', fontFamily: 'var(--font-mono)', marginBottom: '5px' }}>
+                          <div style={{ fontWeight: 700, color: highlightDiff ? '#38bdf8' : '#e2e8f0', fontFamily: 'var(--font-sans)', marginBottom: '5px' }}>
                             {oxygenRange ?? study.o2Range}
                           </div>
                           {bounds && <OxygenBar minPct={bounds.lo} maxPct={bounds.hi} />}
@@ -789,7 +737,7 @@ export default function ComparePage() {
                         </td>
 
                         <td style={{ minWidth: '140px' }}>
-                          <div style={{ fontWeight: 700, color: highlightDiff ? '#fb7185' : '#e2e8f0', fontFamily: 'var(--font-mono)' }}>
+                          <div style={{ fontWeight: 700, color: highlightDiff ? '#fb7185' : '#e2e8f0', fontFamily: 'var(--font-sans)' }}>
                             {conditions.pressurePsi == null ? study.pressure : `${conditions.pressurePsi} psi`}
                           </div>
                           <div style={{ fontSize: '10.5px', color: '#64748b', marginTop: '4px' }}>{study.pressureNote}</div>
@@ -804,7 +752,7 @@ export default function ComparePage() {
                                 key={t}
                                 style={{
                                   fontSize: '9.5px',
-                                  fontFamily: 'var(--font-mono)',
+                                  fontFamily: 'var(--font-sans)',
                                   background: '#111827',
                                   border: '1px solid #263449',
                                   color: '#c4b5fd',
@@ -820,7 +768,7 @@ export default function ComparePage() {
 
                         <td style={{ minWidth: '240px', maxWidth: '340px' }}>
                           <div style={{ color: '#cbd5e1', lineHeight: 1.45 }}>{record?.objective ?? study.behavior}</div>
-                          <div style={{ fontSize: '10.5px', fontFamily: 'var(--font-mono)', color: '#fbbf24', marginTop: '5px' }}>
+                          <div style={{ fontSize: '10.5px', fontFamily: 'var(--font-sans)', color: '#fbbf24', marginTop: '5px' }}>
                             {study.behaviorNote}
                           </div>
                         </td>
@@ -837,13 +785,10 @@ export default function ComparePage() {
                 </tbody>
               </table>
             </div>
-          </section>
-        )}
+            </section>
 
         {/* 3. Earth Spin-Off Applications & Cross-Study Findings (All Details Visible) */}
-        {showEarth && (
-          <>
-            <section ref={earthRef} className="compare-section" aria-label="Oxygen and pressure regime map">
+        <section className="compare-section" aria-label="Oxygen and pressure regime map">
               <div className="compare-section__head">
                 <div>
                   <div className="compare-section__eyebrow" style={{ color: '#f59e0b' }}>
@@ -910,7 +855,7 @@ export default function ComparePage() {
                             position: marker.anchor,
                             fill: marker.color,
                             fontSize: 9.5,
-                            fontFamily: 'var(--font-mono)',
+                            fontFamily: 'var(--font-sans)',
                           }}
                         />
                       ))}
@@ -981,13 +926,13 @@ export default function ComparePage() {
                     >
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
+                          <span style={{ fontSize: '10px', fontFamily: 'var(--font-sans)', color: '#64748b' }}>
                             {app.code}
                           </span>
                           <span
                             style={{
                               fontSize: '10px',
-                              fontFamily: 'var(--font-mono)',
+                              fontFamily: 'var(--font-sans)',
                               color: meta.accent,
                               background: `${meta.accent}1a`,
                               border: `1px solid ${meta.accent}44`,
@@ -1028,13 +973,13 @@ export default function ComparePage() {
                         >
                           {app.stats.map((stat) => (
                             <div key={stat.label}>
-                              <div style={{ fontSize: '9.5px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
+                              <div style={{ fontSize: '9.5px', fontFamily: 'var(--font-sans)', color: '#64748b' }}>
                                 {stat.label.toUpperCase()}
                               </div>
                               <div
                                 style={{
                                   fontSize: '12px',
-                                  fontFamily: 'var(--font-mono)',
+                                  fontFamily: 'var(--font-sans)',
                                   fontWeight: 700,
                                   marginTop: '2px',
                                   color:
@@ -1055,7 +1000,7 @@ export default function ComparePage() {
                       </div>
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '8px', borderTop: '1px solid #162036' }}>
-                        <div style={{ fontSize: '10.5px', fontFamily: 'var(--font-mono)', color: '#94a3b8' }}>
+                        <div style={{ fontSize: '10.5px', fontFamily: 'var(--font-sans)', color: '#94a3b8' }}>
                           Standard: <span style={{ color: '#e2e8f0' }}>{app.standard}</span>
                         </div>
                         {linkedKeys.length > 0 && (
@@ -1114,7 +1059,7 @@ export default function ComparePage() {
                           <span
                             style={{
                               fontSize: '10px',
-                              fontFamily: 'var(--font-mono)',
+                              fontFamily: 'var(--font-sans)',
                               color: meta.accent,
                               background: `${meta.accent}1a`,
                               border: `1px solid ${meta.accent}44`,
@@ -1141,8 +1086,6 @@ export default function ComparePage() {
                 })}
               </div>
             </section>
-          </>
-        )}
       </div>
     </div>
   );

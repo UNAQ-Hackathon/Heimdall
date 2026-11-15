@@ -52,7 +52,7 @@ export default function FlexCoverageMap({ conditions, coverage, onSelectTrial })
           justifyContent: 'space-between',
           gap: '8px',
           fontSize: '10px',
-          fontFamily: 'var(--font-mono)',
+          fontFamily: 'var(--font-sans)',
         }}
       >
         <span style={{ color: '#cbd5e1', fontWeight: 600 }}>
@@ -92,10 +92,10 @@ export default function FlexCoverageMap({ conditions, coverage, onSelectTrial })
         })}
 
         {/* Y axis labels */}
-        <text x={PAD.left - 5} y={PAD.top + 8} textAnchor="end" fill="#64748b" fontSize="8.5" fontFamily="monospace">
+        <text x={PAD.left - 5} y={PAD.top + 8} textAnchor="end" fill="#64748b" fontSize="8.5" fontFamily="var(--font-sans)">
           {Math.round(yMax)}
         </text>
-        <text x={PAD.left - 5} y={PAD.top + PH} textAnchor="end" fill="#64748b" fontSize="8.5" fontFamily="monospace">
+        <text x={PAD.left - 5} y={PAD.top + PH} textAnchor="end" fill="#64748b" fontSize="8.5" fontFamily="var(--font-sans)">
           {Math.round(yMin)}
         </text>
         <text
@@ -104,20 +104,20 @@ export default function FlexCoverageMap({ conditions, coverage, onSelectTrial })
           textAnchor="middle"
           fill="#64748b"
           fontSize="8.5"
-          fontFamily="monospace"
+          fontFamily="var(--font-sans)"
           transform={`rotate(-90 11 ${PAD.top + PH / 2})`}
         >
           mmHg
         </text>
 
         {/* X axis labels */}
-        <text x={PAD.left} y={H - 8} textAnchor="start" fill="#64748b" fontSize="8.5" fontFamily="monospace">
+        <text x={PAD.left} y={H - 8} textAnchor="start" fill="#64748b" fontSize="8.5" fontFamily="var(--font-sans)">
           {xMin.toFixed(0)}%
         </text>
-        <text x={PAD.left + PW / 2} y={H - 8} textAnchor="middle" fill="#94a3b8" fontSize="8.5" fontFamily="monospace">
+        <text x={PAD.left + PW / 2} y={H - 8} textAnchor="middle" fill="#94a3b8" fontSize="8.5" fontFamily="var(--font-sans)">
           {xLabel}
         </text>
-        <text x={PAD.left + PW} y={H - 8} textAnchor="end" fill="#64748b" fontSize="8.5" fontFamily="monospace">
+        <text x={PAD.left + PW} y={H - 8} textAnchor="end" fill="#64748b" fontSize="8.5" fontFamily="var(--font-sans)">
           {xMax.toFixed(0)}%
         </text>
 
@@ -156,7 +156,7 @@ export default function FlexCoverageMap({ conditions, coverage, onSelectTrial })
         style={{
           minHeight: '16px',
           fontSize: '10px',
-          fontFamily: 'var(--font-mono)',
+          fontFamily: 'var(--font-sans)',
           color: hovered ? '#93c5fd' : '#94a3b8',
           display: 'flex',
           justifyContent: 'space-between',

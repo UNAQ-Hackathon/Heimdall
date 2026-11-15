@@ -156,7 +156,7 @@ export default function CopilotChat({ inline = false }) {
               alignItems: 'center',
               gap: '4px',
               fontSize: '9px',
-              fontFamily: 'var(--font-mono)',
+              fontFamily: 'var(--font-sans)',
               color: hasQuotaError ? '#fca5a5' : chatLoading ? '#93c5fd' : '#c4b5fd',
               padding: '2px 7px',
               borderRadius: '9999px',
@@ -217,7 +217,7 @@ export default function CopilotChat({ inline = false }) {
             border: 'none',
             cursor: 'pointer',
             fontSize: '10px',
-            fontFamily: 'var(--font-mono)',
+            fontFamily: 'var(--font-sans)',
             color: '#94a3b8',
             textAlign: 'left',
           }}
@@ -287,7 +287,7 @@ export default function CopilotChat({ inline = false }) {
               padding: '5px 8px',
               borderRadius: '6px',
               fontSize: '10px',
-              fontFamily: 'var(--font-mono)',
+              fontFamily: 'var(--font-sans)',
               lineHeight: 1.35,
               background:
                 alertLevel === 'exhausted'
@@ -327,7 +327,7 @@ export default function CopilotChat({ inline = false }) {
               gridTemplateColumns: '1fr 1fr',
               gap: '6px 10px',
               fontSize: '10px',
-              fontFamily: 'var(--font-mono)',
+              fontFamily: 'var(--font-sans)',
             }}
           >
             <div style={{ gridColumn: '1 / -1', marginBottom: '2px' }}>
@@ -457,7 +457,7 @@ export default function CopilotChat({ inline = false }) {
                       display: 'flex',
                       flexDirection: 'column',
                       gap: '3px',
-                      fontFamily: 'var(--font-mono)',
+                      fontFamily: 'var(--font-sans)',
                       fontSize: '10px',
                       borderLeft: '2px solid rgba(129, 140, 248, 0.35)',
                       paddingLeft: '7px',
@@ -508,7 +508,7 @@ export default function CopilotChat({ inline = false }) {
                       display: 'flex',
                       flexDirection: 'column',
                       gap: '2px',
-                      fontFamily: 'var(--font-mono)',
+                      fontFamily: 'var(--font-sans)',
                       fontSize: '9.5px',
                       color: '#64748b',
                       borderLeft: '2px solid rgba(34, 197, 94, 0.25)',
@@ -542,7 +542,7 @@ export default function CopilotChat({ inline = false }) {
                         title={t.ok ? 'Grounded tool result' : 'Tool reported an error'}
                         style={{
                           fontSize: '10px',
-                          fontFamily: 'var(--font-mono)',
+                          fontFamily: 'var(--font-sans)',
                           background: t.ok
                             ? 'rgba(34, 197, 94, 0.12)'
                             : 'rgba(239, 68, 68, 0.12)',
@@ -577,7 +577,7 @@ export default function CopilotChat({ inline = false }) {
                           onClick={() => navigate(`/study/${studyId}`)}
                           style={{
                             fontSize: '10px',
-                            fontFamily: 'var(--font-mono)',
+                            fontFamily: 'var(--font-sans)',
                             background: 'rgba(79, 142, 247, 0.15)',
                             border: '1px solid rgba(79, 142, 247, 0.3)',
                             color: '#60a5fa',

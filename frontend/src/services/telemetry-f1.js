@@ -68,20 +68,104 @@ export function getFlexSupportRanges() {
   return flexData?.soporte ?? {};
 }
 
+const PARAM_LABELS = {
+  co2InitialPct: { label: 'CO₂ init', unit: '%' },
+  co2FinalPct: { label: 'CO₂ final', unit: '%' },
+  coInitialPpm: { label: 'CO init', unit: 'ppm' },
+  coFinalPpm: { label: 'CO final', unit: 'ppm' },
+  totalFrames: { label: 'Frames', unit: '' },
+  fanDisplay: { label: 'Fan', unit: '' },
+  airDisplay: { label: 'Air', unit: '' },
+  burnTimeS: { label: 'Burn time', unit: 's' },
+  hotIgnition: { label: 'Hot ignition', unit: '' },
+  termination: { label: 'Termination', unit: '' },
+  flameType: { label: 'Flame', unit: '' },
+  fuelRateSccm: { label: 'Fuel rate', unit: 'sccm' },
+  fuelRateMgS: { label: 'Fuel mass rate', unit: 'mg/s' },
+  tAdK: { label: 'T_ad', unit: 'K' },
+  peakBurnerTC: { label: 'Peak TC', unit: '°C' },
+  flowDirection: { label: 'Flow dir', unit: '' },
+  ignitionPowerW: { label: 'Ign power', unit: 'W' },
+  ignitionTimeS: { label: 'Ign time', unit: 's' },
+  microgBurnLengthRaw: { label: '0g burn len', unit: '' },
+  durationS: { label: 'Duration', unit: 's' },
+  rtR0: { label: 'Rt/R0', unit: '' },
+};
+
+function formatParamKey(key) {
+  return String(key)
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/_/g, ' ')
+    .trim();
+}
+
+function formatParamValue(val, unit = '') {
+  if (typeof val === 'boolean') return val ? 'Yes' : 'No';
+  if (typeof val === 'number') {
+    const rounded = Number.isInteger(val) ? String(val) : Number(val.toFixed(3)).toString();
+    return unit ? `${rounded} ${unit}` : rounded;
+  }
+  const text = String(val).trim();
+  return unit && !text.includes(unit) ? `${text} ${unit}` : text;
+}
+
+export function getExperimentParamEntries(run) {
+  if (!run) return [];
+  const entries = [];
+  const seen = new Set();
+
+  const pushEntry = (key, rawVal) => {
+    if (rawVal === null || rawVal === undefined || rawVal === '' || seen.has(key)) return;
+    if (typeof rawVal === 'number' && !Number.isFinite(rawVal)) return;
+    if (typeof rawVal === 'object') return;
+    seen.add(key);
+    const meta = PARAM_LABELS[key];
+    entries.push({
+      key,
+      label: meta?.label ?? formatParamKey(key),
+      value: formatParamValue(rawVal, meta?.unit ?? ''),
+    });
+  };
+
+  if (run.outcome && typeof run.outcome === 'object') {
+    Object.entries(run.outcome).forEach(([k, v]) => pushEntry(k, v));
+  }
+  if (run.params && typeof run.params === 'object') {
+    Object.entries(run.params).forEach(([k, v]) => pushEntry(k, v));
+  }
+  return entries;
+}
+
 export function normalizeMongoExperiments(experiments = []) {
   return experiments.map((exp, index) => {
-    const pressureKpa = exp.pressureKpa != null ? Number(exp.pressureKpa) : null;
+    const pressureKpa =
+      exp.pressureKpa != null && Number.isFinite(Number(exp.pressureKpa))
+        ? Number(exp.pressureKpa)
+        : null;
     const pressurePsi =
-      pressureKpa != null && Number.isFinite(pressureKpa)
+      pressureKpa != null
         ? Number((pressureKpa * 0.145038).toFixed(2))
         : null;
     const pressureMmhg =
-      pressureKpa != null && Number.isFinite(pressureKpa)
+      pressureKpa != null
         ? Number((pressureKpa * 7.50062).toFixed(1))
         : null;
-    const o2Pct = exp.o2Percent != null ? Number(exp.o2Percent) : null;
-    const co2Pct = exp.co2Percent != null ? Number(exp.co2Percent) : 0;
-    const hePct = exp.hePercent != null ? Number(exp.hePercent) : 0;
+    const o2Pct =
+      exp.o2Percent != null && Number.isFinite(Number(exp.o2Percent))
+        ? Number(exp.o2Percent)
+        : null;
+    const o2PctFinal =
+      exp.o2PercentFinal != null && Number.isFinite(Number(exp.o2PercentFinal))
+        ? Number(exp.o2PercentFinal)
+        : null;
+    const co2Pct =
+      exp.co2Percent != null && Number.isFinite(Number(exp.co2Percent))
+        ? Number(exp.co2Percent)
+        : 0;
+    const hePct =
+      exp.hePercent != null && Number.isFinite(Number(exp.hePercent))
+        ? Number(exp.hePercent)
+        : 0;
     const n2Pct =
       o2Pct != null
         ? Number(Math.max(0, 100 - o2Pct - co2Pct - hePct).toFixed(1))
@@ -90,18 +174,37 @@ export function normalizeMongoExperiments(experiments = []) {
     return {
       index: index + 1,
       runId: exp.runId ?? `EXP-${index + 1}`,
-      date: exp.date ?? exp.investigationSlug ?? 'MongoDB Record',
+      investigationSlug: exp.investigationSlug ?? null,
+      date: exp.date ?? exp.params?.dateRaw ?? null,
       fuel: exp.fuel?.material ?? exp.fuel?.family ?? 'Reported fuel',
+      fuelFamily: exp.fuel?.family ?? null,
+      fuelForm: exp.fuel?.form ?? null,
+      fuelSizeMm:
+        exp.fuel?.sizeMm != null && Number.isFinite(Number(exp.fuel.sizeMm))
+          ? Number(exp.fuel.sizeMm)
+          : null,
       mix: co2Pct > 0 ? 'CO₂' : hePct > 0 ? 'He' : 'O₂/N₂',
+      pressureKpa,
       pressureMmhg,
       pressurePsi,
       o2Pct,
+      o2PctFinal,
       n2Pct,
       co2Pct,
       hePct,
       diameterMm: exp.diameterMm != null ? Number(exp.diameterMm) : null,
-      flowVelocity: exp.flowVelocityMs != null ? Number(exp.flowVelocityMs) : null,
+      flowVelocity:
+        exp.flowVelocityMs != null && Number.isFinite(Number(exp.flowVelocityMs))
+          ? Number(exp.flowVelocityMs)
+          : null,
       gravity: exp.gravity?.regime ?? 'microgravity',
+      outcome: exp.outcome && typeof exp.outcome === 'object' ? exp.outcome : null,
+      params: exp.params && typeof exp.params === 'object' ? exp.params : null,
+      sensors: Array.isArray(exp.sensors) ? exp.sensors : [],
+      dataQuality: Array.isArray(exp.dataQuality) ? exp.dataQuality : [],
+      sourceFile: exp.sourceFile ?? null,
+      pi: exp.pi ?? null,
+      sampleNumber: exp.sampleNumber ?? null,
       source: 'MongoDB Experiments',
     };
   });

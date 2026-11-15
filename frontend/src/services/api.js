@@ -87,6 +87,7 @@ export const api = {
       return {
         investigation,
         experiments: [],
+        totalExperiments: 0,
         measurements: [],
         source: 'local-processed-fallback',
       };

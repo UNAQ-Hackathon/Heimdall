@@ -39,7 +39,9 @@ import {
   FLEX_FUEL_FILTERS,
   FLEX_MIX_FILTERS,
   getAllFlexRuns,
+  getExperimentParamEntries,
   isDropletTelemetryStudy,
+  normalizeMongoExperiments,
 } from '../services/telemetry-f1.js';
 import '../styles/psi-catalog.css';
 
@@ -141,7 +143,7 @@ function ArchiveOxygenComparisonChart({ studies, selectedKey, onSelectStudy }) {
           <strong style={{ color: '#f8fafc' }}>21% ISS</strong> and{' '}
           <strong style={{ color: '#fbbf24' }}>30% Moon Base</strong>. Click any bar to inspect that study.
         </span>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10.5px', color: '#64748b' }}>
+        <span style={{ fontFamily: 'var(--font-sans)', fontSize: '10.5px', color: '#64748b' }}>
           {chartData.length} studies with reported O₂ bounds
         </span>
       </div>
@@ -272,7 +274,7 @@ function ChamberBaselineChart({ study, kpis }) {
         <span className="psi-section-title" style={{ marginBottom: 0 }}>
           Peak Atmosphere Telemetry vs Spacecraft Baselines
         </span>
-        <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: '#7dd3fc' }}>
+        <span style={{ fontSize: '11px', fontFamily: 'var(--font-sans)', color: '#7dd3fc' }}>
           Earth baseline: {EARTH_BASELINE.o2Pct}% O₂ · {EARTH_BASELINE.pressurePsi} psi
         </span>
       </div>
@@ -335,7 +337,7 @@ function EmpiricalBurnCurveChart({ study }) {
           Empirical Burn Curves ({stats.seriesCount} curves · {stats.sampleCount} measured samples)
         </span>
         {study.seriesSource && (
-          <span style={{ fontSize: '10.5px', fontFamily: 'var(--font-mono)', color: '#6ee7b7' }}>
+          <span style={{ fontSize: '10.5px', fontFamily: 'var(--font-sans)', color: '#6ee7b7' }}>
             {study.seriesSource}
           </span>
         )}
@@ -443,7 +445,7 @@ function FlexRunsExplorer({ runs }) {
         <span className="psi-section-title" style={{ marginBottom: 0 }}>
           FLEX Droplet Matrix ({filteredRuns.length} of {runs.length} experimental runs)
         </span>
-        <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: '#94a3b8' }}>
+        <span style={{ fontSize: '11px', fontFamily: 'var(--font-sans)', color: '#94a3b8' }}>
           Click any point to inspect gas mixture
         </span>
       </div>
@@ -539,7 +541,7 @@ function FlexRunsExplorer({ runs }) {
             <strong style={{ fontSize: '12px', color: '#f8fafc' }}>
               Selected Run: {selectedRun.runId} ({selectedRun.fuel} · {selectedRun.mix})
             </strong>
-            <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: '#7dd3fc' }}>
+            <span style={{ fontSize: '11px', fontFamily: 'var(--font-sans)', color: '#7dd3fc' }}>
               {selectedRun.pressureMmhg} mmHg ({selectedRun.pressurePsi} psi) · {selectedRun.diameterMm} mm droplet
             </span>
           </div>
@@ -567,11 +569,332 @@ function FlexRunsExplorer({ runs }) {
   );
 }
 
+const MONGO_RUNS_PAGE_SIZE = 10;
+
+function MongoRunsExplorer({ study, runs, totalRuns, loading }) {
+  const [runQuery, setRunQuery] = useState('');
+  const [fuelGroup, setFuelGroup] = useState('all');
+  const [page, setPage] = useState(0);
+  const [selectedRunId, setSelectedRunId] = useState(null);
+
+  const fuelGroups = useMemo(() => {
+    const counts = new Map();
+    runs.forEach((r) => {
+      const label = r.fuelFamily || r.fuelForm || r.fuel;
+      if (label) counts.set(label, (counts.get(label) ?? 0) + 1);
+    });
+    return [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([label, count]) => ({ label, count }));
+  }, [runs]);
+
+  const filteredRuns = useMemo(() => {
+    const q = runQuery.trim().toLowerCase();
+    return runs.filter((r) => {
+      if (fuelGroup !== 'all') {
+        const label = r.fuelFamily || r.fuelForm || r.fuel;
+        if (label !== fuelGroup) return false;
+      }
+      if (!q) return true;
+      return [r.runId, r.date, r.fuel, r.fuelFamily, r.pi, r.sampleNumber]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(q);
+    });
+  }, [runs, runQuery, fuelGroup]);
+
+  useEffect(() => {
+    setRunQuery('');
+    setFuelGroup('all');
+    setPage(0);
+    setSelectedRunId(null);
+  }, [study?.acronym, study?.psiId]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [runQuery, fuelGroup]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredRuns.length / MONGO_RUNS_PAGE_SIZE));
+  const safePage = Math.min(page, totalPages - 1);
+  const pageRuns = useMemo(
+    () =>
+      filteredRuns.slice(
+        safePage * MONGO_RUNS_PAGE_SIZE,
+        (safePage + 1) * MONGO_RUNS_PAGE_SIZE
+      ),
+    [filteredRuns, safePage]
+  );
+
+  const selectedRun = useMemo(
+    () =>
+      filteredRuns.find((r) => r.runId === selectedRunId) ??
+      pageRuns[0] ??
+      filteredRuns[0] ??
+      null,
+    [filteredRuns, pageRuns, selectedRunId]
+  );
+
+  const selectedEntries = useMemo(
+    () => getExperimentParamEntries(selectedRun),
+    [selectedRun]
+  );
+
+  if (loading && runs.length === 0) {
+    return (
+      <div className="psi-telemetry-viz-card" aria-live="polite">
+        <span className="psi-section-title" style={{ marginBottom: 0 }}>
+          Loading MongoDB experimental runs for {study?.acronym}…
+        </span>
+      </div>
+    );
+  }
+
+  if (runs.length === 0) return null;
+
+  const displayTotal = totalRuns > runs.length ? totalRuns : runs.length;
+  const sourceFile = runs.find((r) => r.sourceFile)?.sourceFile;
+
+  return (
+    <section
+      className="psi-telemetry-viz-card"
+      aria-label={`MongoDB experimental runs for ${study?.acronym}`}
+    >
+      <div className="psi-viz-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <span className="psi-section-title" style={{ marginBottom: 0 }}>
+            Experimental Runs ({filteredRuns.length} of {displayTotal} runs)
+          </span>
+          <span className="psi-mongo-badge">MongoDB · experiments</span>
+        </div>
+        {sourceFile && (
+          <span style={{ fontSize: '10.5px', fontFamily: 'var(--font-sans)', color: '#94a3b8' }}>
+            {sourceFile}
+          </span>
+        )}
+      </div>
+
+      <div className="psi-run-toolbar">
+        <input
+          type="search"
+          className="psi-run-search"
+          value={runQuery}
+          onChange={(e) => setRunQuery(e.target.value)}
+          placeholder="Filter by run ID, material, or date…"
+          aria-label="Filter experimental runs"
+        />
+        {fuelGroups.length > 1 && (
+          <div className="psi-chip-group" role="group" aria-label="Filter runs by material family">
+            <button
+              type="button"
+              className={`psi-series-tab ${fuelGroup === 'all' ? 'psi-series-tab--active' : ''}`}
+              onClick={() => setFuelGroup('all')}
+            >
+              All ({runs.length})
+            </button>
+            {fuelGroups.map((g) => (
+              <button
+                key={g.label}
+                type="button"
+                className={`psi-series-tab ${fuelGroup === g.label ? 'psi-series-tab--active' : ''}`}
+                onClick={() => setFuelGroup(g.label)}
+              >
+                {g.label} ({g.count})
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {filteredRuns.length === 0 ? (
+        <div style={{ fontSize: '12px', color: '#94a3b8', padding: '10px 0' }}>
+          No runs match &ldquo;{runQuery}&rdquo;.
+        </div>
+      ) : (
+        <>
+          <div className="psi-runs-table-wrap">
+            <table className="psi-runs-table">
+              <thead>
+                <tr>
+                  <th>Run</th>
+                  <th>Date</th>
+                  <th>Fuel / Sample</th>
+                  <th>O₂ %</th>
+                  <th>Pressure / Flow</th>
+                  <th>Measured Params</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pageRuns.map((run) => {
+                  const isSelected = selectedRun?.runId === run.runId;
+                  const params = getExperimentParamEntries(run).slice(0, 3);
+                  const o2Text =
+                    run.o2Pct != null
+                      ? run.o2PctFinal != null && run.o2PctFinal !== run.o2Pct
+                        ? `${run.o2Pct}% → ${run.o2PctFinal}%`
+                        : `${run.o2Pct}%`
+                      : '—';
+                  const envParts = [];
+                  if (run.pressurePsi != null) envParts.push(`${run.pressurePsi} psi`);
+                  if (run.flowVelocity != null) envParts.push(`${run.flowVelocity} m/s`);
+                  return (
+                    <tr
+                      key={`${run.runId}-${run.index}`}
+                      className={isSelected ? 'psi-runs-row--selected' : ''}
+                      onClick={() => setSelectedRunId(run.runId)}
+                    >
+                      <td className="psi-runs-mono">{run.runId}</td>
+                      <td className="psi-runs-mono">{run.date ?? '—'}</td>
+                      <td>{run.fuel}</td>
+                      <td className="psi-runs-mono">{o2Text}</td>
+                      <td className="psi-runs-mono">
+                        {envParts.length ? envParts.join(' · ') : '—'}
+                      </td>
+                      <td className="psi-runs-params-cell">
+                        {params.length
+                          ? params.map((p) => `${p.label}: ${p.value}`).join(' · ')
+                          : '—'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {totalPages > 1 && (
+            <div className="psi-runs-pagination">
+              <span style={{ fontSize: '11px', fontFamily: 'var(--font-sans)', color: '#94a3b8' }}>
+                Showing {safePage * MONGO_RUNS_PAGE_SIZE + 1}–
+                {Math.min((safePage + 1) * MONGO_RUNS_PAGE_SIZE, filteredRuns.length)} of{' '}
+                {filteredRuns.length}
+              </span>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <button
+                  type="button"
+                  className="psi-series-tab"
+                  disabled={safePage === 0}
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                >
+                  ← Prev
+                </button>
+                <button
+                  type="button"
+                  className="psi-series-tab"
+                  disabled={safePage >= totalPages - 1}
+                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                >
+                  Next →
+                </button>
+              </div>
+            </div>
+          )}
+
+          {selectedRun && (
+            <div className="psi-run-readout">
+              <div className="psi-overview-headline">
+                <strong style={{ fontSize: '12px', color: '#f8fafc' }}>
+                  Run {selectedRun.runId} · {selectedRun.fuel}
+                </strong>
+                <span style={{ fontSize: '11px', fontFamily: 'var(--font-sans)', color: '#7dd3fc' }}>
+                  {[
+                    selectedRun.date,
+                    selectedRun.pi ? `PI: ${selectedRun.pi}` : null,
+                    selectedRun.sampleNumber ? `Sample #${selectedRun.sampleNumber}` : null,
+                    selectedRun.o2Pct != null ? `O₂ ${selectedRun.o2Pct}%` : null,
+                    selectedRun.pressureKpa != null ? `${selectedRun.pressureKpa} kPa` : null,
+                    selectedRun.flowVelocity != null ? `${selectedRun.flowVelocity} m/s` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </span>
+              </div>
+
+              {selectedEntries.length > 0 && (
+                <div className="psi-run-param-grid">
+                  {selectedEntries.map((entry) => (
+                    <div key={entry.key} className="psi-run-param-chip">
+                      <span>{entry.label}</span>
+                      <strong>{entry.value}</strong>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {(selectedRun.sensors.length > 0 || selectedRun.dataQuality.length > 0) && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                  {selectedRun.sensors.map((sensor) => (
+                    <span key={sensor} className="psi-tag">
+                      {sensor}
+                    </span>
+                  ))}
+                  {selectedRun.dataQuality.map((note) => (
+                    <span
+                      key={note}
+                      style={{ fontSize: '11px', color: '#fde68a', fontFamily: 'var(--font-sans)' }}
+                    >
+                      Note: {note}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
 function StudyInspectorPanel({ study, audience, allFlexRuns, inspectorRef }) {
   const isStudent = audience === 'Student';
   const [vizTab, setVizTab] = useState('envelope');
+  const studyKey = getStudyRouteKey(study);
+  const [mongoTelemetry, setMongoTelemetry] = useState({
+    studyKey: null,
+    loading: false,
+    runs: [],
+    totalRuns: 0,
+    source: 'local-processed-fallback',
+  });
   const seriesStats = useMemo(() => getStudySeriesStats(study), [study]);
   const isDropletStudy = useMemo(() => isDropletTelemetryStudy(study), [study]);
+
+  useEffect(() => {
+    if (!studyKey) return undefined;
+    let cancelled = false;
+    setMongoTelemetry((prev) => ({
+      ...prev,
+      studyKey,
+      loading: true,
+      runs: prev.studyKey === studyKey ? prev.runs : [],
+      totalRuns: prev.studyKey === studyKey ? prev.totalRuns : 0,
+    }));
+    api.getStudyTelemetry(studyKey).then((res) => {
+      if (cancelled) return;
+      const rawExperiments = Array.isArray(res?.experiments) ? res.experiments : [];
+      const normalized = normalizeMongoExperiments(rawExperiments);
+      const total =
+        typeof res?.totalExperiments === 'number' && res.totalExperiments >= normalized.length
+          ? res.totalExperiments
+          : normalized.length;
+      setMongoTelemetry({
+        studyKey,
+        loading: false,
+        runs: normalized,
+        totalRuns: total,
+        source: res?.source ?? 'local-processed-fallback',
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [studyKey]);
+
+  const mongoRuns = mongoTelemetry.studyKey === studyKey ? mongoTelemetry.runs : [];
+  const mongoTotalRuns = mongoTelemetry.studyKey === studyKey ? mongoTelemetry.totalRuns : 0;
+  const mongoLoading = mongoTelemetry.studyKey === studyKey ? mongoTelemetry.loading : false;
 
   useEffect(() => {
     if (seriesStats.sampleCount > 0) {
@@ -587,9 +910,9 @@ function StudyInspectorPanel({ study, audience, allFlexRuns, inspectorRef }) {
     () =>
       computeTelemetryKPIs({
         study,
-        runs: /flex/i.test(String(study?.acronym ?? '')) ? allFlexRuns : [],
+        runs: /flex/i.test(String(study?.acronym ?? '')) ? allFlexRuns : mongoRuns,
       }),
-    [study, allFlexRuns]
+    [study, allFlexRuns, mongoRuns]
   );
 
   if (!study) return null;
@@ -671,7 +994,8 @@ function StudyInspectorPanel({ study, audience, allFlexRuns, inspectorRef }) {
         {tier === 'empirical' && (
           <>
             <strong>Empirical Telemetry Available:</strong> Includes {seriesStats.sampleCount} measured burn samples
-            across {seriesStats.seriesCount} droplet curves extracted from NASA PSI artifacts.
+            across {seriesStats.seriesCount} droplet curves extracted from NASA PSI artifacts
+            {mongoTotalRuns > 0 ? ` · ${mongoTotalRuns} individual test runs loaded from MongoDB experiments` : ''}.
           </>
         )}
         {tier === 'upcoming' && (
@@ -682,8 +1006,12 @@ function StudyInspectorPanel({ study, audience, allFlexRuns, inspectorRef }) {
         )}
         {tier === 'published' && (
           <>
-            <strong>Verified Experimental Envelope:</strong> Documents tested chamber limits, fuels, and sensor hardware
-            from NASA PSI; sample-by-sample time-series arrays are not attached to this archive record.
+            <strong>
+              {mongoTotalRuns > 0 ? 'Verified Envelope & MongoDB Experimental Runs:' : 'Verified Experimental Envelope:'}
+            </strong>{' '}
+            {mongoTotalRuns > 0
+              ? `${mongoTotalRuns} individual test runs loaded from MongoDB experiments alongside tested chamber limits, fuels, and sensor hardware from NASA PSI.`
+              : 'Documents tested chamber limits, fuels, and sensor hardware from NASA PSI; sample-by-sample time-series arrays are not attached to this archive record.'}
           </>
         )}
       </div>
@@ -702,7 +1030,7 @@ function StudyInspectorPanel({ study, audience, allFlexRuns, inspectorRef }) {
             lineHeight: 1.5,
           }}
         >
-          <strong style={{ color: '#6ee7b7', display: 'block', marginBottom: '2px', fontSize: '11px', fontFamily: 'var(--font-mono)' }}>
+          <strong style={{ color: '#6ee7b7', display: 'block', marginBottom: '2px', fontSize: '11px', fontFamily: 'var(--font-sans)' }}>
             STUDENT PHYSICS CONCEPT
           </strong>
           {studentConceptTip}
@@ -733,10 +1061,20 @@ function StudyInspectorPanel({ study, audience, allFlexRuns, inspectorRef }) {
           <div className="psi-kpi-cell">
             <span className="psi-kpi-label">EVIDENCE READY</span>
             <span className="psi-kpi-value">
-              {tier === 'empirical' ? `${seriesStats.sampleCount} Space Runs` : tier === 'upcoming' ? 'Future Mission' : 'Verified Specs'}
+              {mongoTotalRuns > 0
+                ? `${mongoTotalRuns} Space Runs`
+                : tier === 'empirical'
+                  ? `${seriesStats.sampleCount} Space Runs`
+                  : tier === 'upcoming'
+                    ? 'Future Mission'
+                    : 'Verified Specs'}
             </span>
             <span className="psi-kpi-delta">
-              {tier === 'upcoming' ? 'Real gap — no invented data' : 'NASA ISS / Cygnus record'}
+              {mongoTotalRuns > 0
+                ? 'Live MongoDB experiments'
+                : tier === 'upcoming'
+                  ? 'Real gap — no invented data'
+                  : 'NASA ISS / Cygnus record'}
             </span>
           </div>
         </section>
@@ -775,18 +1113,22 @@ function StudyInspectorPanel({ study, audience, allFlexRuns, inspectorRef }) {
           <div className="psi-kpi-cell">
             <span className="psi-kpi-label">TELEMETRY DEPTH</span>
             <span className="psi-kpi-value">
-              {tier === 'empirical'
-                ? `${seriesStats.sampleCount} runs`
-                : tier === 'upcoming'
-                  ? 'Lunar gap'
-                  : `${study.sensors?.length ?? 0} sensors`}
+              {mongoTotalRuns > 0
+                ? `${mongoTotalRuns} runs`
+                : tier === 'empirical'
+                  ? `${seriesStats.sampleCount} runs`
+                  : tier === 'upcoming'
+                    ? 'Lunar gap'
+                    : `${study.sensors?.length ?? 0} sensors`}
             </span>
-            <span className={`psi-kpi-delta ${tier === 'empirical' ? 'psi-kpi-delta--ok' : ''}`}>
-              {tier === 'empirical'
-                ? 'Empirical curves ready'
-                : tier === 'upcoming'
-                  ? 'Awaiting CLPS flight'
-                  : 'Published condition bounds'}
+            <span className={`psi-kpi-delta ${mongoTotalRuns > 0 || tier === 'empirical' ? 'psi-kpi-delta--ok' : ''}`}>
+              {mongoTotalRuns > 0
+                ? `MongoDB experiments · ${study.sensors?.length ?? 0} sensors`
+                : tier === 'empirical'
+                  ? 'Empirical curves ready'
+                  : tier === 'upcoming'
+                    ? 'Awaiting CLPS flight'
+                    : 'Published condition bounds'}
             </span>
           </div>
         </section>
@@ -861,6 +1203,13 @@ function StudyInspectorPanel({ study, audience, allFlexRuns, inspectorRef }) {
         {vizTab === 'envelope' && <ChamberBaselineChart study={study} kpis={kpis} />}
       </section>
 
+      <MongoRunsExplorer
+        study={study}
+        runs={mongoRuns}
+        totalRuns={mongoTotalRuns}
+        loading={mongoLoading}
+      />
+
       <section className="psi-detail-grid" aria-label="Measured variables and sensors">
         <div>
           <div className="psi-section-title">What NASA Measured</div>
@@ -919,7 +1268,7 @@ function StudyInspectorPanel({ study, audience, allFlexRuns, inspectorRef }) {
         ) : (
           <span style={{ fontSize: '11.5px', color: '#64748b' }}>Source URL not listed</span>
         )}
-        <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
+        <span style={{ fontSize: '11px', fontFamily: 'var(--font-sans)', color: '#64748b' }}>
           Strictly verified NASA PSI telemetry
         </span>
       </footer>
@@ -932,6 +1281,7 @@ export default function PsiCatalogPage() {
   const { audience } = useApp();
   const [investigations, setInvestigations] = useState(INVESTIGATIONS);
   const [dataSource, setDataSource] = useState('local-processed');
+  const [archiveTotalExperiments, setArchiveTotalExperiments] = useState(0);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('all');
   const [fuelType, setFuelType] = useState('all');
@@ -950,6 +1300,11 @@ export default function PsiCatalogPage() {
       if (!cancelled && Array.isArray(res?.items) && res.items.length > 0) {
         setInvestigations(res.items);
         setDataSource(res.source ?? 'local-processed');
+      }
+    });
+    api.getStudyTelemetry().then((res) => {
+      if (!cancelled && typeof res?.totalExperiments === 'number' && res.totalExperiments > 0) {
+        setArchiveTotalExperiments(res.totalExperiments);
       }
     });
     return () => {
@@ -1099,10 +1454,17 @@ export default function PsiCatalogPage() {
                     <span>of {investigations.length} matching studies</span>
                   </div>
                   <div className="psi-readiness-row">
+                    {archiveTotalExperiments > 0 && (
+                      <span className="psi-readiness-item">
+                        <span className="psi-dot" style={{ background: '#a78bfa' }} />
+                        {archiveTotalExperiments.toLocaleString()} MongoDB runs
+                      </span>
+                    )}
                     <span className="psi-readiness-item">
                       <span className="psi-dot" style={{ background: '#34d399' }} />
                       {overview.telemetryCounts.empiricalSamples} empirical samples (
-                      {overview.telemetryCounts.empiricalStudies} study)
+                      {overview.telemetryCounts.empiricalStudies}{' '}
+                      {overview.telemetryCounts.empiricalStudies === 1 ? 'study' : 'studies'})
                     </span>
                     <span className="psi-readiness-item">
                       <span className="psi-dot" style={{ background: '#38bdf8' }} />
@@ -1150,7 +1512,7 @@ export default function PsiCatalogPage() {
                     >
                       <span className="psi-dot" style={{ background: seg.color }} />
                       <span>{seg.label}</span>
-                      <span style={{ color: '#64748b', fontFamily: 'var(--font-mono)' }}>{seg.count}</span>
+                      <span style={{ color: '#64748b', fontFamily: 'var(--font-sans)' }}>{seg.count}</span>
                     </button>
                   ))}
                 </div>
@@ -1249,7 +1611,7 @@ export default function PsiCatalogPage() {
               <strong style={{ color: activeGoal.color }}>{activeGoal.label}:</strong> {activeGoal.description}
             </span>
             {secondaryFilterCount > 0 && (
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: '#7dd3fc' }}>
+              <span style={{ fontFamily: 'var(--font-sans)', fontSize: '11px', color: '#7dd3fc' }}>
                 Extra filters active ({secondaryFilterCount}) — click More Filters to adjust
               </span>
             )}
