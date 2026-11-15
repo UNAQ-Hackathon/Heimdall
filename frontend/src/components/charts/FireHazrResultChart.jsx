@@ -80,7 +80,7 @@ export default function FireHazrResultChart({ result, conditions }) {
         gap: '12px',
         padding: '12px 14px',
         borderRadius: '10px',
-        background: 'linear-gradient(180deg, rgba(11, 19, 34, 0.9), rgba(8, 13, 26, 0.95))',
+        background: '#0a1120',
         border: '1px solid #1e293b',
       }}
     >

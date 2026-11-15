@@ -1015,12 +1015,6 @@ export default function PsiCatalogPage() {
       <div className="psi-catalog-shell">
         <header className="psi-header">
           <div>
-            <div className="psi-eyebrow-row">
-              <span>NASA PHYSICAL SCIENCES INFORMATICS // COMBUSTION TELEMETRY ({investigations.length} STUDIES)</span>
-              <span className="psi-audience-chip">
-                {audience === 'Student' ? 'STUDENT LEARNING VIEW' : 'ENGINEER TELEMETRY VIEW'}
-              </span>
-            </div>
             <h1 className="psi-title">NASA PSI Telemetry & Investigation Explorer</h1>
             <p className="psi-subtitle">
               {audience === 'Student'
@@ -1030,10 +1024,7 @@ export default function PsiCatalogPage() {
           </div>
 
           <div className="psi-header-actions">
-            <span className={`psi-source-badge ${dataSource === 'api' ? 'psi-source-badge--live' : ''}`}>
-              SOURCE: {dataSource === 'api' ? 'MONGODB / API' : 'VERIFIED PSI ARCHIVE'}
-            </span>
-            {audience === 'Engineer' ? (
+            {audience === 'Engineer' && (
               <>
                 <button
                   type="button"
@@ -1064,10 +1055,6 @@ export default function PsiCatalogPage() {
                   Extract JSON
                 </button>
               </>
-            ) : (
-              <span className="psi-audience-chip" style={{ fontFamily: 'var(--font-mono)', fontSize: '10.5px' }}>
-                SIMPLIFIED LEARNING MODE · RAW DATA EXPORTS HIDDEN
-              </span>
             )}
             <Link to="/compare" className="psi-action-btn">
               Compare Studies ↗

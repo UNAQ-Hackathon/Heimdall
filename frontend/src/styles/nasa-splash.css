@@ -6,169 +6,34 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  overflow: hidden;
-  background:
-    radial-gradient(circle at 50% 42%, rgba(11, 61, 145, 0.28) 0%, rgba(5, 8, 17, 0.96) 54%),
-    radial-gradient(circle at 58% 36%, rgba(252, 61, 33, 0.08) 0%, transparent 40%),
-    #040711;
-  transition:
-    opacity 480ms cubic-bezier(0.22, 1, 0.36, 1),
-    transform 480ms cubic-bezier(0.22, 1, 0.36, 1),
-    filter 480ms cubic-bezier(0.22, 1, 0.36, 1),
-    visibility 480ms ease;
+  background: #050811;
+  transition: opacity 420ms cubic-bezier(0.22, 1, 0.36, 1), visibility 420ms ease;
 }
 
 .nasa-splash--exiting {
   opacity: 0;
-  transform: scale(1.025);
-  filter: blur(6px);
   visibility: hidden;
   pointer-events: none;
 }
 
-.nasa-splash__grid {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(148, 163, 184, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.03) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: radial-gradient(circle at center, black 20%, transparent 72%);
-  pointer-events: none;
-}
-
-.nasa-splash__corners {
-  position: absolute;
-  inset: clamp(16px, 3vw, 28px);
-  pointer-events: none;
-}
-
-.nasa-splash__corners span {
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  border-color: rgba(148, 163, 184, 0.24);
-  border-style: solid;
-  border-width: 0;
-}
-
-.nasa-splash__corners span:nth-child(1) {
-  top: 0;
-  left: 0;
-  border-top-width: 1px;
-  border-left-width: 1px;
-}
-
-.nasa-splash__corners span:nth-child(2) {
-  top: 0;
-  right: 0;
-  border-top-width: 1px;
-  border-right-width: 1px;
-}
-
-.nasa-splash__corners span:nth-child(3) {
-  bottom: 0;
-  left: 0;
-  border-bottom-width: 1px;
-  border-left-width: 1px;
-}
-
-.nasa-splash__corners span:nth-child(4) {
-  bottom: 0;
-  right: 0;
-  border-bottom-width: 1px;
-  border-right-width: 1px;
-}
-
 .nasa-splash__content {
-  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 24px;
-  animation: nasa-splash-enter 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.nasa-splash__emblem {
-  position: relative;
-  width: 144px;
-  height: 144px;
-  display: grid;
-  place-items: center;
-}
-
-.nasa-splash__halo {
-  position: absolute;
-  inset: 22px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(56, 189, 248, 0.22) 0%, rgba(11, 61, 145, 0.06) 62%, transparent 75%);
-  filter: blur(8px);
-  animation: nasa-splash-pulse 2.2s ease-in-out infinite;
-}
-
-.nasa-splash__dial,
-.nasa-splash__ring,
-.nasa-splash__ring-inner {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.nasa-splash__dial {
-  animation: nasa-splash-spin 22s linear infinite;
-}
-
-.nasa-splash__ring {
-  animation: nasa-splash-spin 2.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
-}
-
-.nasa-splash__ring-inner {
-  animation: nasa-splash-spin-reverse 8s linear infinite;
+  gap: 20px;
+  animation: nasa-splash-enter 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .nasa-splash__logo {
-  position: relative;
-  width: 78px;
-  height: 78px;
+  width: 88px;
+  height: 88px;
   object-fit: contain;
-  filter: drop-shadow(0 0 22px rgba(56, 189, 248, 0.38));
-}
-
-.nasa-splash__meta {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 9px;
-  text-align: center;
-}
-
-.nasa-splash__kicker {
-  font-family: var(--font-mono, monospace);
-  font-size: 9.5px;
-  font-weight: 600;
-  letter-spacing: 0.24em;
-  color: #60a5fa;
-  text-transform: uppercase;
-}
-
-.nasa-splash__wordmark {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: 0.28em;
-  text-indent: 0.28em;
-  background: linear-gradient(180deg, #ffffff 0%, #cbd5e1 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
 }
 
 .nasa-splash__bar {
   position: relative;
-  width: 196px;
-  height: 2px;
-  margin-top: 4px;
+  width: 184px;
+  height: 3px;
   border-radius: 9999px;
   background: rgba(148, 163, 184, 0.16);
   overflow: hidden;
@@ -183,51 +48,14 @@
   animation: nasa-splash-progress 1.25s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-.nasa-splash__subtitle {
-  margin: 2px 0 0;
-  font-family: var(--font-mono, monospace);
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  color: #7c8fa8;
-}
-
 @keyframes nasa-splash-enter {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.97);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes nasa-splash-pulse {
-  0%, 100% {
-    opacity: 0.65;
-    transform: scale(0.96);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.05);
-  }
-}
-
-@keyframes nasa-splash-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes nasa-splash-spin-reverse {
-  from {
-    transform: rotate(360deg);
-  }
-  to {
-    transform: rotate(0deg);
+    transform: translateY(0);
   }
 }
 
@@ -241,29 +69,18 @@
 }
 
 @media (max-width: 480px) {
-  .nasa-splash__emblem {
-    width: 128px;
-    height: 128px;
-  }
-
   .nasa-splash__logo {
-    width: 70px;
-    height: 70px;
+    width: 78px;
+    height: 78px;
   }
 
-  .nasa-splash__wordmark {
-    font-size: 19px;
-    letter-spacing: 0.24em;
-    text-indent: 0.24em;
+  .nasa-splash__bar {
+    width: 164px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .nasa-splash__content,
-  .nasa-splash__halo,
-  .nasa-splash__dial,
-  .nasa-splash__ring,
-  .nasa-splash__ring-inner,
   .nasa-splash__fill {
     animation: none;
   }

@@ -4,7 +4,7 @@
   height: 100%;
   min-height: 0;
   overflow-y: auto;
-  background: radial-gradient(circle at top right, var(--audience-bg-glow, rgba(56, 189, 248, 0.08)), transparent 45%), #060a14;
+  background: #060a14;
   padding: 24px 28px 40px;
 }
 
@@ -22,11 +22,8 @@
   align-items: flex-end;
   flex-wrap: wrap;
   gap: 16px;
-  padding: 18px 22px;
-  background: linear-gradient(135deg, rgba(13, 19, 33, 0.96), var(--audience-tint, rgba(15, 25, 45, 0.92)));
-  border: 1px solid var(--audience-border, #1e2d4a);
-  border-radius: 12px;
-  transition: border-color 220ms ease, background 220ms ease;
+  padding: 0 0 18px;
+  border-bottom: 1px solid #1c2640;
 }
 
 .compare-hero__eyebrow {
@@ -391,7 +388,7 @@
   top: 0;
   bottom: 0;
   border-radius: 9999px;
-  background: linear-gradient(90deg, #38bdf8, #f59e0b);
+  background: #38bdf8;
 }
 
 .compare-o2-earth {
@@ -429,7 +426,7 @@
   gap: 12px;
   padding: 16px 18px;
   border-radius: 11px;
-  background: linear-gradient(180deg, #0d1424, #090e1a);
+  background: #0b1120;
   border: 1px solid #1e293b;
   transition: border-color 150ms ease, transform 150ms ease;
 }

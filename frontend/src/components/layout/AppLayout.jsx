@@ -53,7 +53,6 @@ export default function AppLayout() {
             <HeimdallLogo size={40} />
             <div className="app-header__wordmark">
               <strong>Heimdall</strong>
-              <span>Spacecraft fire research</span>
             </div>
           </Link>
         </div>

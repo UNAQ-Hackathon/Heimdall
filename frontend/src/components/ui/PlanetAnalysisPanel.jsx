@@ -76,13 +76,11 @@ export default function PlanetAnalysisPanel({
       aria-labelledby="planet-analysis-title"
       style={{
         '--zone-color': activeZone?.color ?? preview.accent ?? preview.ground[0],
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px',
       }}
     >
       {/* Top Bar */}
       <div
+        className="planet-analysis__header"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -140,7 +138,7 @@ export default function PlanetAnalysisPanel({
       {!minimized && (
         <>
           {/* Title */}
-      <div>
+      <div className="planet-analysis__intro">
         <h2
           id="planet-analysis-title"
           ref={titleRef}
@@ -181,14 +179,13 @@ export default function PlanetAnalysisPanel({
       )}
 
       {/* 3D Low-Poly Surface Preview Canvas */}
-      <figure style={{ margin: 0 }}>
+      <figure className="planet-analysis__preview" style={{ margin: 0 }}>
         <div
           className="planet-surface__canvas"
           role="group"
           aria-label={`${planet.label}: ${preview.title}, conceptual 3D preview`}
           style={{
             width: '100%',
-            height: '210px',
             borderRadius: '10px',
             overflow: 'hidden',
             border: '1px solid var(--border-subtle)',
@@ -226,14 +223,22 @@ export default function PlanetAnalysisPanel({
             textAlign: 'center',
           }}
         >
-          {planet.id === 'iss'
-            ? 'Interactive 3D ISS airlock & module interior · Drag to look around'
-            : 'Interactive 3D low-poly landscape · Drag to look around'}
+          <span className="planet-analysis__caption-desktop">
+            {planet.id === 'iss'
+              ? 'Interactive 3D ISS airlock & module interior · Drag to look around'
+              : 'Interactive 3D low-poly landscape · Drag to look around'}
+          </span>
+          <span className="planet-analysis__caption-mobile">
+            {planet.id === 'iss'
+              ? '3D ISS airlock & module interior'
+              : '3D low-poly landing preview'}
+          </span>
         </figcaption>
       </figure>
 
       {/* Surface Gravity & Distance Pills */}
       <div
+        className="planet-analysis__metrics"
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
@@ -276,6 +281,7 @@ export default function PlanetAnalysisPanel({
 
       {!planet.analyzable ? (
         <div
+          className="planet-analysis__details"
           style={{
             display: 'flex',
             flexDirection: 'column',
@@ -352,7 +358,7 @@ export default function PlanetAnalysisPanel({
           </div>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div className="planet-analysis__details" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {/* Earth Habitat Sub-Scenarios */}
           {planet.id === 'earth' && (
             <div

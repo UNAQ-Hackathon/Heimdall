@@ -3,10 +3,12 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import LowPolySpace from './LowPolySpace.jsx';
+import StaticCameraTarget from './StaticCameraTarget.jsx';
 import {
   prepareAnimatableAstronaut,
   applyAstronautPose,
 } from './astronaut-limb-anim.js';
+import { useMobileViewport } from '../../utils/use-mobile-viewport.js';
 
 const astroUrlMap = import.meta.glob('../../../../assets3d/trajesEspaciales/astronautaNormal.glb', {
   query: '?url',
@@ -384,8 +386,11 @@ function AirlockEntrySequence({ replayKey, onPhaseChange }) {
 }
 
 export default function StationInteriorPreview({ replayKey = 0, onPhaseChange }) {
+  const isMobile = useMobileViewport();
   const camPos = useMemo(() => new THREE.Vector3(0, 1.95, 4.9), []);
   const camTarget = useMemo(() => new THREE.Vector3(0, 1.45, -4.5), []);
+  const camPosArray = useMemo(() => [camPos.x, camPos.y, camPos.z], [camPos]);
+  const camTargetArray = useMemo(() => [camTarget.x, camTarget.y, camTarget.z], [camTarget]);
   const offset = camPos.clone().sub(camTarget);
   const polar = Math.acos(offset.y / offset.length());
   const azimuth = Math.atan2(offset.x, offset.z);
@@ -394,7 +399,8 @@ export default function StationInteriorPreview({ replayKey = 0, onPhaseChange })
     <Canvas
       frameloop="always"
       dpr={[1, 1.5]}
-      camera={{ position: [camPos.x, camPos.y, camPos.z], fov: 54, near: 0.1, far: 160 }}
+      camera={{ position: camPosArray, fov: 54, near: 0.1, far: 160 }}
+      style={isMobile ? { pointerEvents: 'none', touchAction: 'pan-y' } : undefined}
       fallback={<p>3D preview unavailable: WebGL is required.</p>}
     >
       <color attach="background" args={['#050a16']} />
@@ -411,17 +417,21 @@ export default function StationInteriorPreview({ replayKey = 0, onPhaseChange })
         )}
       </Suspense>
 
-      <OrbitControls
-        enablePan={false}
-        enableZoom={false}
-        enableDamping={false}
-        rotateSpeed={0.32}
-        target={[camTarget.x, camTarget.y, camTarget.z]}
-        minPolarAngle={polar - 0.18}
-        maxPolarAngle={polar + 0.14}
-        minAzimuthAngle={azimuth - 0.38}
-        maxAzimuthAngle={azimuth + 0.38}
-      />
+      {isMobile ? (
+        <StaticCameraTarget position={camPosArray} target={camTargetArray} />
+      ) : (
+        <OrbitControls
+          enablePan={false}
+          enableZoom={false}
+          enableDamping={false}
+          rotateSpeed={0.32}
+          target={camTargetArray}
+          minPolarAngle={polar - 0.18}
+          maxPolarAngle={polar + 0.14}
+          minAzimuthAngle={azimuth - 0.38}
+          maxAzimuthAngle={azimuth + 0.38}
+        />
+      )}
     </Canvas>
   );
 }

@@ -16,6 +16,7 @@ import { createSurfacePreview, ISS_INTERIOR_PHASE_LABELS } from './surface-previ
 import LowPolySpace from './LowPolySpace.jsx';
 import EnvironmentLandscape from './EnvironmentLandscape.jsx';
 import StationInteriorPreview from './StationInteriorPreview.jsx';
+import StaticCameraTarget from './StaticCameraTarget.jsx';
 import {
   getEnvironmentPerspective,
   sampleEnvironmentHeight,
@@ -25,6 +26,7 @@ import {
   applyAstronautPose,
 } from './astronaut-limb-anim.js';
 import { useSound } from '../../context/SoundContext.jsx';
+import { useMobileViewport } from '../../utils/use-mobile-viewport.js';
 
 const landerUrlMap = import.meta.glob('../../../../assets3d/nuevasNaves/landerNuevo.glb', {
   query: '?url',
@@ -565,6 +567,7 @@ function PlanetaryLandingSequence({ planetId, zoneId, scene, view, replayKey, sf
 
 export function IssInteriorPreviewStage({ showCaption = false }) {
   const sfx = useSound();
+  const isMobile = useMobileViewport();
   const [replayKey, setReplayKey] = useState(0);
   const [issPhase, setIssPhase] = useState('pressurize');
   const handlePhase = useCallback(
@@ -590,7 +593,14 @@ export function IssInteriorPreviewStage({ showCaption = false }) {
         : '#fbbf24';
 
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        position: 'relative',
+        touchAction: isMobile ? 'pan-y' : undefined,
+      }}
+    >
       <StationInteriorPreview replayKey={replayKey} onPhaseChange={handlePhase} />
 
       <div
@@ -664,6 +674,7 @@ export function IssInteriorPreviewStage({ showCaption = false }) {
 
 function PlanetarySurfacePreviewStage({ zoneId, planetId }) {
   const sfx = useSound();
+  const isMobile = useMobileViewport();
   const [replayKey, setReplayKey] = useState(0);
 
   const rawScene = useMemo(() => createSurfacePreview(zoneId, planetId), [planetId, zoneId]);
@@ -700,12 +711,20 @@ function PlanetarySurfacePreviewStage({ zoneId, planetId }) {
   }, [hasSolidSurface, view]);
 
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        position: 'relative',
+        touchAction: isMobile ? 'pan-y' : undefined,
+      }}
+    >
       <Canvas
         frameloop={hasSolidSurface ? 'always' : 'demand'}
         shadows={rocky}
         dpr={[1, 1.5]}
         camera={{ position: view.position, fov: view.fov, near: view.near, far: view.far }}
+        style={isMobile ? { pointerEvents: 'none', touchAction: 'pan-y' } : undefined}
         fallback={<p>3D preview unavailable: WebGL is required.</p>}
       >
         <color attach="background" args={[scene.sky]} />
@@ -770,17 +789,21 @@ function PlanetarySurfacePreviewStage({ zoneId, planetId }) {
           </group>
         )}
 
-        <OrbitControls
-          enablePan={false}
-          enableZoom={false}
-          enableDamping={false}
-          rotateSpeed={0.3}
-          target={view.target}
-          minPolarAngle={polar - 0.09}
-          maxPolarAngle={polar + (scene.kind === 'surface' ? 0.035 : 0.14)}
-          minAzimuthAngle={azimuth - 0.3}
-          maxAzimuthAngle={azimuth + 0.3}
-        />
+        {isMobile ? (
+          <StaticCameraTarget position={view.position} target={view.target} />
+        ) : (
+          <OrbitControls
+            enablePan={false}
+            enableZoom={false}
+            enableDamping={false}
+            rotateSpeed={0.3}
+            target={view.target}
+            minPolarAngle={polar - 0.09}
+            maxPolarAngle={polar + (scene.kind === 'surface' ? 0.035 : 0.14)}
+            minAzimuthAngle={azimuth - 0.3}
+            maxAzimuthAngle={azimuth + 0.3}
+          />
+        )}
       </Canvas>
 
       {hasSolidSurface && (

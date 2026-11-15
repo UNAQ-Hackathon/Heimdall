@@ -449,18 +449,14 @@ export default function ComparePage() {
   return (
     <div className="compare-page">
       <div className="compare-page__inner">
-        {/* Clean Hero & Section Switcher */}
+        {/* Clean Header & Section Switcher */}
         <header className="compare-hero">
           <div>
-            <div className="compare-hero__eyebrow">
-              <span className="compare-hero__dot" aria-hidden="true" />
-              NASA PSI ARCHIVE · {isStudent ? 'STUDENT GUIDED LEARNING VIEW' : 'ENGINEER PARAMETRIC VIEW'}
-            </div>
             <h1>PSI Cross-Study Parametric Analysis</h1>
             <p>
               {isStudent
                 ? 'Explore plain-language takeaways explaining what each space fire test studied and how those discoveries protect homes and firefighters on Earth.'
-                : 'Align PSI investigations row-by-row, map tested O₂/pressure envelopes against habitat &amp; suit regimes, and trace microgravity findings to terrestrial fire standards.'}
+                : 'Align PSI investigations row-by-row, map tested O₂/pressure envelopes against habitat & suit regimes, and trace microgravity findings to terrestrial fire standards.'}
             </p>
           </div>
 
