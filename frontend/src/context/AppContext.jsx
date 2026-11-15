@@ -3,6 +3,7 @@ import { api as backendApi } from '../services/api.js';
 import { SCENARIOS, DEFAULT_WEIGHTS, resolveScenarioKey } from './ScenarioContext.jsx';
 import { useSound } from './SoundContext.jsx';
 import { loadSavedShipFile, saveShipFile } from '../utils/spacecraft-storage.js';
+import { writeOnboardingDone } from '../utils/onboarding-storage.js';
 
 export { SCENARIOS, DEFAULT_WEIGHTS, resolveScenarioKey };
 
@@ -19,6 +20,18 @@ export function AppProvider({ children }) {
   const [focusPlanet, setFocusPlanet] = useState(null);
   const [weights, setWeights] = useState(DEFAULT_WEIGHTS);
   const [shipFile, setShipFileState] = useState(() => loadSavedShipFile());
+  const [tourOpen, setTourOpen] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
+
+  const startTour = useCallback(() => {
+    setTourStep(0);
+    setTourOpen(true);
+  }, []);
+
+  const closeTour = useCallback(() => {
+    writeOnboardingDone(true);
+    setTourOpen(false);
+  }, []);
 
   const setScenarioKey = useCallback((nextKey) => {
     setScenarioKeyState(resolveScenarioKey(nextKey));
@@ -261,6 +274,12 @@ export function AppProvider({ children }) {
     chatSessionStatus,
     sendChatMessage,
     resetChatSession,
+    tourOpen,
+    setTourOpen,
+    tourStep,
+    setTourStep,
+    startTour,
+    closeTour,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

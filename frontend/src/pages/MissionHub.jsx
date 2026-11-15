@@ -2,7 +2,6 @@ import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import MissionPlanetInspection from '../components/ui/MissionPlanetInspection.jsx';
 import FireHazRPage from './FireHazRPage.jsx';
-import FireHazrPredictor from '../components/ui/FireHazrPredictor.jsx';
 import SpacecraftSelector from '../components/ui/SpacecraftSelector.jsx';
 import SolarSystemScene from '../components/three/SolarSystemScene.jsx';
 import { useApp } from '../context/AppContext.jsx';
@@ -10,6 +9,7 @@ import { useSound } from '../context/SoundContext.jsx';
 import { api } from '../services/api.js';
 import { rankLocalInvestigations } from '../services/ranking.js';
 import { PLANETS, ISS_DESTINATION } from '../services/mockData.js';
+import { TOUR_STEPS } from '../utils/onboarding-storage.js';
 import '../styles/mission-hub.css';
 
 const PLANET_TO_SCENARIO = {
@@ -24,7 +24,7 @@ function getStudentDiscoveryPoints(scenario) {
     return [
       'Hot air does not rise in orbit, so flames form slow-burning round spheres.',
       'Smoke floats everywhere instead of rising to a ceiling alarm.',
-      'Test CO₂ and nitrogen below in Fire 3D or Predictor to see how crews stop flames.',
+      'Test CO₂ and nitrogen below in the Algorithm lab to see how crews stop flames.',
     ];
   }
   if (scenario?.partialGravity) {
@@ -37,7 +37,7 @@ function getStudentDiscoveryPoints(scenario) {
   return [
     'On Earth (21% O₂, 1g), buoyancy lifts hot exhaust upward into a classic teardrop flame.',
     'Use this 1g baseline to compare how much harder flames behave once gravity drops.',
-    'Try switching the planet or switching to Fire 3D to compare burning droplets and spacesuits.',
+    'Try switching the planet or opening the Algorithm lab to compare burning droplets and spacesuits.',
   ];
 }
 
@@ -54,24 +54,34 @@ export default function MissionHub() {
     setShipFile,
     chatOpen,
     setChatOpen,
+    tourOpen,
+    tourStep,
   } = useApp();
 
   const sfx = useSound();
   const [searchParams] = useSearchParams();
   const [paused, setPaused] = useState(false);
-  const [panelCollapsed, setPanelCollapsed] = useState(false);
-  const [activeTab, setActiveTab] = useState(() => {
-    const tab = searchParams.get('tab');
-    return tab === 'whatif' || tab === '3d' ? 'whatif' : 'prediction';
+  const [inspectionMinimized, setInspectionMinimized] = useState(false);
+  const [panelCollapsed, setPanelCollapsed] = useState(() => {
+    if (typeof window !== 'undefined' && window.innerWidth <= 900) {
+      return !searchParams.get('tab');
+    }
+    return false;
   });
   const navigate = useNavigate();
   const targetRef = useRef(null);
 
   useEffect(() => {
     const qPlanet = searchParams.get('planet');
-    if (qPlanet) setFocusPlanet(qPlanet);
+    if (qPlanet) {
+      setFocusPlanet(qPlanet);
+      if (typeof window !== 'undefined' && window.innerWidth <= 900) {
+        setPanelCollapsed(true);
+      }
+    }
     const qScenario = searchParams.get('scenario');
     if (qScenario) setScenarioKey(qScenario);
+    if (searchParams.get('tab')) setPanelCollapsed(false);
   }, [searchParams, setFocusPlanet, setScenarioKey]);
 
   const closeInspection = useCallback(() => {
@@ -113,26 +123,46 @@ export default function MissionHub() {
     if (mapped) setScenarioKey(mapped);
   }, [focusPlanet, setScenarioKey]);
 
+  useEffect(() => {
+    setInspectionMinimized(false);
+  }, [focusPlanet]);
+
+  useEffect(() => {
+    if (!tourOpen) return;
+    const step = TOUR_STEPS[tourStep];
+    if (!step) return;
+    if (step.mobileTab === 'lab') {
+      setPanelCollapsed(false);
+    } else if (typeof window !== 'undefined' && window.innerWidth <= 900) {
+      setPanelCollapsed(true);
+    }
+  }, [tourOpen, tourStep]);
+
   return (
     <div className="mission-hub">
+      {/* Mobile-only top switcher between 3D Solar System and the Fire Lab & PSI panel */}
+      <div className="mission-hub__mobile-switcher" role="group" aria-label="Mission Hub view">
+        <button
+          type="button"
+          className="mission-hub__mobile-tab"
+          aria-pressed={panelCollapsed}
+          onClick={() => setPanelCollapsed(true)}
+        >
+          Solar System 3D
+        </button>
+        <button
+          type="button"
+          className="mission-hub__mobile-tab"
+          aria-pressed={!panelCollapsed}
+          onClick={() => setPanelCollapsed(false)}
+        >
+          Fire Lab & PSI
+        </button>
+      </div>
+
       {/* Left Minimalist Analytical Panel */}
       {!panelCollapsed && (
-        <aside
-          style={{
-            width: 'min(420px, 100%)',
-            minWidth: 0,
-            flexShrink: 0,
-            height: '100%',
-            overflowY: 'auto',
-            padding: '18px 20px',
-            borderRight: '1px solid var(--border-subtle)',
-            backgroundColor: 'var(--bg-panel)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '14px',
-            zIndex: 25,
-          }}
-        >
+        <aside className="mission-hub__sidebar" data-tour="fire-lab">
           {/* Audience-Specific Top Context: Quantitative PSI Ranking (Engineer) vs Guided Fire Lesson (Student) */}
           {audience === 'Student' ? (
             <div
@@ -300,158 +330,100 @@ export default function MissionHub() {
             </>
           )}
 
-          {/* Clean 2-Tab Sidebar Switcher: Predictor vs Fire 3D */}
+          {/* Single FireHazR Algorithm lab (predictor meters + 3D flame chamber) */}
           <div
             style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-              gap: '4px',
-              padding: '3px',
+              padding: '7px 10px',
               borderRadius: '9px',
               background: 'rgba(8, 13, 26, 0.85)',
               border: '1px solid var(--border-subtle)',
+              textAlign: 'center',
+              fontSize: '11px',
+              fontWeight: 700,
+              fontFamily: 'var(--font-mono)',
+              letterSpacing: '0.08em',
+              color: '#fbbf24',
             }}
           >
-            <button
-              type="button"
-              className="mission-predictor-tab"
-              aria-pressed={activeTab === 'prediction'}
-              onClick={() => setActiveTab('prediction')}
-            >
-              Predictor
-            </button>
-            <button
-              type="button"
-              aria-pressed={activeTab === 'whatif'}
-              onClick={() => setActiveTab('whatif')}
-              style={{
-                padding: '7px 10px',
-                borderRadius: '7px',
-                fontSize: '12px',
-                fontWeight: 600,
-                background:
-                  activeTab === 'whatif' ? 'rgba(245, 158, 11, 0.18)' : 'transparent',
-                border:
-                  activeTab === 'whatif'
-                    ? '1px solid rgba(245, 158, 11, 0.45)'
-                    : '1px solid transparent',
-                color: activeTab === 'whatif' ? '#fbbf24' : '#94a3b8',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-              }}
-            >
-              Fire 3D
-            </button>
+            ALGORITHM · KNN FLEX v3
           </div>
 
-          {activeTab === 'prediction' ? <FireHazrPredictor /> : <FireHazRPage compact />}
+          <FireHazRPage compact />
         </aside>
       )}
 
       {/* Right 3D Solar System Area */}
       <div
-        className="mission-hub__explorer"
-        style={{
-          flex: 1,
-          position: 'relative',
-          height: '100%',
-          background: '#040711',
-          overflow: 'hidden',
-        }}
+        className={`mission-hub__explorer${!panelCollapsed ? ' mission-hub__explorer--hidden-mobile' : ''}${activePlanetObj ? ' mission-hub__explorer--inspecting' : ''}${activePlanetObj && inspectionMinimized ? ' mission-hub__explorer--panel-minimized' : ''}`}
       >
-        {/* Edge Tab Handle to Collapse / Expand Sidebar */}
+        {/* Edge Tab Handle to Collapse / Expand Sidebar (Desktop) */}
         <button
           type="button"
+          className="mission-hub__collapse-btn"
           aria-label={panelCollapsed ? 'Open sidebar' : 'Close sidebar'}
           title={panelCollapsed ? 'Open sidebar' : 'Close sidebar'}
           onClick={() => setPanelCollapsed(!panelCollapsed)}
-          style={{
-            position: 'absolute',
-            left: 0,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            zIndex: 30,
-            width: '20px',
-            height: '52px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'rgba(13, 19, 33, 0.9)',
-            backdropFilter: 'blur(10px)',
-            border: '1px solid var(--border-subtle)',
-            borderLeft: 'none',
-            borderRadius: '0 8px 8px 0',
-            color: '#94a3b8',
-            fontSize: '15px',
-            lineHeight: 1,
-            cursor: 'pointer',
-            boxShadow: '4px 0 14px rgba(0, 0, 0, 0.4)',
-          }}
         >
           {panelCollapsed ? '›' : '‹'}
         </button>
 
-        {/* Minimalist Top Bar Over 3D Scene */}
-        <div
-          style={{
-            position: 'absolute',
-            top: '14px',
-            left: '16px',
-            right: '16px',
-            zIndex: 15,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            pointerEvents: 'none',
-            gap: '10px',
-            flexWrap: 'wrap',
-          }}
-        >
-          {/* Left: Spacecraft Selector */}
-          <div style={{ pointerEvents: 'auto' }}>
-            <SpacecraftSelector shipFile={shipFile} onSelect={setShipFile} />
+        <div className="mission-hub__stage">
+          {/* Minimalist Top Bar Over 3D Scene */}
+          <div className="mission-hub__top-overlay">
+            {/* Left: Spacecraft Selector */}
+            <div style={{ pointerEvents: 'auto' }} data-tour="craft-selector">
+              <SpacecraftSelector shipFile={shipFile} onSelect={setShipFile} />
+            </div>
+
+            {!focusPlanet && !tourOpen && (
+              <div className="mission-hub__stage-hint" aria-hidden="true">
+                <span className="mission-hub__stage-hint-full">Drag to orbit · Scroll to zoom · Tap any planet to fly</span>
+                <span className="mission-hub__stage-hint-compact">Drag to orbit · Tap a planet</span>
+              </div>
+            )}
+          </div>
+
+          {/* 3D Solar System Canvas */}
+          <div
+            className="mission-hub__canvas"
+            style={{ position: 'absolute', inset: 0 }}
+          >
+            <SolarSystemScene
+              paused={paused}
+              panelCollapsed={panelCollapsed}
+              shipFile={shipFile}
+            />
           </div>
         </div>
+
+        {/* Planet Surface & Landing Inspection Drawer */}
+        {activePlanetObj && (
+          <MissionPlanetInspection
+            body={activePlanetObj}
+            minimized={inspectionMinimized}
+            onToggleMinimize={() => setInspectionMinimized((v) => !v)}
+            onClose={closeInspection}
+            onOpenTestbench={() => setPanelCollapsed(false)}
+          />
+        )}
 
         {/* Bottom Floating Quick-Travel Planet Dock */}
         <div
           ref={targetRef}
           tabIndex={-1}
           aria-label="Planet to explore"
-          style={{
-            position: 'absolute',
-            bottom: '16px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 15,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-            padding: '4px 8px',
-            borderRadius: '9999px',
-            background: 'rgba(10, 15, 29, 0.82)',
-            backdropFilter: 'blur(12px)',
-            border: '1px solid var(--border-subtle)',
-            maxWidth: '94%',
-            overflowX: 'auto',
-          }}
+          className="mission-hub__planet-dock"
+          data-tour="planet-dock"
         >
+          <span className="mission-hub__dock-label" aria-hidden="true">Fly to</span>
           <button
             type="button"
+            className="mission-hub__planet-chip"
             onClick={() => setFocusPlanet(null)}
             style={{
-              padding: '4px 10px',
-              borderRadius: '9999px',
-              fontSize: '11px',
               fontWeight: !focusPlanet ? 600 : 400,
-              border: 'none',
               background: !focusPlanet ? 'rgba(56, 189, 248, 0.2)' : 'transparent',
               color: !focusPlanet ? '#38bdf8' : '#94a3b8',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
             }}
           >
             Overview
@@ -466,17 +438,12 @@ export default function MissionHub() {
               <button
                 key={p.name}
                 type="button"
+                className="mission-hub__planet-chip"
                 onClick={() => setFocusPlanet(active ? null : p.name)}
                 style={{
-                  padding: '4px 9px',
-                  borderRadius: '9999px',
-                  fontSize: '11px',
                   fontWeight: active ? 600 : 400,
-                  border: 'none',
                   background: active ? 'rgba(56, 189, 248, 0.22)' : 'transparent',
                   color: active ? '#f8fafc' : '#94a3b8',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
                 }}
               >
                 {p.name === 'Sol' ? 'Sun' : p.name}
@@ -484,30 +451,6 @@ export default function MissionHub() {
             );
           })}
         </div>
-
-        {/* 3D Solar System Canvas */}
-        <div
-          className="mission-hub__canvas"
-          style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}
-        >
-          <SolarSystemScene
-            paused={paused}
-            panelCollapsed={panelCollapsed}
-            shipFile={shipFile}
-          />
-        </div>
-
-        {/* Planet Surface & Landing Inspection Drawer */}
-        {activePlanetObj && (
-          <MissionPlanetInspection
-            body={activePlanetObj}
-            onClose={closeInspection}
-            onOpenTestbench={() => {
-              setPanelCollapsed(false);
-              setActiveTab('whatif');
-            }}
-          />
-        )}
       </div>
     </div>
   );

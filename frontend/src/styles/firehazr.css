@@ -54,11 +54,20 @@
 .firehazr-page--embedded { flex: none; height: auto; min-height: auto; overflow: visible; max-width: 1240px; margin: 0 auto; padding: 12px 0 24px; }
 .firehazr-page--compact h1 { font-size: 20px; }
 .firehazr-page--compact .firehazr-layout { grid-template-columns: minmax(0, 1fr); }
-@media (max-width: 800px) {
+@media (max-width: 900px) {
   .firehazr-layout { grid-template-columns: minmax(0, 1fr); }
-  .firehazr-page { padding: 20px 14px 40px; }
+  .firehazr-page { padding: 18px 14px 38px; }
   .firehazr-page--compact { padding: 0; }
+  .firehazr-page--embedded { padding: 10px 0 20px; }
 }
-@media (max-width: 380px) {
+@media (max-width: 600px) {
+  .firehazr-page h1 { font-size: 21px; }
+  .firehazr-layout > form, .firehazr-result { padding: 14px; }
+  .firehazr-page input:not([type="range"]), .firehazr-page select { font-size: 16px; }
+  .firehazr-page button { min-height: 40px; }
+  .firehazr-value { font-size: 32px; }
+}
+@media (max-width: 420px) {
   .firehazr-page fieldset { grid-template-columns: minmax(0, 1fr); }
+  .firehazr-summary-grid { grid-template-columns: minmax(0, 1fr); }
 }

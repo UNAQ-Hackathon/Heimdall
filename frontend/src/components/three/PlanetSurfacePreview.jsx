@@ -353,9 +353,14 @@ function PlanetaryLandingSequence({ planetId, zoneId, scene, view, replayKey, sf
       }
     }
 
-    // 1. Lander Descent & Retro-Rocket Exhaust Animation
+    // 1. Lander Descent & Soft Touchdown Settle
     const p = Math.min(1, elapsed / descentDuration);
-    const heightOffset = p < 1 ? Math.pow(1 - p, 2.15) * 7.0 : 0;
+    const settleElapsed = Math.max(0, elapsed - descentDuration);
+    const settleDip =
+      elapsed >= descentDuration && settleElapsed < 0.45
+        ? Math.sin((settleElapsed / 0.45) * Math.PI) * Math.exp(-settleElapsed * 6) * -0.09
+        : 0;
+    const heightOffset = (p < 1 ? Math.pow(1 - p, 2.35) * 7.0 : 0) + settleDip;
 
     if (landerGroupRef.current) {
       landerGroupRef.current.position.set(
@@ -474,23 +479,28 @@ function PlanetaryLandingSequence({ planetId, zoneId, scene, view, replayKey, sf
           ? Math.abs(Math.sin(walkProgress * Math.PI * 4)) * 0.2
           : Math.abs(Math.sin((elapsed - walkStart - walkDuration) * 3.0)) * 0.05;
 
-        const emergeScale = Math.min(1, (elapsed - walkStart) / 0.28) * 1.28;
+        const emergeRaw = Math.min(1, Math.max(0, (elapsed - walkStart) / 0.34));
+        const emergeScale = emergeRaw * emergeRaw * (3 - 2 * emergeRaw) * 1.28;
         astroGroupRef.current.scale.setScalar(emergeScale);
         astroGroupRef.current.position.set(curX, curGroundY + hopY, curZ);
 
         const targetYaw = isWalking
           ? THREE.MathUtils.lerp(placement.walkYaw, placement.faceCamYaw, smoothW)
           : placement.faceCamYaw;
-        const bodySway = isWalking
-          ? Math.sin(elapsed * 12) * 0.05
-          : Math.sin(elapsed * 3.5) * 0.035;
+        const walkBlend = 1 - THREE.MathUtils.smoothstep(walkProgress, 0.78, 1.0);
+        const bodySway = THREE.MathUtils.lerp(
+          Math.sin(elapsed * 3.5) * 0.035,
+          Math.sin(elapsed * 12) * 0.05,
+          walkBlend
+        );
 
         astroGroupRef.current.rotation.set(0, targetYaw, bodySway);
 
         const waveTime = Math.max(0, elapsed - (walkStart + walkDuration));
-        const waveRaise = isWalking ? 0 : Math.min(1, waveTime / 0.35);
+        const waveRaiseRaw = isWalking ? 0 : Math.min(1, waveTime / 0.42);
+        const waveRaise = waveRaiseRaw * waveRaiseRaw * (3 - 2 * waveRaiseRaw);
         const waveOsc = Math.sin(waveTime * 7.5) * 0.38;
-        const walkSwing = isWalking ? Math.sin(elapsed * 14) * 0.48 : 0;
+        const walkSwing = Math.sin(elapsed * 14) * 0.48 * walkBlend;
 
         applyAstronautPose(astroParts, { walkSwing, waveRaise, waveOsc });
       }

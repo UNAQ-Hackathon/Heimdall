@@ -32,6 +32,14 @@ jobs:
           npm ci || npm install
           npm run build --if-present
 
+      # The API resolves the processed PSI archive at api/data/processed/… —
+      # the deploy artifact only ships ./api, so the dataset must be copied in.
+      - name: Bundle processed PSI dataset into the deploy artifact
+        run: |
+          mkdir -p ./api/data
+          cp -r ./data/processed ./api/data/
+          ls -la ./api/data/processed/
+
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:

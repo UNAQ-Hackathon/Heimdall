@@ -422,63 +422,65 @@ export default function ComparePage() {
         {/* 1. Side-by-Side Aligned Comparator */}
         {showComparator && (
           <section className="compare-section" aria-label="Interactive side-by-side study comparator">
-            <div className="compare-section__head">
-              <div>
-                <div className="compare-section__eyebrow">
-                  ALIGNED COMPARATOR ({investigations.length} STUDIES)
+            <div data-tour="compare-controls" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div className="compare-section__head">
+                <div>
+                  <div className="compare-section__eyebrow">
+                    ALIGNED COMPARATOR ({investigations.length} STUDIES)
+                  </div>
+                  <h2 className="compare-section__title">Side-by-Side PSI Study Comparison</h2>
+                  <p className="compare-section__sub">
+                    Pick a challenge preset or choose any 2–3 studies to inspect shared bounds and differences row by row.
+                  </p>
                 </div>
-                <h2 className="compare-section__title">Side-by-Side PSI Study Comparison</h2>
-                <p className="compare-section__sub">
-                  Pick a challenge preset or choose any 2–3 studies to inspect shared bounds and differences row by row.
-                </p>
-              </div>
 
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  className={`compare-btn${diffRowsOnly ? ' compare-btn--active' : ''}`}
-                  aria-pressed={diffRowsOnly}
-                  onClick={() => setDiffRowsOnly((v) => !v)}
-                >
-                  {diffRowsOnly ? 'Showing Differences Only' : 'Show Differences Only'}
-                </button>
-                {compareIds.length < 3 && (
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   <button
                     type="button"
-                    className="compare-btn"
-                    onClick={() => setCompareIds([...compareIds, 'FLEX'])}
+                    className={`compare-btn${diffRowsOnly ? ' compare-btn--active' : ''}`}
+                    aria-pressed={diffRowsOnly}
+                    onClick={() => setDiffRowsOnly((v) => !v)}
                   >
-                    + Add 3rd Study
+                    {diffRowsOnly ? 'Showing Differences Only' : 'Show Differences Only'}
                   </button>
-                )}
-                <button
-                  type="button"
-                  className="compare-btn compare-btn--primary"
-                  disabled={selectedStudies.length === 0}
-                  onClick={handleExportSelectedCsv}
-                >
-                  Export Selected CSV ({selectedStudies.length})
-                </button>
-              </div>
-            </div>
-
-            <div className="compare-presets">
-              {COMPARATOR_PRESETS.map((preset) => {
-                const active =
-                  compareIds.length === preset.ids.length &&
-                  preset.ids.every((id, idx) => compareIds[idx] === id);
-                return (
+                  {compareIds.length < 3 && (
+                    <button
+                      type="button"
+                      className="compare-btn"
+                      onClick={() => setCompareIds([...compareIds, 'FLEX'])}
+                    >
+                      + Add 3rd Study
+                    </button>
+                  )}
                   <button
-                    key={preset.label}
                     type="button"
-                    className="compare-preset"
-                    aria-pressed={active}
-                    onClick={() => setCompareIds(preset.ids)}
+                    className="compare-btn compare-btn--primary"
+                    disabled={selectedStudies.length === 0}
+                    onClick={handleExportSelectedCsv}
                   >
-                    {preset.label}
+                    Export Selected CSV ({selectedStudies.length})
                   </button>
-                );
-              })}
+                </div>
+              </div>
+
+              <div className="compare-presets">
+                {COMPARATOR_PRESETS.map((preset) => {
+                  const active =
+                    compareIds.length === preset.ids.length &&
+                    preset.ids.every((id, idx) => compareIds[idx] === id);
+                  return (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      className="compare-preset"
+                      aria-pressed={active}
+                      onClick={() => setCompareIds(preset.ids)}
+                    >
+                      {preset.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="compare-slots">
@@ -630,7 +632,8 @@ export default function ComparePage() {
                     background: '#080d1a',
                     color: '#f8fafc',
                     fontSize: '12px',
-                    minWidth: '210px',
+                    minWidth: 'min(100%, 210px)',
+                    flex: '1 1 210px',
                   }}
                 />
                 <button

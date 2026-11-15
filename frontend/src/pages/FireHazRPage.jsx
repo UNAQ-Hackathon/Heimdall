@@ -313,7 +313,8 @@ function MeterSlider({
           display: 'flex',
           alignItems: 'baseline',
           justifyContent: 'space-between',
-          gap: '8px',
+          flexWrap: 'wrap',
+          gap: '4px 8px',
         }}
       >
         <span style={{ fontSize: '11.5px', fontWeight: 600, color: '#cbd5e1' }}>{label}</span>
@@ -373,6 +374,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
   const [interpretation, setInterpretation] = useState(null);
   const [interpreting, setInterpreting] = useState(false);
   const [interpretError, setInterpretError] = useState(null);
+  const [aiStatus, setAiStatus] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [viewerMode, setViewerMode] = useState('astronaut');
@@ -395,6 +397,14 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
         if (active && Array.isArray(data?.presets)) setPresetsData(data);
       })
       .catch(() => {});
+    api
+      .chatStatus()
+      .then((data) => {
+        if (active) setAiStatus(data);
+      })
+      .catch(() => {
+        if (active) setAiStatus({ connected: false, quotaStatus: 'offline' });
+      });
     return () => {
       active = false;
     };
@@ -412,6 +422,9 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
           study: null,
         }));
   const activePreset = availablePresets.find((p) => p.id === selectedPresetId) ?? null;
+  const aiUnconfigured = aiStatus?.quotaStatus === 'unconfigured';
+  const aiLabel =
+    aiStatus?.providerLabel ?? (aiStatus?.provider === 'gemini' ? 'Gemini' : 'AI');
 
   const resetResultsState = () => {
     setResponse(null);
@@ -475,26 +488,39 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
         study: activePreset?.study ?? null,
       })
       .then((interp) => {
+        if (!interp?.interpretation) {
+          setInterpretation(null);
+          setInterpretError({
+            isHighDemand: false,
+            isQuota: false,
+            title: 'AI interpretation unavailable',
+            detail:
+              interp?.reason === 'out_of_range'
+                ? 'Conditions are outside FLEX experimental bounds.'
+                : (interp?.reason ?? 'The AI provider did not return an interpretation for this result.'),
+          });
+          return;
+        }
         setInterpretation(interp);
         setInterpretError(null);
       })
       .catch((err) => {
         setInterpretation(null);
-        const rawMsg = err?.message ?? 'Gemini service unavailable.';
+        const rawMsg = err?.message ?? 'AI service unavailable.';
         const isHighDemand = /503|high demand|UNAVAILABLE|overloaded/i.test(rawMsg);
         const isQuota = /429|quota|RESOURCE_EXHAUSTED|budget limit/i.test(rawMsg);
         setInterpretError({
           isHighDemand,
           isQuota,
           title: isHighDemand
-            ? 'Gemini temporarily busy (503)'
+            ? `${aiLabel} temporarily busy (503)`
             : isQuota
-              ? 'Gemini rate / quota limit (429)'
+              ? `${aiLabel} rate / quota limit (429)`
               : 'AI interpretation unavailable',
           detail: isHighDemand
-            ? `Google AI Studio is experiencing high demand (${rawMsg}). Your FireHazR result above is valid.`
+            ? `The AI provider is experiencing high demand (${rawMsg}). Your FireHazR result above is valid.`
             : isQuota
-              ? `${rawMsg} Wait a few seconds if you hit Google per-minute RPM/TPM limits; your deterministic readout above stays active.`
+              ? `${rawMsg} Wait a few seconds if you hit per-minute RPM/TPM limits; your deterministic readout above stays active.`
               : rawMsg,
         });
       })
@@ -681,6 +707,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
       {/* 3D Astronaut Suit & Flame Test Chamber with One-Click Suit Presets */}
       <div
         className="tri-card"
+        data-tour={!compact ? 'flame-lab-view' : undefined}
         style={{
           padding: '12px 14px',
           marginBottom: '16px',
@@ -838,7 +865,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
             flexWrap: 'wrap',
           }}
         >
-          <span style={{ color: '#cbd5e1', whiteSpace: 'nowrap' }}>
+          <span style={{ color: '#cbd5e1' }}>
             {isStudent ? 'SPACE CABIN AIR · ' : 'CHAMBER · '}
             <strong>{o2Pct}% O₂</strong> / {n2Pct}% N₂
             {Number(form.co2_fraction) > 0 ? ` / ${Math.round(Number(form.co2_fraction) * 100)}% CO₂` : ''}
@@ -917,7 +944,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))',
                 gap: '12px',
               }}
             >
@@ -1517,6 +1544,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
                     {result.aceptado && !interpretation?.interpretation && !interpreting && (
                       <button
                         type="button"
+                        disabled={aiUnconfigured}
                         onClick={() => runGeminiInterpretation(submittedConditions, result)}
                         style={{
                           padding: '4px 10px',
@@ -1526,18 +1554,36 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
                           color: 'var(--audience-accent)',
                           fontSize: '11px',
                           fontWeight: 600,
-                          cursor: 'pointer',
+                          cursor: aiUnconfigured ? 'not-allowed' : 'pointer',
+                          opacity: aiUnconfigured ? 0.55 : 1,
                         }}
                       >
-                        {interpretError ? '↻ Retry Gemini AI' : '✦ Explain with Gemini AI'}
+                        {aiUnconfigured
+                          ? `✦ ${aiLabel} AI offline`
+                          : interpretError
+                            ? `↻ Retry ${aiLabel} AI`
+                            : `✦ Explain with ${aiLabel} AI`}
                       </button>
                     )}
                     <span className="firehazr-gemini-badge">
                       {interpretation?.usage?.totalTokenCount
-                        ? `Gemini · ${interpretation.usage.totalTokenCount} tok`
-                        : '0 tokens used'}
+                        ? `${aiLabel} · ${interpretation.usage.totalTokenCount} tok`
+                        : aiUnconfigured
+                          ? 'AI offline'
+                          : '0 tokens used'}
                     </span>
                   </div>
+                </div>
+                <div
+                  style={{
+                    fontSize: '10px',
+                    fontFamily: 'var(--font-mono)',
+                    color: '#64748b',
+                    letterSpacing: '0.08em',
+                    marginBottom: '4px',
+                  }}
+                >
+                  DETERMINISTIC READOUT · KNN FLEX v3
                 </div>
                 <p style={{ margin: '0 0 8px', color: '#e2e8f0', fontSize: '12.5px', lineHeight: 1.5 }}>
                   {buildFireHazrDeterministicSummary(submittedConditions, result, isStudent)}
@@ -1547,9 +1593,19 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
                     AI explanation disabled — conditions are outside FLEX experimental bounds.
                   </p>
                 )}
+                {result.aceptado &&
+                  aiUnconfigured &&
+                  !interpreting &&
+                  !interpretation?.interpretation &&
+                  !interpretError && (
+                    <p style={{ margin: 0, color: '#94a3b8', fontSize: '11.5px' }}>
+                      AI provider not configured on the API server — showing the deterministic
+                      readout only.
+                    </p>
+                  )}
                 {result.aceptado && interpreting && (
                   <p style={{ margin: 0, color: '#94a3b8', fontStyle: 'italic', fontSize: '12px' }}>
-                    Analyzing test parameters &amp; NASA PSI context with Gemini…
+                    Analyzing test parameters &amp; NASA PSI context with {aiLabel}…
                   </p>
                 )}
                 {result.aceptado && !interpreting && interpretation?.interpretation && (
@@ -1561,7 +1617,7 @@ export default function FireHazRPage({ compact = false, embedded = false }) {
                     }}
                   >
                     <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#7dd3fc', marginBottom: '4px' }}>
-                      GEMINI AI BRIEF
+                      {aiLabel.toUpperCase()} AI BRIEF
                     </div>
                     <p style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: '12.5px', lineHeight: 1.5 }}>
                       {interpretation.interpretation}
