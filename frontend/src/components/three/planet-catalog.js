@@ -8,7 +8,20 @@ export const PLANET_MODELS = Object.freeze(
       scenarioId: null,
       gravityG: 0.38,
       distanceFromSun: '0.39 AU (57.9M km)',
+      classification: 'Terrestrial Planet',
+      diameterOrSpan: '4,879 km (0.38 × Earth)',
+      orbitAndRotation: '88 d year · 58.6 d sidereal day',
+      temperature: '-180 °C (night) to +430 °C (day)',
+      atmosphere: 'Trace exosphere (O₂, Na, H₂, He, K) · near-vacuum',
+      satellitesOrModules: '0 moons · iron-rich core (~85% of planetary radius)',
       publicDescription: 'Innermost rocky planet with extreme surface temperature swings and an ultrathin exosphere.',
+      combustionContext:
+        'Without a breathable atmosphere or crewed habitat target, open combustion cannot occur on Mercury. Deep-space missions like MESSENGER and BepiColombo experience up to ~11× solar irradiance, demanding strict spacecraft thermal protection and non-flammable avionics.',
+      highlights: Object.freeze([
+        '3:2 spin-orbit resonance produces a 176-Earth-day solar day.',
+        'Water ice persists inside permanently shadowed polar craters despite extreme daytime heat.',
+        'Lacks an insulating atmosphere to redistribute thermal loads across the terminator.',
+      ]),
     },
     {
       id: 'venus',
@@ -18,7 +31,20 @@ export const PLANET_MODELS = Object.freeze(
       scenarioId: null,
       gravityG: 0.904,
       distanceFromSun: '0.72 AU (108.2M km)',
+      classification: 'Terrestrial Planet',
+      diameterOrSpan: '12,104 km (0.95 × Earth)',
+      orbitAndRotation: '225 d year · 243 d retrograde day',
+      temperature: '~464 °C mean surface (runaway greenhouse)',
+      atmosphere: '96.5% CO₂, 3.5% N₂ · ~92 bar surface pressure',
+      satellitesOrModules: '0 moons · dense sulfuric acid (H₂SO₄) cloud decks',
       publicDescription: 'Terrestrial planet shrouded in a dense, superheated carbon dioxide atmosphere with sulfuric acid clouds.',
+      combustionContext:
+        'Venus’s supercritical CO₂ exterior lacks free oxygen for Earth-like burning, while ~464 °C surface temperatures and ~92 bar pressure challenge electronics and pressure vessels. Future atmospheric probes or upper-cloud aerostats depend on sealed internal fire containment.',
+      highlights: Object.freeze([
+        'Rotates backward (retrograde) so the Sun rises in the west and sets in the east.',
+        'At ~50–55 km altitude, ambient pressure (~1 bar) and temperature (~0–50 °C) are Earth-like, though clouds remain acidic.',
+        'Surface pressure equals roughly 900 m underwater on Earth.',
+      ]),
     },
     {
       id: 'earth',
@@ -29,7 +55,26 @@ export const PLANET_MODELS = Object.freeze(
       subScenarios: ['earth', 'iss', 'suit'],
       gravityG: 1.0,
       distanceFromSun: '1.00 AU (149.6M km)',
+      classification: 'Terrestrial Planet · 1g Baseline',
+      diameterOrSpan: '12,742 km (1.00 × Earth)',
+      orbitAndRotation: '365.25 d year · 23h 56m sidereal day',
+      temperature: '~15 °C global mean (-89 °C to +56 °C)',
+      atmosphere: '78% N₂, 21% O₂, 0.9% Ar, 0.04% CO₂ · 14.7 psi',
+      satellitesOrModules: '1 natural moon · protective dipolar magnetosphere',
       publicDescription: '1g terrestrial baseline for spacecraft fire safety standards (NASA-STD-6001) and ISS/LEO orbital operations.',
+      combustionContext:
+        'In 1g gravity, buoyant convection lifts hot exhaust upward and draws fresh oxidizer into the flame base. NASA-STD-6001 tests materials in 1g, while ISS PSI experiments reveal where low-speed spacecraft ventilation makes flames easier to sustain in microgravity than upward 1g burns.',
+      highlights: Object.freeze([
+        'Sea-level baseline (21% O₂, 14.7 psi) anchors both ISS cabin air and terrestrial fire codes.',
+        'PSI findings transfer back to Earth: water-mist suppression (FLEX), dust-immune smoke detectors (SAME/DAFT), and cleaner burners (ACME).',
+        'Use the Habitat Regime switcher below to compare 1g baseline, ISS/LEO microgravity, and 100% O₂ EVA suit risks.',
+      ]),
+      featuredStudies: Object.freeze([
+        { id: 'saffire-iii', label: 'Saffire-III' },
+        { id: 'bass-ii', label: 'BASS-II' },
+        { id: 'flex-2', label: 'FLEX-2' },
+        { id: 'same', label: 'SAME' },
+      ]),
     },
     {
       id: 'moon',
@@ -39,7 +84,26 @@ export const PLANET_MODELS = Object.freeze(
       scenarioId: 'moon',
       gravityG: 0.165,
       distanceFromSun: '1.00 AU (384,400 km from Earth)',
+      classification: 'Natural Satellite · Lunar Habitat Target',
+      diameterOrSpan: '3,474 km (0.27 × Earth)',
+      orbitAndRotation: '27.3 d orbit (tidally locked to Earth)',
+      temperature: '-173 °C (lunar night) to +127 °C (sunlit equator)',
+      atmosphere: 'Surface-bounded exosphere (near-vacuum, <10⁻¹⁴ bar)',
+      satellitesOrModules: 'High-abrasive silicate regolith · ~14-day sunlit/dark cycles',
       publicDescription: 'Primary exploration target for crewed lunar surface habitats and pressurized rovers (≥30% O₂, ≤10.2 psi).',
+      combustionContext:
+        'Exploration habitats adopt enriched oxygen (≥30% O₂) at reduced pressure (≤10.2 psi) to cut EVA pre-breathe time, lowering ignition thresholds and speeding flame spread. Because PSI currently holds no 0.165g flight curves, risk is bracketed between 0g ISS and 1g Earth pending LUCI and FM2.',
+      highlights: Object.freeze([
+        '0.165g creates a unique partial-buoyancy regime untested in long-duration flight combustion experiments.',
+        'Fine lunar regolith dust can infiltrate airlocks and foul optical smoke sensors if cabin filtration lags.',
+        'Upcoming PSI lunar studies LUCI and FM2 will directly measure material flammability in partial gravity.',
+      ]),
+      featuredStudies: Object.freeze([
+        { id: 'luci', label: 'LUCI (Upcoming)' },
+        { id: 'fm2', label: 'FM2 (Upcoming)' },
+        { id: 'acme-e-field', label: 'E-FIELD Flames' },
+        { id: 'sofie', label: 'SoFIE' },
+      ]),
     },
     {
       id: 'mars',
@@ -49,7 +113,26 @@ export const PLANET_MODELS = Object.freeze(
       scenarioId: 'mars',
       gravityG: 0.38,
       distanceFromSun: '1.52 AU (227.9M km)',
+      classification: 'Terrestrial Planet · Martian Habitat Target',
+      diameterOrSpan: '6,779 km (0.53 × Earth)',
+      orbitAndRotation: '687 d year · 24h 37m Martian sol',
+      temperature: '-125 °C (winter poles) to +20 °C (equator, ~-65 °C mean)',
+      atmosphere: '95.3% CO₂, 2.6% N₂, 1.9% Ar · ~0.09 psi exterior',
+      satellitesOrModules: '2 moons (Phobos & Deimos) · planet-wide iron-oxide dust storms',
       publicDescription: 'Future crewed surface habitat destination; pressurized cabin atmosphere assumed same as lunar exploration standard.',
+      combustionContext:
+        'Exterior Martian CO₂ cannot support combustion; fire risk governs the pressurized crew habitat (modeled at 30% O₂, 10.2 psi, same as lunar exploration standards) and 0.38g partial gravity. Long Earth-Mars communication delays require autonomous fire detection and suppression.',
+      highlights: Object.freeze([
+        'At 0.38g, buoyant airflow is weaker than Earth 1g but stronger than lunar 0.165g — still unmeasured in flight.',
+        'ACME E-FIELD Flames uses electrostatic ion wind as a laboratory proxy for partial-gravity flame behavior.',
+        'Fine perchlorate-bearing Martian dust requires strict airlock cleaning and dust-tolerant smoke sensing (DAFT heritage).',
+      ]),
+      featuredStudies: Object.freeze([
+        { id: 'acme-e-field', label: 'E-FIELD Flames' },
+        { id: 'acme-cfi-g', label: 'CFI-G (High O₂)' },
+        { id: 'daft-2', label: 'DAFT-2' },
+        { id: 'sofie', label: 'SoFIE' },
+      ]),
     },
     {
       id: 'jupiter',
@@ -59,7 +142,20 @@ export const PLANET_MODELS = Object.freeze(
       scenarioId: null,
       gravityG: 2.53,
       distanceFromSun: '5.20 AU (778.5M km)',
+      classification: 'Gas Giant',
+      diameterOrSpan: '139,820 km (11.0 × Earth)',
+      orbitAndRotation: '11.86 yr orbit · 9h 56m rapid day',
+      temperature: '~-110 °C at 1-bar cloud tops',
+      atmosphere: '~89.8% H₂, 10.2% He + ammonia & ammonium hydrosulfide clouds',
+      satellitesOrModules: '95 confirmed moons (Io, Europa, Ganymede, Callisto) · faint dust ring',
       publicDescription: 'Largest gas giant in the Solar System, composed primarily of hydrogen and helium with banded ammonia cloud decks.',
+      combustionContext:
+        'Despite abundant hydrogen, Jupiter’s reducing atmosphere lacks free oxygen, so chemical fire cannot occur externally. Spacecraft such as Juno and Europa Clipper rely on radiation-hardened avionics, current limiting, and NASA-STD-6001 non-flammable harnesses.',
+      highlights: Object.freeze([
+        'Fastest planetary rotation in the Solar System (~9h 56m), driving alternating zonal jet streams and the Great Red Spot.',
+        'Intense Jovian radiation belts pose single-event-upset and electrical fault hazards to transit spacecraft.',
+        'Galilean moon Europa harbors a global subsurface saltwater ocean beneath an icy crust.',
+      ]),
     },
     {
       id: 'saturn',
@@ -69,7 +165,20 @@ export const PLANET_MODELS = Object.freeze(
       scenarioId: null,
       gravityG: 1.065,
       distanceFromSun: '9.54 AU (1.43B km)',
+      classification: 'Gas Giant',
+      diameterOrSpan: '116,460 km (9.1 × Earth)',
+      orbitAndRotation: '29.45 yr orbit · 10h 42m day',
+      temperature: '~-140 °C at 1-bar cloud tops',
+      atmosphere: '~96.3% H₂, 3.25% He + trace CH₄ & NH₃ clouds',
+      satellitesOrModules: '146+ moons (Titan, Enceladus) · 282,000 km main icy ring span',
       publicDescription: 'Gas giant characterized by an extensive icy ring system and deep hydrogen-helium atmospheric layers.',
+      combustionContext:
+        'Saturn’s H₂/He envelope lacks free O₂ for open flame. Deep-space missions like Cassini-Huygens and upcoming Dragonfly (Titan) protect sealed radioisotope power and avionics bays using aerospace fire-prevention standards anchored in 1g and ISS PSI research.',
+      highlights: Object.freeze([
+        'Lowest mean density of any Solar System planet (~0.687 g/cm³, less dense than liquid water).',
+        'North pole hosts a persistent ~29,000 km hexagonal jet-stream wave.',
+        'Moons Enceladus (water plumes) and Titan (dense N₂/CH₄ atmosphere) are premier astrobiology targets.',
+      ]),
     },
     {
       id: 'uranus',
@@ -79,7 +188,20 @@ export const PLANET_MODELS = Object.freeze(
       scenarioId: null,
       gravityG: 0.886,
       distanceFromSun: '19.19 AU (2.87B km)',
+      classification: 'Ice Giant',
+      diameterOrSpan: '50,724 km (4.0 × Earth)',
+      orbitAndRotation: '84 yr orbit · 17h 14m retrograde (97.8° tilt)',
+      temperature: '~-195 °C at 1-bar cloud tops (coldest planetary atmosphere)',
+      atmosphere: '~82.5% H₂, 15.2% He, 2.3% CH₄ (methane red-light absorption)',
+      satellitesOrModules: '28 known moons (Miranda, Ariel, Umbriel, Titania, Oberon) · 13 rings',
       publicDescription: 'Ice giant with an extreme axial tilt and a cold hydrogen, helium, and methane atmosphere.',
+      combustionContext:
+        'Cryogenic temperatures (~-195 °C) and zero free oxygen prevent atmospheric combustion. Long-cruise outer-planet probes require autonomous electrical-fault isolation and zero-outgassing, flame-retardant cable insulation.',
+      highlights: Object.freeze([
+        'Rotates nearly on its side (97.77° axial tilt), causing ~42-year polar summers and winters.',
+        'Interior mantle consists primarily of supercritical water, ammonia, and methane "ices".',
+        'Methane gas absorbs red wavelengths, giving Uranus its pale cyan hue.',
+      ]),
     },
     {
       id: 'neptune',
@@ -89,7 +211,20 @@ export const PLANET_MODELS = Object.freeze(
       scenarioId: null,
       gravityG: 1.14,
       distanceFromSun: '30.07 AU (4.50B km)',
+      classification: 'Ice Giant',
+      diameterOrSpan: '49,244 km (3.9 × Earth)',
+      orbitAndRotation: '164.8 yr orbit · 16h 06m day',
+      temperature: '~-200 °C at 1-bar cloud tops',
+      atmosphere: '~80% H₂, 19% He, 1.5% CH₄ · supersonic winds (~2,100 km/h)',
+      satellitesOrModules: '16 known moons (Triton in retrograde orbit) · 5 faint rings',
       publicDescription: 'Outermost major ice giant featuring supersonic atmospheric winds and high-altitude methane ice clouds.',
+      combustionContext:
+        'No free oxygen exists in Neptune’s deep H₂/He/CH₄ envelope. Any future orbiter or atmospheric entry probe depends on sealed thermal shielding and fault-tolerant internal electronics rather than ambient atmospheric fire modeling.',
+      highlights: Object.freeze([
+        'Radiates ~2.6× more internal thermal energy than it receives from the distant Sun.',
+        'Sustains the fastest planetary winds in the Solar System, exceeding 2,100 km/h.',
+        'Largest moon Triton orbits backward and erupts nitrogen-ice geysers.',
+      ]),
     },
     {
       id: 'sun',
@@ -99,7 +234,20 @@ export const PLANET_MODELS = Object.freeze(
       scenarioId: null,
       gravityG: 27.9,
       distanceFromSun: '0.00 AU (System Center)',
+      classification: 'G2V Main-Sequence Star',
+      diameterOrSpan: '1,392,700 km (109 × Earth)',
+      orbitAndRotation: '~25.4 d equatorial rotation · ~230 Myr galactic orbit',
+      temperature: '~5,500 °C photosphere · ~15M °C core · >1M °C corona',
+      atmosphere: '~73.5% H₂, 24.9% He ionized plasma',
+      satellitesOrModules: '8 planets · ~99.86% of total Solar System mass',
       publicDescription: 'G-type main-sequence star at the center of the Solar System.',
+      combustionContext:
+        'Solar energy comes from thermonuclear proton-proton fusion in the ~15M °C core — not chemical oxidation/combustion. Solar-proximity missions such as Parker Solar Probe rely on carbon-composite heat shields and active cooling to protect internal spacecraft subsystems.',
+      highlights: Object.freeze([
+        'Fuses roughly 600 million metric tons of hydrogen into helium every second.',
+        'Solar wind and coronal mass ejections shape spacecraft radiation shielding across all crewed trajectories.',
+        'Photosphere granulation cells span ~1,000 km across in convective plasma overturn.',
+      ]),
     },
   ].map(Object.freeze)
 );
@@ -112,8 +260,28 @@ export const ISS_STATION_MODEL = Object.freeze({
   scenarioId: 'iss',
   gravityG: 0,
   distanceFromSun: '1.00 AU (~408 km LEO)',
+  classification: 'Orbital Research Station (LEO)',
+  diameterOrSpan: '109 m truss span · ~916 m³ pressurized volume',
+  orbitAndRotation: '92.9 min orbit · 7.66 km/s · ~15.5 orbits/day',
+  temperature: '18–26 °C cabin · -157 °C to +121 °C external hull',
+  atmosphere: '79% N₂ / 21% O₂ at 14.7 psi (ECLSS controlled)',
+  satellitesOrModules: '16 pressurized modules (Destiny, Harmony, Quest, Columbus, Kibo, Russian Segment)',
   publicDescription:
     'International Space Station in low Earth orbit (~0g), housing the CIR (ACME, FLEX/MDCA), MSG (BASS, SPICE, SLICE), and SAME fire safety experiments.',
+  combustionContext:
+    'In orbital free fall (~0g), natural buoyancy disappears: flames turn spherical, burn slower via molecular diffusion, and smoke spreads uniformly with cabin airflow instead of rising to ceiling alarms. Almost all 21 completed NASA PSI flight datasets were acquired inside the ISS CIR and MSG racks (plus uncrewed Cygnus Saffire flights).',
+  highlights: Object.freeze([
+    'CIR (Combustion Integrated Rack): hosts MDCA liquid-droplet tests (FLEX, FLEX-2, CFI) and all 6 ACME gaseous-flame studies.',
+    'MSG (Microgravity Science Glovebox): hosts SPICE flow-duct solid burning (BASS, BASS-II, SPICE, SLICE), SoFIE, and SAME/DAFT smoke/dust sensors.',
+    'Quest Airlock depressurizes to 10.2 psi and transitions crew to 100% O₂ / 4.3 psi EMU spacesuits — the highest flammability regime.',
+  ]),
+  featuredStudies: Object.freeze([
+    { id: 'flex-2', label: 'FLEX-2 (CIR)' },
+    { id: 'bass-ii', label: 'BASS-II (MSG)' },
+    { id: 'acme-cfi-g', label: 'CFI-G (ACME)' },
+    { id: 'sofie', label: 'SoFIE' },
+    { id: 'same-r', label: 'SAME-R' },
+  ]),
 });
 
 export function getPlanetModel(id) {
