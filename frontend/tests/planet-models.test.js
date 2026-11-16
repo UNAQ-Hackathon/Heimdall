@@ -4,8 +4,9 @@ import test from 'node:test';
 import { Box3, Group, Vector3 } from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-import { getPlanetModel, PLANET_MODELS } from '../src/components/three/planet-catalog.js';
+import { getPlanetModel, ISS_STATION_MODEL, PLANET_MODELS } from '../src/components/three/planet-catalog.js';
 import { normalizeModel } from '../src/components/three/normalize-model.js';
+import { INVESTIGATIONS } from '../src/services/mockData.js';
 
 const assetRoot = new URL('../../assets3d/planetas/', import.meta.url);
 
@@ -51,4 +52,41 @@ for (const { id, filename } of PLANET_MODELS) {
 
 test('normalization rejects an empty scene', () => {
   assert.throws(() => normalizeModel(new Group()), /no visible geometry/);
+});
+
+test('all planets and ISS include detailed physical, orbital, and PSI context without broken study links', () => {
+  const validStudyIds = new Set(INVESTIGATIONS.map((inv) => inv.id));
+  const requiredFields = [
+    'classification',
+    'diameterOrSpan',
+    'orbitAndRotation',
+    'temperature',
+    'atmosphere',
+    'satellitesOrModules',
+    'combustionContext',
+  ];
+
+  for (const body of [...PLANET_MODELS, ISS_STATION_MODEL]) {
+    for (const field of requiredFields) {
+      assert.equal(typeof body[field], 'string', `${body.id} missing ${field}`);
+      assert.ok(body[field].trim().length > 0, `${body.id} has empty ${field}`);
+    }
+    assert.ok(Array.isArray(body.highlights) && body.highlights.length >= 2, `${body.id} highlights`);
+    for (const study of body.featuredStudies ?? []) {
+      assert.ok(validStudyIds.has(study.id), `${body.id} references unknown study ${study.id}`);
+      assert.ok(typeof study.label === 'string' && study.label.length > 0);
+    }
+  }
+});
+
+test('copilot modal keeps fixed overlay positioning above global tri-card styles', async () => {
+  const [mainJs, appShellCss] = await Promise.all([
+    readFile(new URL('../src/main.jsx', import.meta.url), 'utf8'),
+    readFile(new URL('../src/styles/app-shell.css', import.meta.url), 'utf8'),
+  ]);
+
+  const globalIdx = mainJs.indexOf("import './styles/global.css'");
+  const appIdx = mainJs.indexOf("import App from './App.jsx'");
+  assert.ok(globalIdx !== -1 && appIdx !== -1 && globalIdx < appIdx, 'global.css must load before App.jsx');
+  assert.match(appShellCss, /\.copilot-chat\.copilot-chat--modal\s*\{[^}]*position:\s*fixed;/);
 });

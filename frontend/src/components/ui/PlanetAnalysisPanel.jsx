@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { getPreviewTheme } from '../three/surface-preview.js';
 import { EARTH_ZONES } from '../three/planet-analysis.js';
 import { SCENARIOS, useApp } from '../../context/AppContext.jsx';
@@ -139,6 +140,9 @@ export default function PlanetAnalysisPanel({
         <>
           {/* Title */}
       <div className="planet-analysis__intro">
+        {planet.classification && (
+          <div className="planet-analysis__badge">{planet.classification}</div>
+        )}
         <h2
           id="planet-analysis-title"
           ref={titleRef}
@@ -279,9 +283,85 @@ export default function PlanetAnalysisPanel({
         </div>
       </div>
 
+      <div className="planet-analysis__details" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {/* Physical & Orbital Profile */}
+        {(planet.diameterOrSpan || planet.orbitAndRotation || planet.temperature || planet.atmosphere || planet.satellitesOrModules) && (
+          <div className="planet-profile-card">
+            <div className="planet-profile-card__heading">
+              {planet.id === 'iss' ? 'ORBITAL & STATION PROFILE' : 'PHYSICAL & ATMOSPHERIC PROFILE'}
+            </div>
+            <dl className="planet-profile-grid">
+              {planet.diameterOrSpan && (
+                <div className="planet-profile-item">
+                  <dt>{planet.id === 'iss' ? 'SPAN & VOLUME' : 'DIAMETER'}</dt>
+                  <dd>{planet.diameterOrSpan}</dd>
+                </div>
+              )}
+              {planet.orbitAndRotation && (
+                <div className="planet-profile-item">
+                  <dt>{planet.id === 'iss' ? 'ORBITAL VELOCITY' : 'ORBIT & ROTATION'}</dt>
+                  <dd>{planet.orbitAndRotation}</dd>
+                </div>
+              )}
+              {planet.temperature && (
+                <div className="planet-profile-item planet-profile-item--full">
+                  <dt>THERMAL REGIME</dt>
+                  <dd>{planet.temperature}</dd>
+                </div>
+              )}
+              {planet.atmosphere && (
+                <div className="planet-profile-item planet-profile-item--full">
+                  <dt>{planet.id === 'iss' ? 'CABIN ATMOSPHERE (ECLSS)' : 'ATMOSPHERE / COMPOSITION'}</dt>
+                  <dd>{planet.atmosphere}</dd>
+                </div>
+              )}
+              {planet.satellitesOrModules && (
+                <div className="planet-profile-item planet-profile-item--full">
+                  <dt>{planet.id === 'iss' ? 'PRESSURIZED MODULES' : 'MOONS & STRUCTURE'}</dt>
+                  <dd>{planet.satellitesOrModules}</dd>
+                </div>
+              )}
+            </dl>
+          </div>
+        )}
+
+        {/* Spacecraft Fire & Combustion Context + Key Highlights */}
+        {(planet.combustionContext || (planet.highlights && planet.highlights.length > 0)) && (
+          <div className="planet-profile-card">
+            <div className="planet-profile-card__heading">
+              SPACECRAFT FIRE &amp; PSI CONTEXT
+            </div>
+            {planet.combustionContext && (
+              <p className="planet-profile-card__text">{planet.combustionContext}</p>
+            )}
+            {planet.highlights && planet.highlights.length > 0 && (
+              <ul className="planet-profile-highlights">
+                {planet.highlights.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            )}
+            {planet.featuredStudies && planet.featuredStudies.length > 0 && (
+              <div className="planet-profile-studies">
+                <span className="planet-profile-studies__label">Related PSI Studies</span>
+                <div className="planet-profile-studies__chips">
+                  {planet.featuredStudies.map((study) => (
+                    <Link
+                      key={study.id}
+                      to={`/study/${study.id}`}
+                      className="planet-profile-study-chip"
+                    >
+                      {study.label} ↗
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
       {!planet.analyzable ? (
         <div
-          className="planet-analysis__details"
           style={{
             display: 'flex',
             flexDirection: 'column',
@@ -358,7 +438,7 @@ export default function PlanetAnalysisPanel({
           </div>
         </div>
       ) : (
-        <div className="planet-analysis__details" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {/* Earth Habitat Sub-Scenarios */}
           {planet.id === 'earth' && (
             <div
@@ -478,6 +558,7 @@ export default function PlanetAnalysisPanel({
           )}
         </div>
       )}
+      </div>
         </>
       )}
     </aside>
